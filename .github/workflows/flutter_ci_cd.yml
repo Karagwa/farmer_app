@@ -18,9 +18,12 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.7.0" # Match your environment.sdk from pubspec.yaml
+          flutter-version: "3.16.0" # Updated to a newer version that includes Dart SDK 3.7.0+
           channel: "stable"
           cache: true
+
+      - name: Check Flutter setup
+        run: flutter doctor -v
 
       - name: Install dependencies
         run: flutter pub get
@@ -48,9 +51,12 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.7.0"
+          flutter-version: "3.16.0"
           channel: "stable"
           cache: true
+
+      - name: Check Flutter setup
+        run: flutter doctor -v
 
       - name: Install dependencies
         run: flutter pub get
@@ -81,9 +87,12 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.7.0"
+          flutter-version: "3.16.0"
           channel: "stable"
           cache: true
+
+      - name: Check Flutter setup
+        run: flutter doctor -v
 
       - name: Install dependencies
         run: flutter pub get
@@ -107,7 +116,7 @@ jobs:
           path: build/app/outputs/flutter-apk/
 
       - name: Setup Firebase CLI
-        uses: firebase/firebase-tools@v9
+        uses: firebase/firebase-tools@v12
         with:
           token: ${{ secrets.FIREBASE_TOKEN }}
 
@@ -130,9 +139,12 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.7.0"
+          flutter-version: "3.16.0"
           channel: "stable"
           cache: true
+
+      - name: Check Flutter setup
+        run: flutter doctor -v
 
       - name: Download APK
         uses: actions/download-artifact@v3
