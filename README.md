@@ -1,4 +1,6 @@
-# farmer_app
+# Farmer App
+
+![CI/CD Status](https://github.com/yourusername/farmer_app/actions/workflows/flutter_ci_cd.yml/badge.svg)
 
 A new Flutter project.
 
