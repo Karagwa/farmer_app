@@ -50,23 +50,21 @@ class _SupplementsScreenState extends State<SupplementsScreen> {
 
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
-      filteredSupplements =
-          filteredSupplements.where((supplement) {
-            return supplement['name'].toString().toLowerCase().contains(
+      filteredSupplements = filteredSupplements.where((supplement) {
+        return supplement['name'].toString().toLowerCase().contains(
                   _searchQuery.toLowerCase(),
                 ) ||
-                supplement['description'].toString().toLowerCase().contains(
+            supplement['description'].toString().toLowerCase().contains(
                   _searchQuery.toLowerCase(),
                 );
-          }).toList();
+      }).toList();
     }
 
     // Apply type filter
     if (_selectedType != 'All') {
-      filteredSupplements =
-          filteredSupplements.where((supplement) {
-            return supplement['type'] == _selectedType;
-          }).toList();
+      filteredSupplements = filteredSupplements.where((supplement) {
+        return supplement['type'] == _selectedType;
+      }).toList();
     }
 
     setState(() {
@@ -85,25 +83,24 @@ class _SupplementsScreenState extends State<SupplementsScreen> {
         children: [
           _buildSearchAndFilterBar(),
           Expanded(
-            child:
-                _isLoading
-                    ? Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFF4CAF50),
-                        ),
+            child: _isLoading
+                ? Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF4CAF50),
                       ),
-                    )
-                    : _supplements.isEmpty
+                    ),
+                  )
+                : _supplements.isEmpty
                     ? Center(child: Text('No supplements found'))
                     : ListView.builder(
-                      padding: EdgeInsets.all(16),
-                      itemCount: _supplements.length,
-                      itemBuilder: (context, index) {
-                        final supplement = _supplements[index];
-                        return _buildSupplementCard(supplement);
-                      },
-                    ),
+                        padding: EdgeInsets.all(16),
+                        itemCount: _supplements.length,
+                        itemBuilder: (context, index) {
+                          final supplement = _supplements[index];
+                          return _buildSupplementCard(supplement);
+                        },
+                      ),
           ),
         ],
       ),
@@ -166,44 +163,38 @@ class _SupplementsScreenState extends State<SupplementsScreen> {
                   height: 40,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    children:
-                        _typeOptions.map((type) {
-                          bool isSelected = _selectedType == type;
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedType = type;
-                              });
-                              _filterSupplements();
-                            },
-                            child: Container(
-                              margin: EdgeInsets.only(right: 8),
-                              padding: EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color:
-                                    isSelected
-                                        ? Color(0xFF4CAF50)
-                                        : Colors.grey[200],
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  type,
-                                  style: TextStyle(
-                                    color:
-                                        isSelected
-                                            ? Colors.white
-                                            : Colors.black,
-                                    fontWeight:
-                                        isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                  ),
-                                ),
+                    children: _typeOptions.map((type) {
+                      bool isSelected = _selectedType == type;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedType = type;
+                          });
+                          _filterSupplements();
+                        },
+                        child: Container(
+                          margin: EdgeInsets.only(right: 8),
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Color(0xFF4CAF50)
+                                : Colors.grey[200],
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Center(
+                            child: Text(
+                              type,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.black,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
-                          );
-                        }).toList(),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ),

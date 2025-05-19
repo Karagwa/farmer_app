@@ -92,7 +92,6 @@ class BeeCount {
   final DateTime timestamp;
   final String? notes;
   final double confidence;
-  
 
   BeeCount({
     this.id,

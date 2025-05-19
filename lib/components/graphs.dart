@@ -35,7 +35,9 @@ class Graphs extends StatefulWidget {
 class _GraphsState extends State<Graphs> {
   @override
   Widget build(BuildContext context) {
-    if (widget.xValues.isEmpty || widget.yValues1.isEmpty || widget.yValues2.isEmpty) {
+    if (widget.xValues.isEmpty ||
+        widget.yValues1.isEmpty ||
+        widget.yValues2.isEmpty) {
       return const Center(
         child: Text('Oops! No data available.'),
       );
@@ -43,7 +45,7 @@ class _GraphsState extends State<Graphs> {
 
     final spots1 = List.generate(
       widget.xValues.length,
-          (index) {
+      (index) {
         if (widget.yValues1[index] == 0) {
           return null; // Skip plotting zero values
         }
@@ -56,7 +58,7 @@ class _GraphsState extends State<Graphs> {
 
     final spots2 = List.generate(
       widget.xValues.length,
-          (index) {
+      (index) {
         if (widget.yValues2[index] == 0) {
           return null; // Skip plotting zero values
         }
@@ -71,10 +73,12 @@ class _GraphsState extends State<Graphs> {
       child: LineChart(
         LineChartData(
           minX: widget.xValues
-              .map<double>((dateTime) => dateTime.millisecondsSinceEpoch.toDouble())
+              .map<double>(
+                  (dateTime) => dateTime.millisecondsSinceEpoch.toDouble())
               .reduce((value, element) => value < element ? value : element),
           maxX: widget.xValues
-              .map<double>((dateTime) => dateTime.millisecondsSinceEpoch.toDouble())
+              .map<double>(
+                  (dateTime) => dateTime.millisecondsSinceEpoch.toDouble())
               .reduce((value, element) => value > element ? value : element),
           minY: widget.minY,
           maxY: widget.maxY,
@@ -128,7 +132,8 @@ class _GraphsState extends State<Graphs> {
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
-                  String formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.fromMillisecondsSinceEpoch(value.toInt()));
+                  String formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(
+                      DateTime.fromMillisecondsSinceEpoch(value.toInt()));
                   return RotatedBox(
                     quarterTurns: 1,
                     child: Text(formattedDate),

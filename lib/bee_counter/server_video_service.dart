@@ -26,7 +26,7 @@ class ServerVideoService {
     try {
       // Get only the latest video
       final latestVideo = await fetchLatestVideoFromServer(hiveId);
-      
+
       // Return as a list containing only the latest video
       if (latestVideo != null) {
         return [latestVideo];
@@ -44,7 +44,7 @@ class ServerVideoService {
     try {
       // Build the URL for latest video only
       String url = '$baseUrl/vids/latest';
-      
+
       print('Fetching latest video from: $url');
 
       // Try with retries
@@ -54,24 +54,26 @@ class ServerVideoService {
 
           if (response.statusCode == 200) {
             print('Response body: ${response.body}');
-            final Map<String, dynamic> responseData = json.decode(response.body);
-            
+            final Map<String, dynamic> responseData =
+                json.decode(response.body);
+
             // Handle the actual response structure
             if (responseData.containsKey('video')) {
               final videoData = responseData['video'];
-              
+
               // Use ServerVideo.fromJson constructor to create object
               final serverVideo = ServerVideo.fromJson(videoData);
-              
-              print('Successfully parsed video: ${serverVideo.id} - ${serverVideo.url}');
-              
+
+              print(
+                  'Successfully parsed video: ${serverVideo.id} - ${serverVideo.url}');
+
               // Update cache
               _cachedVideo = serverVideo;
               _lastCacheTime = DateTime.now();
-              
+
               // Check if this is a new video
               _checkAndAnalyzeNewVideo(hiveId, serverVideo);
-              
+
               return serverVideo;
             } else {
               print('Response does not contain video data: $responseData');
@@ -80,13 +82,12 @@ class ServerVideoService {
             print('Server returned status code: ${response.statusCode}');
             print('Response body: ${response.body}');
           }
-          
+
           // If response was not 200 or no videos, try again
           if (attempt < _maxRetries - 1) {
             print('Retrying in ${_retryDelay.inSeconds} seconds...');
             await Future.delayed(_retryDelay);
           }
-          
         } catch (e) {
           print('Attempt ${attempt + 1} failed: $e');
           if (attempt < _maxRetries - 1) {
@@ -94,18 +95,18 @@ class ServerVideoService {
           }
         }
       }
-      
+
       // If all attempts fail, check if we have a cached video
-      if (_cachedVideo != null && 
+      if (_cachedVideo != null &&
           DateTime.now().difference(_lastCacheTime).inMinutes < 30) {
         print('Using cached latest video');
         return _cachedVideo;
       }
-      
+
       // If online fetch fails and no valid cache, return null
-      print('Could not retrieve video from server and no valid cache available');
+      print(
+          'Could not retrieve video from server and no valid cache available');
       return null;
-      
     } catch (e) {
       print('Error fetching latest video: $e');
       return null;
@@ -131,7 +132,8 @@ class ServerVideoService {
       );
 
       if (videoPath == null) {
-        onStatusUpdate('Failed to download video: Could not save video to storage');
+        onStatusUpdate(
+            'Failed to download video: Could not save video to storage');
         return null;
       }
 
@@ -146,9 +148,9 @@ class ServerVideoService {
       try {
         print('Starting video analysis for path: $videoPath');
         final result = await _beeAnalysisService.analyzeVideo(
-          hiveId,      // First parameter should be hiveId
-          video.id,    // Second parameter should be videoId
-          videoPath,   // Third parameter should be videoPath
+          hiveId, // First parameter should be hiveId
+          video.id, // Second parameter should be videoId
+          videoPath, // Third parameter should be videoPath
         );
 
         if (result != null) {
@@ -157,7 +159,8 @@ class ServerVideoService {
           return result;
         } else {
           print('ERROR: BeeAnalysisService.analyzeVideo returned null');
-          onStatusUpdate('Analysis failed: ML model could not process the video. Please check format and quality.');
+          onStatusUpdate(
+              'Analysis failed: ML model could not process the video. Please check format and quality.');
           return null;
         }
       } catch (analysisError) {
@@ -185,7 +188,8 @@ class ServerVideoService {
       );
 
       if (!alreadyAnalyzed) {
-        print('New video detected: ${video.id}. Starting automatic analysis...');
+        print(
+            'New video detected: ${video.id}. Starting automatic analysis...');
 
         // Process the video automatically
         await processServerVideo(

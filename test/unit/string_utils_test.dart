@@ -5,13 +5,10 @@ class StringUtils {
   static String capitalize(String text) {
     if (text.isEmpty) return '';
 
-    return text
-        .split(' ')
-        .map((word) {
-          if (word.isEmpty) return '';
-          return word[0].toUpperCase() + word.substring(1).toLowerCase();
-        })
-        .join(' ');
+    return text.split(' ').map((word) {
+      if (word.isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
   }
 
   /// Truncates a string to a maximum length and adds an ellipsis if needed

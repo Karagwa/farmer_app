@@ -136,14 +136,13 @@ class _FarmerFormScreenState extends State<FarmerFormScreen> {
         title: const Text('Farmer Form'),
         backgroundColor: Color(0xFF4CAF50),
       ),
-      body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
-                ),
-              )
-              : _showResults
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+              ),
+            )
+          : _showResults
               ? _buildResultsView()
               : _buildFormView(),
     );
@@ -272,13 +271,12 @@ class _FarmerFormScreenState extends State<FarmerFormScreen> {
                 ),
                 prefixIcon: Icon(Icons.thermostat),
               ),
-              items:
-                  _climateOptions.map((climate) {
-                    return DropdownMenuItem(
-                      value: climate,
-                      child: Text(climate),
-                    );
-                  }).toList(),
+              items: _climateOptions.map((climate) {
+                return DropdownMenuItem(
+                  value: climate,
+                  child: Text(climate),
+                );
+              }).toList(),
               onChanged: (value) {
                 setState(() {
                   _climateZone = value ?? 'Temperate';
@@ -335,10 +333,9 @@ class _FarmerFormScreenState extends State<FarmerFormScreen> {
                 ),
                 prefixIcon: Icon(Icons.attach_money),
               ),
-              items:
-                  _budgetOptions.map((budget) {
-                    return DropdownMenuItem(value: budget, child: Text(budget));
-                  }).toList(),
+              items: _budgetOptions.map((budget) {
+                return DropdownMenuItem(value: budget, child: Text(budget));
+              }).toList(),
               onChanged: (value) {
                 setState(() {
                   _budgetConstraint = value ?? 'Medium';
@@ -448,108 +445,108 @@ class _FarmerFormScreenState extends State<FarmerFormScreen> {
           SizedBox(height: 12),
           _recommendedPlants.isEmpty
               ? Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(
-                    child: Text(
-                      'No specific plant recommendations based on your input.',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        'No specific plant recommendations based on your input.',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      ),
                     ),
                   ),
-                ),
-              )
+                )
               : Container(
-                height: 220,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _recommendedPlants.length,
-                  itemBuilder: (context, index) {
-                    final plant = _recommendedPlants[index];
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) =>
-                                    PlantDetailScreen(plantId: plant['id']),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 160,
-                        margin: EdgeInsets.only(right: 16),
-                        child: Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(12),
+                  height: 220,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _recommendedPlants.length,
+                    itemBuilder: (context, index) {
+                      final plant = _recommendedPlants[index];
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  PlantDetailScreen(plantId: plant['id']),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: 160,
+                          margin: EdgeInsets.only(right: 16),
+                          child: Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(12),
+                                  ),
+                                  child: Image.asset(
+                                    plant['image_path'] ??
+                                        'assets/plants/placeholder.jpg',
+                                    height: 120,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        height: 120,
+                                        color: Colors.grey[300],
+                                        child: Icon(
+                                          Icons.image,
+                                          size: 40,
+                                          color: Colors.grey[500],
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
-                                child: Image.asset(
-                                  plant['image_path'] ??
-                                      'assets/plants/placeholder.jpg',
-                                  height: 120,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      height: 120,
-                                      color: Colors.grey[300],
-                                      child: Icon(
-                                        Icons.image,
-                                        size: 40,
-                                        color: Colors.grey[500],
+                                Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        plant['name'],
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    );
-                                  },
+                                      SizedBox(height: 4),
+                                      Text(
+                                        plant['scientific_name'],
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontStyle: FontStyle.italic,
+                                          color: Colors.grey[700],
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      plant['name'],
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      plant['scientific_name'],
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontStyle: FontStyle.italic,
-                                        color: Colors.grey[700],
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
           SizedBox(height: 24),
           Text(
             'Recommended Supplements',
@@ -558,107 +555,107 @@ class _FarmerFormScreenState extends State<FarmerFormScreen> {
           SizedBox(height: 12),
           _recommendedSupplements.isEmpty
               ? Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(
-                    child: Text(
-                      'No specific supplement recommendations based on your input.',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                    ),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-              )
-              : Column(
-                children: List.generate(_recommendedSupplements.length, (
-                  index,
-                ) {
-                  final supplement = _recommendedSupplements[index];
-                  return Card(
-                    elevation: 2,
-                    margin: EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.asset(
-                              supplement['image_path'] ??
-                                  'assets/supplements/placeholder.jpg',
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 80,
-                                  height: 80,
-                                  color: Colors.grey[300],
-                                  child: Icon(
-                                    Icons.image,
-                                    size: 40,
-                                    color: Colors.grey[500],
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  supplement['name'],
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    supplement['type'],
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.blue[700],
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  supplement['description'],
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[800],
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        'No specific supplement recommendations based on your input.',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                       ),
                     ),
-                  );
-                }),
-              ),
+                  ),
+                )
+              : Column(
+                  children: List.generate(_recommendedSupplements.length, (
+                    index,
+                  ) {
+                    final supplement = _recommendedSupplements[index];
+                    return Card(
+                      elevation: 2,
+                      margin: EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.asset(
+                                supplement['image_path'] ??
+                                    'assets/supplements/placeholder.jpg',
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 80,
+                                    height: 80,
+                                    color: Colors.grey[300],
+                                    child: Icon(
+                                      Icons.image,
+                                      size: 40,
+                                      color: Colors.grey[500],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    supplement['name'],
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      supplement['type'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue[700],
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    supplement['description'],
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[800],
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
           SizedBox(height: 24),
           Text(
             'Management Actions',
@@ -667,66 +664,67 @@ class _FarmerFormScreenState extends State<FarmerFormScreen> {
           SizedBox(height: 12),
           _managementActions.isEmpty
               ? Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(
-                    child: Text(
-                      'No specific management actions recommended.',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        'No specific management actions recommended.',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      ),
                     ),
                   ),
-                ),
-              )
+                )
               : Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List.generate(_managementActions.length, (index) {
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: Color(0xFF4CAF50),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  (index + 1).toString(),
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children:
+                          List.generate(_managementActions.length, (index) {
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF4CAF50),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    (index + 1).toString(),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: Text(
-                                _managementActions[index],
-                                style: TextStyle(fontSize: 16),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  _managementActions[index],
+                                  style: TextStyle(fontSize: 16),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                            ],
+                          ),
+                        );
+                      }),
+                    ),
                   ),
                 ),
-              ),
           SizedBox(height: 24),
           Row(
             children: [

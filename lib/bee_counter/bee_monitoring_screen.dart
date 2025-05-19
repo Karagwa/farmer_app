@@ -32,14 +32,14 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
   void _setupAutoService() {
     // Create the service
     _autoService = AutoVideoProcessingService(autoStart: false);
-    
+
     // Set up event listeners
     _autoService.onStatusUpdate = (status) {
       setState(() {
         _statusMessage = status;
       });
     };
-    
+
     _autoService.onError = (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -48,17 +48,18 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         ),
       );
     };
-    
+
     _autoService.onNewAnalysisComplete = (beeCount) {
       // Add the new count to our list and refresh UI
       setState(() {
         _beeCounts.add(beeCount);
         _beeCounts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('New analysis completed: ${beeCount.beesEntering} entering, ${beeCount.beesExiting} exiting'),
+          content: Text(
+              'New analysis completed: ${beeCount.beesEntering} entering, ${beeCount.beesExiting} exiting'),
           backgroundColor: Colors.green,
         ),
       );
@@ -66,7 +67,8 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
   }
 
   Future<void> _loadBeeCounts() async {
-    final counts = await BeeCountDatabase.instance.readBeeCountsByHiveId(widget.hiveId);
+    final counts =
+        await BeeCountDatabase.instance.readBeeCountsByHiveId(widget.hiveId);
     setState(() {
       _beeCounts = counts;
       _beeCounts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -79,7 +81,7 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
     } else {
       _autoService.startMonitoring(hiveId: widget.hiveId);
     }
-    
+
     setState(() {
       _serviceRunning = _autoService.isRunning;
     });
@@ -113,7 +115,9 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
           IconButton(
             icon: Icon(_serviceRunning ? Icons.pause : Icons.play_arrow),
             onPressed: _toggleAutoService,
-            tooltip: _serviceRunning ? 'Stop Auto Monitoring' : 'Start Auto Monitoring',
+            tooltip: _serviceRunning
+                ? 'Stop Auto Monitoring'
+                : 'Start Auto Monitoring',
           ),
         ],
       ),
@@ -122,7 +126,9 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
           // Status bar
           Container(
             padding: EdgeInsets.all(8),
-            color: _autoService.isProcessing ? Colors.blue.shade100 : Colors.grey.shade200,
+            color: _autoService.isProcessing
+                ? Colors.blue.shade100
+                : Colors.grey.shade200,
             child: Row(
               children: [
                 if (_autoService.isProcessing)
@@ -148,7 +154,7 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
               ],
             ),
           ),
-          
+
           // Bee count list
           Expanded(
             child: _beeCounts.isEmpty
@@ -158,18 +164,23 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
                     itemBuilder: (context, index) {
                       final beeCount = _beeCounts[index];
                       return ListTile(
-                        title: Text('Video: ${beeCount.videoId?.split('_').first ?? 'Unknown'}'),
+                        title: Text(
+                            'Video: ${beeCount.videoId?.split('_').first ?? 'Unknown'}'),
                         subtitle: Text(
                           'Entering: ${beeCount.beesEntering} | Exiting: ${beeCount.beesExiting} | '
                           'Net: ${beeCount.netChange} | ${_formatDateTime(beeCount.timestamp)}',
                         ),
                         leading: Icon(
-                          beeCount.netChange > 0 
-                              ? Icons.arrow_upward 
-                              : (beeCount.netChange < 0 ? Icons.arrow_downward : Icons.remove),
-                          color: beeCount.netChange > 0 
-                              ? Colors.green 
-                              : (beeCount.netChange < 0 ? Colors.red : Colors.grey),
+                          beeCount.netChange > 0
+                              ? Icons.arrow_upward
+                              : (beeCount.netChange < 0
+                                  ? Icons.arrow_downward
+                                  : Icons.remove),
+                          color: beeCount.netChange > 0
+                              ? Colors.green
+                              : (beeCount.netChange < 0
+                                  ? Colors.red
+                                  : Colors.grey),
                         ),
                       );
                     },

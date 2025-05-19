@@ -6,10 +6,10 @@ import '../test_utils.dart';
 void main() {
   testWidgets('Splash screen visual appearance', (WidgetTester tester) async {
     await pumpAndSettleWidget(tester, const SplashScreen());
-    
+
     // Verify splash screen widgets
     expect(find.byType(Image), findsOneWidget);
-    
+
     // For the golden test, we'd normally do:
     // await expectLater(find.byType(SplashScreen), matchesGoldenFile('splash_screen.png'));
     // But we'll skip it as golden tests can be environment-dependent

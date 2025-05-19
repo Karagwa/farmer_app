@@ -104,12 +104,12 @@ class NotificationService {
   }) async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-          'bee_monitor_channel',
-          'Bee Monitoring',
-          channelDescription: 'Notifications for bee monitoring events',
-          importance: Importance.high,
-          priority: Priority.high,
-        );
+      'bee_monitor_channel',
+      'Bee Monitoring',
+      channelDescription: 'Notifications for bee monitoring events',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
 
     const NotificationDetails notificationDetails = NotificationDetails(
       android: androidDetails,
@@ -127,13 +127,13 @@ class NotificationService {
   Future<void> _showLocalNotification(HiveNotification notification) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-          'beehive_monitoring_channel',
-          'Beehive Monitoring',
-          channelDescription: 'Notifications for beehive monitoring',
-          importance: Importance.high,
-          priority: Priority.high,
-          color: notification.color,
-        );
+      'beehive_monitoring_channel',
+      'Beehive Monitoring',
+      channelDescription: 'Notifications for beehive monitoring',
+      importance: Importance.high,
+      priority: Priority.high,
+      color: notification.color,
+    );
 
     const NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
@@ -278,16 +278,15 @@ class NotificationService {
     // Check if a similar notification already exists
     final existingNotification = _notifications.firstWhere(
       (n) => n.type == type && n.severity == severity && !n.isRead,
-      orElse:
-          () => HiveNotification(
-            id: '',
-            title: '',
-            message: '',
-            timestamp: DateTime.now(),
-            type: type,
-            severity: severity,
-            hiveId: hiveId,
-          ),
+      orElse: () => HiveNotification(
+        id: '',
+        title: '',
+        message: '',
+        timestamp: DateTime.now(),
+        type: type,
+        severity: severity,
+        hiveId: hiveId,
+      ),
     );
 
     if (existingNotification.id.isEmpty) {
@@ -309,16 +308,15 @@ class NotificationService {
   void _addConnectionNotification(int hiveId) {
     final existingNotification = _notifications.firstWhere(
       (n) => n.type == NotificationType.connection && !n.isRead,
-      orElse:
-          () => HiveNotification(
-            id: '',
-            title: '',
-            message: '',
-            timestamp: DateTime.now(),
-            type: NotificationType.connection,
-            severity: NotificationSeverity.high,
-            hiveId: hiveId,
-          ),
+      orElse: () => HiveNotification(
+        id: '',
+        title: '',
+        message: '',
+        timestamp: DateTime.now(),
+        type: NotificationType.connection,
+        severity: NotificationSeverity.high,
+        hiveId: hiveId,
+      ),
     );
 
     if (existingNotification.id.isEmpty) {
@@ -339,16 +337,15 @@ class NotificationService {
   void _addColonizationNotification(int hiveId) {
     final existingNotification = _notifications.firstWhere(
       (n) => n.type == NotificationType.colonization && !n.isRead,
-      orElse:
-          () => HiveNotification(
-            id: '',
-            title: '',
-            message: '',
-            timestamp: DateTime.now(),
-            type: NotificationType.colonization,
-            severity: NotificationSeverity.medium,
-            hiveId: hiveId,
-          ),
+      orElse: () => HiveNotification(
+        id: '',
+        title: '',
+        message: '',
+        timestamp: DateTime.now(),
+        type: NotificationType.colonization,
+        severity: NotificationSeverity.medium,
+        hiveId: hiveId,
+      ),
     );
 
     if (existingNotification.id.isEmpty) {
@@ -432,16 +429,15 @@ class NotificationService {
   ) {
     final existingNotification = _notifications.firstWhere(
       (n) => n.title == title && !n.isRead,
-      orElse:
-          () => HiveNotification(
-            id: '',
-            title: '',
-            message: '',
-            timestamp: DateTime.now(),
-            type: NotificationType.weather,
-            severity: severity,
-            hiveId: 1, // Default to Hive 1
-          ),
+      orElse: () => HiveNotification(
+        id: '',
+        title: '',
+        message: '',
+        timestamp: DateTime.now(),
+        type: NotificationType.weather,
+        severity: severity,
+        hiveId: 1, // Default to Hive 1
+      ),
     );
 
     if (existingNotification.id.isEmpty) {

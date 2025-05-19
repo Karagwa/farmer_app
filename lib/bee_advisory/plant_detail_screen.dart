@@ -39,117 +39,116 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
-                ),
-              )
-              : _plant == null
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+              ),
+            )
+          : _plant == null
               ? Center(child: Text('Plant not found'))
               : CustomScrollView(
-                slivers: [
-                  SliverAppBar(
-                    expandedHeight: 300,
-                    pinned: true,
-                    flexibleSpace: FlexibleSpaceBar(
-                      title: Text(_plant!['name']),
-                      background: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.asset(
-                            _plant!['image_path'] ??
-                                'assets/plants/placeholder.jpg',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey[300],
-                                child: Icon(
-                                  Icons.image,
-                                  size: 40,
-                                  color: Colors.grey[500],
+                  slivers: [
+                    SliverAppBar(
+                      expandedHeight: 300,
+                      pinned: true,
+                      flexibleSpace: FlexibleSpaceBar(
+                        title: Text(_plant!['name']),
+                        background: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.asset(
+                              _plant!['image_path'] ??
+                                  'assets/plants/placeholder.jpg',
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[300],
+                                  child: Icon(
+                                    Icons.image,
+                                    size: 40,
+                                    color: Colors.grey[500],
+                                  ),
+                                );
+                              },
+                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black.withOpacity(0.7),
+                                  ],
                                 ),
-                              );
-                            },
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.black.withOpacity(0.7),
-                                ],
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _plant!['scientific_name'],
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontStyle: FontStyle.italic,
-                              color: Colors.grey[700],
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _plant!['scientific_name'],
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                                color: Colors.grey[700],
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 13),
-                          _buildInfoRow(
-                            icon: Icons.eco,
-                            title: 'Benefits to Bees',
-                            content: _plant!['benefits_to_bees'],
-                          ),
-                          Divider(height: 32),
-                          _buildInfoRow(
-                            icon: Icons.description,
-                            title: 'Description',
-                            content: _plant!['description'],
-                          ),
-                          SizedBox(height: 13),
-                          _buildInfoRow(
-                            icon: Icons.thermostat,
-                            title: 'Climate Preference',
-                            content: _plant!['climate_preference'],
-                          ),
-                          SizedBox(height: 13),
-                          _buildInfoRow(
-                            icon: Icons.calendar_today,
-                            title: 'Flowering Season',
-                            content: _plant!['flowering_season'],
-                          ),
-                          Divider(height: 26),
-                          Text(
-                            'Planting Instructions',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                            SizedBox(height: 13),
+                            _buildInfoRow(
+                              icon: Icons.eco,
+                              title: 'Benefits to Bees',
+                              content: _plant!['benefits_to_bees'],
                             ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            _plant!['planting_instructions'],
-                            style: TextStyle(fontSize: 16),
-                          ),
-                          SizedBox(height: 20),
-                          _buildRequirementsSection(),
-                          SizedBox(height: 20),
-                          _buildValueSection(),
-                        ],
+                            Divider(height: 32),
+                            _buildInfoRow(
+                              icon: Icons.description,
+                              title: 'Description',
+                              content: _plant!['description'],
+                            ),
+                            SizedBox(height: 13),
+                            _buildInfoRow(
+                              icon: Icons.thermostat,
+                              title: 'Climate Preference',
+                              content: _plant!['climate_preference'],
+                            ),
+                            SizedBox(height: 13),
+                            _buildInfoRow(
+                              icon: Icons.calendar_today,
+                              title: 'Flowering Season',
+                              content: _plant!['flowering_season'],
+                            ),
+                            Divider(height: 26),
+                            Text(
+                              'Planting Instructions',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              _plant!['planting_instructions'],
+                              style: TextStyle(fontSize: 16),
+                            ),
+                            SizedBox(height: 20),
+                            _buildRequirementsSection(),
+                            SizedBox(height: 20),
+                            _buildValueSection(),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
     );
   }
 
