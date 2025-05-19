@@ -5,6 +5,9 @@ class WeatherData {
   final String condition;
   final DateTime timestamp;
 
+  // Computed property
+  bool get isRaining => condition.toLowerCase().contains('rain');
+
   WeatherData({
     required this.temperature,
     required this.humidity,
