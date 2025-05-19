@@ -10,17 +10,17 @@ import 'dart:async';
 class BeeAnalysisService {
   // Use your existing BeeVideoAnalyzer
   BeeVideoAnalyzer? _analyzer;
-  
+
   static final BeeAnalysisService _instance = BeeAnalysisService._internal();
-   
-   // Factory constructor to return the singleton instance
-   factory BeeAnalysisService() => _instance;
-   
-   // Private constructor for the singleton
-   BeeAnalysisService._internal();
-   
-   // Static getter for the instance
-   static BeeAnalysisService get instance => _instance;
+
+  // Factory constructor to return the singleton instance
+  factory BeeAnalysisService() => _instance;
+
+  // Private constructor for the singleton
+  BeeAnalysisService._internal();
+
+  // Static getter for the instance
+  static BeeAnalysisService get instance => _instance;
 
   // Initialize the analyzer
   Future<void> _ensureAnalyzerInitialized() async {
@@ -48,7 +48,9 @@ class BeeAnalysisService {
       // Make sure analyzer is initialized
       await _ensureAnalyzerInitialized();
 
-      print('Starting video analysis for video: $videoId, hiveId: $hiveId, path: $videoPath');
+      print(
+        'Starting video analysis for video: $videoId, hiveId: $hiveId, path: $videoPath',
+      );
 
       // Check if file exists
       final videoFile = File(videoPath);
@@ -57,7 +59,9 @@ class BeeAnalysisService {
         return null;
       }
 
-      print('Video file exists and has size: ${await videoFile.length()} bytes');
+      print(
+        'Video file exists and has size: ${await videoFile.length()} bytes',
+      );
       print('Processing video file: $videoPath');
 
       // Use your existing analyzer to process the video
@@ -155,6 +159,19 @@ class BeeAnalysisService {
     } finally {
       client.close();
     }
+  }
+
+  // Add this method if it doesn't exist:
+  Future<Map<String, dynamic>?> getHiveData(String hiveId) async {
+    // Return mock data for testing purposes
+    return {
+      'id': hiveId,
+      'name': 'Test Hive',
+      'temperature': 25.5,
+      'humidity': 65.0,
+      'weight': 10.5,
+      'lastUpdated': DateTime.now().toIso8601String(),
+    };
   }
 
   // Clean up resources
