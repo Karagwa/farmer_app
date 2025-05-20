@@ -38,7 +38,6 @@ class MyApp extends StatelessWidget {
     // This MaterialApp provides the Directionality widget that was missing
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-
       home: const Splashscreen(),
     );
   }

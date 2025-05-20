@@ -99,7 +99,6 @@ class _navbarState extends State<navbar> {
                 ),
                 GButton(
                   icon: LineIcons.bell,
-                
                   text: 'Updates',
                 ),
                 GButton(

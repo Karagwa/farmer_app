@@ -68,9 +68,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder:
-                      (context) =>
-                          NotificationsScreen(),
+                  builder: (context) => NotificationsScreen(),
                 ),
               );
             },
@@ -144,8 +142,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder:
-                                      (context) => navbar(token: widget.token),
+                                  builder: (context) =>
+                                      navbar(token: widget.token),
                                 ),
                               );
                             },
@@ -163,9 +161,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder:
-                                      (context) =>
-                                          BeeVideoAnalysisScreen(hiveId: '1'),
+                                  builder: (context) =>
+                                      BeeVideoAnalysisScreen(hiveId: '1'),
                                 ),
                               );
                             },
@@ -190,10 +187,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder:
-                                      (context) => NotificationsScreen(
-                                        
-                                      ),
+                                  builder: (context) => NotificationsScreen(),
                                 ),
                               );
                             },
@@ -210,8 +204,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder:
-                                      (context) => ForagingAnalysisScreen(),
+                                  builder: (context) =>
+                                      ForagingAnalysisScreen(),
                                 ),
                               );
                             },
@@ -292,9 +286,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder:
-                      (context) =>
-                          NotificationsScreen(),
+                  builder: (context) => NotificationsScreen(),
                 ),
               );
               break;

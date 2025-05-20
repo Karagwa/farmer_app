@@ -17,30 +17,31 @@ import 'package:flutter/material.dart';
 class BackgroundVideoProcessingService {
   // Static port name for communication with background isolate
   static const String _portName = 'bee_monitoring_port';
-  
+
   // Service singleton
-  static final BackgroundVideoProcessingService _instance = BackgroundVideoProcessingService._internal();
+  static final BackgroundVideoProcessingService _instance =
+      BackgroundVideoProcessingService._internal();
   factory BackgroundVideoProcessingService() => _instance;
   BackgroundVideoProcessingService._internal();
-  
+
   // Service status
   bool _isInitialized = false;
   bool _isBackgroundTaskEnabled = false;
-  
+
   // Check if service is enabled
   Future<bool> isBackgroundTaskEnabled() async {
     if (!_isInitialized) return false;
-    
+
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('background_task_enabled') ?? false;
   }
-  
+
   // Initialize the service
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     final service = FlutterBackgroundService();
-    
+
     await service.configure(
       androidConfiguration: AndroidConfiguration(
         onStart: onStart,
@@ -57,79 +58,79 @@ class BackgroundVideoProcessingService {
         onBackground: onIosBackground,
       ),
     );
-    
+
     _isInitialized = true;
-    
+
     // Check if background processing was previously enabled
     final enabled = await isBackgroundTaskEnabled();
     if (enabled) {
       await enableBackgroundProcessing();
     }
   }
-  
+
   // Enable background processing
   Future<void> enableBackgroundProcessing() async {
     if (!_isInitialized) await initialize();
-    
+
     final service = FlutterBackgroundService();
     await service.startService();
-    
+
     // Save setting
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('background_task_enabled', true);
     _isBackgroundTaskEnabled = true;
   }
-  
+
   // Disable background processing
   Future<void> disableBackgroundProcessing() async {
     if (!_isInitialized) return;
-    
+
     final service = FlutterBackgroundService();
     service.invoke('stopService');
-    
+
     // Save setting
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('background_task_enabled', false);
     _isBackgroundTaskEnabled = false;
   }
-  
+
   // Run a one-time check
   Future<void> runOneTimeCheck() async {
     // Since we're not using Workmanager anymore, we'll directly process the video
     // This will run in the current process but could be moved to an isolate if needed
     try {
       final videoService = AutoVideoProcessingService();
-      
+
       // Get default hiveId from SharedPreferences or use a default
       final prefs = await SharedPreferences.getInstance();
       final defaultHiveId = prefs.getString('default_hive_id') ?? '1';
-      
+
       // Set up status callback
       videoService.onStatusUpdate = (status) {
         print('One-time task status: $status');
       };
-      
+
       // Set up completion callback
       videoService.onNewAnalysisComplete = (BeeCount beeCount) {
         print('One-time analysis complete: ${beeCount.videoId}');
       };
-      
+
       // Check for new videos
-      await videoService.fetchLatestVideoFromServer(defaultHiveId)
-        .then((video) async {
-          if (video != null) {
-            await videoService.processServerVideo(
-              video,
-              onStatusUpdate: (status) {
-                print('One-time processing: $status');
-              },
-            );
-          }
-        });
-      
+      await videoService
+          .fetchLatestVideoFromServer(defaultHiveId)
+          .then((video) async {
+        if (video != null) {
+          await videoService.processServerVideo(
+            video,
+            onStatusUpdate: (status) {
+              print('One-time processing: $status');
+            },
+          );
+        }
+      });
+
       // Clean up
       videoService.dispose();
-      
     } catch (e) {
       print('One-time task failed: $e');
     }
@@ -141,7 +142,7 @@ class BackgroundVideoProcessingService {
 Future<bool> onIosBackground(ServiceInstance service) async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  
+
   return true;
 }
 
@@ -150,7 +151,7 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 void onStart(ServiceInstance service) async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  
+
   // For Android, set up the foreground notification
   if (service is AndroidServiceInstance) {
     service.setAsForegroundService();
@@ -159,39 +160,38 @@ void onStart(ServiceInstance service) async {
       content: "Running in background",
     );
   }
-  
+
   // Set up periodic task
   Timer.periodic(Duration(minutes: 15), (timer) async {
     if (service is AndroidServiceInstance) {
       if (await service.isForegroundService()) {
         service.setForegroundNotificationInfo(
-          title: "Bee Monitoring Service", 
+          title: "Bee Monitoring Service",
           content: "Checking for new videos",
         );
       }
     }
-    
+
     // Run the video processing task
     try {
       final videoService = AutoVideoProcessingService();
-      
+
       // Get default hiveId from SharedPreferences or use a default
       final prefs = await SharedPreferences.getInstance();
       final defaultHiveId = prefs.getString('default_hive_id') ?? '1';
-      
+
       // This port is used to communicate from the background service
       // to the main app if needed
       final SendPort? sendPort = IsolateNameServer.lookupPortByName(
-        BackgroundVideoProcessingService._portName
-      );
-      
+          BackgroundVideoProcessingService._portName);
+
       // Set up status callback
       videoService.onStatusUpdate = (status) {
         print('Background task status: $status');
         // Send status updates to the main app
         service.invoke('status', {'message': status});
       };
-      
+
       // Set up completion callback
       videoService.onNewAnalysisComplete = (BeeCount beeCount) {
         print('Background analysis complete: ${beeCount.videoId}');
@@ -203,49 +203,49 @@ void onStart(ServiceInstance service) async {
           'timestamp': beeCount.timestamp.toIso8601String(),
         });
       };
-      
+
       // Check for new videos
-      await videoService.fetchLatestVideoFromServer(defaultHiveId)
-        .then((video) async {
-          if (video != null) {
-            if (service is AndroidServiceInstance) {
-              service.setForegroundNotificationInfo(
-                title: "Processing Bee Video", 
-                content: "Analyzing video data",
-              );
-            }
-            
-            await videoService.processServerVideo(
-              video,
-              onStatusUpdate: (status) {
-                print('Background processing: $status');
-              },
+      await videoService
+          .fetchLatestVideoFromServer(defaultHiveId)
+          .then((video) async {
+        if (video != null) {
+          if (service is AndroidServiceInstance) {
+            service.setForegroundNotificationInfo(
+              title: "Processing Bee Video",
+              content: "Analyzing video data",
             );
-            
-            if (service is AndroidServiceInstance) {
-              service.setForegroundNotificationInfo(
-                title: "Bee Monitoring Service", 
-                content: "Running in background",
-              );
-            }
           }
-        });
-      
+
+          await videoService.processServerVideo(
+            video,
+            onStatusUpdate: (status) {
+              print('Background processing: $status');
+            },
+          );
+
+          if (service is AndroidServiceInstance) {
+            service.setForegroundNotificationInfo(
+              title: "Bee Monitoring Service",
+              content: "Running in background",
+            );
+          }
+        }
+      });
+
       // Clean up
       videoService.dispose();
-      
     } catch (e) {
       print('Background task failed: $e');
-      
+
       if (service is AndroidServiceInstance) {
         service.setForegroundNotificationInfo(
-          title: "Bee Monitoring Service", 
+          title: "Bee Monitoring Service",
           content: "Error occurred, will retry later",
         );
       }
     }
   });
-  
+
   // Listen for events from the main app
   service.on('stopService').listen((event) {
     service.stopSelf();

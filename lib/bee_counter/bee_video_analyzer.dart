@@ -992,9 +992,8 @@ class BeeVideoAnalyzer {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder:
-              (context) =>
-                  BeeCountResultsScreen(hiveId: hiveId, date: DateTime.now()),
+          builder: (context) =>
+              BeeCountResultsScreen(hiveId: hiveId, date: DateTime.now()),
         ),
       );
     }

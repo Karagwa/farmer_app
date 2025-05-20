@@ -130,7 +130,12 @@ class HiveStatusCard extends StatelessWidget {
           _getTemperatureColor(hive.temperature),
           _getStatusText(
             hive.temperature,
-            {'min': 20.0, 'max': 35.0, 'critical_min': 15.0, 'critical_max': 40.0},
+            {
+              'min': 20.0,
+              'max': 35.0,
+              'critical_min': 15.0,
+              'critical_max': 40.0
+            },
           ),
         ),
         _buildStatusItem(
@@ -141,7 +146,12 @@ class HiveStatusCard extends StatelessWidget {
           _getHumidityColor(hive.humidity),
           _getStatusText(
             hive.humidity,
-            {'min': 40.0, 'max': 80.0, 'critical_min': 30.0, 'critical_max': 90.0},
+            {
+              'min': 40.0,
+              'max': 80.0,
+              'critical_min': 30.0,
+              'critical_max': 90.0
+            },
           ),
         ),
         _buildStatusItem(
@@ -152,7 +162,12 @@ class HiveStatusCard extends StatelessWidget {
           _getWeightColor(hive.weight),
           _getStatusText(
             hive.weight,
-            {'min': 10.0, 'max': 30.0, 'critical_min': 5.0, 'critical_max': 35.0},
+            {
+              'min': 10.0,
+              'max': 30.0,
+              'critical_min': 5.0,
+              'critical_max': 35.0
+            },
           ),
         ),
         _buildStatusItem(
@@ -163,7 +178,12 @@ class HiveStatusCard extends StatelessWidget {
           _getCO2Color(hive.carbonDioxide),
           _getStatusText(
             hive.carbonDioxide?.toDouble(),
-            {'min': 400.0, 'max': 5000.0, 'critical_min': 300.0, 'critical_max': 8000.0},
+            {
+              'min': 400.0,
+              'max': 5000.0,
+              'critical_min': 300.0,
+              'critical_max': 8000.0
+            },
           ),
         ),
       ],
@@ -309,13 +329,16 @@ class HiveStatusCard extends StatelessWidget {
       return Icons.water_drop;
     } else if (lowerCondition.contains('cloud')) {
       return Icons.cloud;
-    } else if (lowerCondition.contains('sun') || lowerCondition.contains('clear')) {
+    } else if (lowerCondition.contains('sun') ||
+        lowerCondition.contains('clear')) {
       return Icons.wb_sunny;
     } else if (lowerCondition.contains('snow')) {
       return Icons.ac_unit;
-    } else if (lowerCondition.contains('thunder') || lowerCondition.contains('storm')) {
+    } else if (lowerCondition.contains('thunder') ||
+        lowerCondition.contains('storm')) {
       return Icons.flash_on;
-    } else if (lowerCondition.contains('fog') || lowerCondition.contains('mist')) {
+    } else if (lowerCondition.contains('fog') ||
+        lowerCondition.contains('mist')) {
       return Icons.cloud;
     } else {
       return Icons.wb_sunny_outlined;
@@ -324,7 +347,7 @@ class HiveStatusCard extends StatelessWidget {
 
   Color _getTemperatureColor(double? temperature) {
     if (temperature == null) return Colors.grey;
-    
+
     if (temperature < 15.0 || temperature > 40.0) {
       return Colors.red;
     } else if (temperature < 20.0 || temperature > 35.0) {
@@ -336,7 +359,7 @@ class HiveStatusCard extends StatelessWidget {
 
   Color _getHumidityColor(double? humidity) {
     if (humidity == null) return Colors.grey;
-    
+
     if (humidity < 30.0 || humidity > 90.0) {
       return Colors.red;
     } else if (humidity < 40.0 || humidity > 80.0) {
@@ -348,7 +371,7 @@ class HiveStatusCard extends StatelessWidget {
 
   Color _getWeightColor(double? weight) {
     if (weight == null) return Colors.grey;
-    
+
     if (weight < 5.0 || weight > 35.0) {
       return Colors.red;
     } else if (weight < 10.0 || weight > 30.0) {
@@ -360,7 +383,7 @@ class HiveStatusCard extends StatelessWidget {
 
   Color _getCO2Color(int? co2) {
     if (co2 == null) return Colors.grey;
-    
+
     if (co2 < 300 || co2 > 8000) {
       return Colors.red;
     } else if (co2 < 400 || co2 > 5000) {
@@ -372,8 +395,9 @@ class HiveStatusCard extends StatelessWidget {
 
   String _getStatusText(double? value, Map<String, double> thresholds) {
     if (value == null) return 'No Data';
-    
-    if (value < thresholds['critical_min']! || value > thresholds['critical_max']!) {
+
+    if (value < thresholds['critical_min']! ||
+        value > thresholds['critical_max']!) {
       return 'Critical';
     } else if (value < thresholds['min']! || value > thresholds['max']!) {
       return 'Warning';

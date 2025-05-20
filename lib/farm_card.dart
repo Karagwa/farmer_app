@@ -58,15 +58,13 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                       value: farm.average_temperature ?? 0,
                       maxValue: 50,
                       unit: '°C',
-                      onTap:
-                          () => showModalBottomSheet(
-                            context: context,
-                            builder:
-                                (context) => buildTempSheet(
-                                  "Temperature Details",
-                                  farm.average_temperature ?? 0,
-                                ),
-                          ),
+                      onTap: () => showModalBottomSheet(
+                        context: context,
+                        builder: (context) => buildTempSheet(
+                          "Temperature Details",
+                          farm.average_temperature ?? 0,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -77,15 +75,13 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                       value: farm.honeypercent ?? 0,
                       maxValue: 100,
                       unit: '%',
-                      onTap:
-                          () => showModalBottomSheet(
-                            context: context,
-                            builder:
-                                (context) => buildHoneySheet(
-                                  "Honey Levels",
-                                  farm.honeypercent ?? 0,
-                                ),
-                          ),
+                      onTap: () => showModalBottomSheet(
+                        context: context,
+                        builder: (context) => buildHoneySheet(
+                          "Honey Levels",
+                          farm.honeypercent ?? 0,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -108,14 +104,12 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder:
-                            (context) => Hives(
-                              farmId: farm.id,
-                              token: token,
-                              apiaryLocation:
-                                  '${farm.district}, ${farm.address}',
-                              farmName: farm.name,
-                            ),
+                        builder: (context) => Hives(
+                          farmId: farm.id,
+                          token: token,
+                          apiaryLocation: '${farm.district}, ${farm.address}',
+                          farmName: farm.name,
+                        ),
                       ),
                     );
                   },

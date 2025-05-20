@@ -13,7 +13,7 @@ class BeeVideoAnalysisScreen extends StatefulWidget {
   final String hiveId;
 
   const BeeVideoAnalysisScreen({Key? key, required this.hiveId})
-    : super(key: key);
+      : super(key: key);
 
   @override
   _BeeVideoAnalysisScreenState createState() => _BeeVideoAnalysisScreenState();
@@ -85,19 +85,17 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
       print('Received ${videos.length} videos from service');
 
       // Filter out videos with invalid URLs
-      final validVideos =
-          videos.where((video) {
-            final isValid =
-                video.url.isNotEmpty &&
-                (video.url.startsWith('http://') ||
-                    video.url.startsWith('https://'));
+      final validVideos = videos.where((video) {
+        final isValid = video.url.isNotEmpty &&
+            (video.url.startsWith('http://') ||
+                video.url.startsWith('https://'));
 
-            if (!isValid) {
-              print('Invalid video URL: ${video.url}');
-            }
+        if (!isValid) {
+          print('Invalid video URL: ${video.url}');
+        }
 
-            return isValid;
-          }).toList();
+        return isValid;
+      }).toList();
 
       print('Found ${validVideos.length} valid videos');
 
@@ -112,7 +110,8 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
         // Select the video if available
         if (validVideos.isNotEmpty) {
           _selectedVideo = validVideos.first;
-          print('Selected video: ${_selectedVideo!.id}, URL: ${_selectedVideo!.url}');
+          print(
+              'Selected video: ${_selectedVideo!.id}, URL: ${_selectedVideo!.url}');
 
           // Download and prepare the video for playback
           _prepareVideoForPlayback(_selectedVideo!);
@@ -337,7 +336,8 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
               if (_isVideoInitialized && _videoController != null)
                 _buildVideoPlayerCard(),
               if (_isLoading) _buildLoadingIndicator(),
-              if (!_isLoading && _statusMessage.isNotEmpty) _buildStatusMessage(),
+              if (!_isLoading && _statusMessage.isNotEmpty)
+                _buildStatusMessage(),
               if (_selectedVideo != null && !_isLoading)
                 _buildSelectedVideoCard(),
               if (_analysisResult != null) ...[
@@ -476,8 +476,8 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
               const SizedBox(height: 8),
               Text(
                 _selectedVideo!.timestamp != null
-                  ? _formatDateTime(_selectedVideo!.timestamp!)
-                  : 'Unknown date',
+                    ? _formatDateTime(_selectedVideo!.timestamp!)
+                    : 'Unknown date',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -491,7 +491,9 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.analytics),
                 label: const Text('Analyze Video'),
-                onPressed: _selectedVideo != null && !_isAnalyzing ? _analyzeVideo : null,
+                onPressed: _selectedVideo != null && !_isAnalyzing
+                    ? _analyzeVideo
+                    : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _accentColor,
                   foregroundColor: Colors.white,
@@ -557,7 +559,8 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
 
   Widget _buildVideoPlayerCard() {
     // Check if this is a mock video
-    final bool isMockVideo = _selectedVideo != null && _selectedVideo!.id.startsWith('mock_');
+    final bool isMockVideo =
+        _selectedVideo != null && _selectedVideo!.id.startsWith('mock_');
 
     return Card(
       elevation: 4,
@@ -659,7 +662,8 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    _primaryColor),
                               ),
                               SizedBox(height: 16),
                               Text(
@@ -751,7 +755,8 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
           children: [
             Icon(
               _statusMessage.contains('Error') ? Icons.error : Icons.info,
-              color: _statusMessage.contains('Error') ? Colors.red : _primaryColor,
+              color:
+                  _statusMessage.contains('Error') ? Colors.red : _primaryColor,
               size: 24,
             ),
             const SizedBox(width: 12),
@@ -831,7 +836,8 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
     );
   }
 
-  Widget _buildInfoRow(String title, String value, IconData icon, {int maxLines = 1}) {
+  Widget _buildInfoRow(String title, String value, IconData icon,
+      {int maxLines = 1}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -874,7 +880,8 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
   Widget _buildAnalysisResultsCard() {
     final netChange = _analysisResult!.netChange;
     final netChangeColor = netChange >= 0 ? _enteringColor : _exitingColor;
-    final netChangeIcon = netChange >= 0 ? Icons.arrow_upward : Icons.arrow_downward;
+    final netChangeIcon =
+        netChange >= 0 ? Icons.arrow_upward : Icons.arrow_downward;
 
     return Card(
       elevation: 4,
@@ -999,7 +1006,8 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
     );
   }
 
-  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
+  Widget _buildSummaryCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
@@ -1073,10 +1081,9 @@ class _BeeVideoAnalysisScreenState extends State<BeeVideoAnalysisScreen> {
         menuMaxHeight: 300,
         icon: Icon(Icons.arrow_drop_down, color: _primaryColor),
         items: _videos.map((video) {
-          final formattedDate =
-              video.timestamp != null
-                  ? _formatDateTime(video.timestamp!)
-                  : 'Unknown date';
+          final formattedDate = video.timestamp != null
+              ? _formatDateTime(video.timestamp!)
+              : 'Unknown date';
 
           return DropdownMenuItem<ServerVideo>(
             value: video,

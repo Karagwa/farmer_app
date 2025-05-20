@@ -19,29 +19,41 @@ class RecordsForm extends StatefulWidget {
 class _RecordsFormState extends State<RecordsForm> {
   final _formKey = GlobalKey<FormState>();
   final DateTime _inspectionDate = DateTime.now();
-  
+
   // Controllers (same as before)
-  final TextEditingController _beekeeperNameController = TextEditingController();
-  final TextEditingController _weatherConditionsController = TextEditingController();
-  final TextEditingController _apiaryLocationController = TextEditingController();
+  final TextEditingController _beekeeperNameController =
+      TextEditingController();
+  final TextEditingController _weatherConditionsController =
+      TextEditingController();
+  final TextEditingController _apiaryLocationController =
+      TextEditingController();
   final TextEditingController _hiveIdController = TextEditingController();
   final TextEditingController _hiveTypeController = TextEditingController();
-  final TextEditingController _hiveConditionController = TextEditingController();
-  final TextEditingController _queenPresenceController = TextEditingController();
+  final TextEditingController _hiveConditionController =
+      TextEditingController();
+  final TextEditingController _queenPresenceController =
+      TextEditingController();
   final TextEditingController _queenCellsController = TextEditingController();
   final TextEditingController _broodPatternController = TextEditingController();
   final TextEditingController _eggsLarvaeController = TextEditingController();
   final TextEditingController _honeyStoresController = TextEditingController();
   final TextEditingController _pollenStoresController = TextEditingController();
-  final TextEditingController _beePopulationController = TextEditingController();
-  final TextEditingController _aggressivenessController = TextEditingController();
-  final TextEditingController _diseasesObservedController = TextEditingController();
-  final TextEditingController _diseasesSpecifyController = TextEditingController();
+  final TextEditingController _beePopulationController =
+      TextEditingController();
+  final TextEditingController _aggressivenessController =
+      TextEditingController();
+  final TextEditingController _diseasesObservedController =
+      TextEditingController();
+  final TextEditingController _diseasesSpecifyController =
+      TextEditingController();
   final TextEditingController _pestsPresentController = TextEditingController();
-  final TextEditingController _framesCheckedController = TextEditingController();
-  final TextEditingController _framesReplacedController = TextEditingController();
+  final TextEditingController _framesCheckedController =
+      TextEditingController();
+  final TextEditingController _framesReplacedController =
+      TextEditingController();
   final TextEditingController _hiveCleanedController = TextEditingController();
-  final TextEditingController _supersChangedController = TextEditingController();
+  final TextEditingController _supersChangedController =
+      TextEditingController();
   final TextEditingController _otherActionsController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
 
@@ -135,38 +147,54 @@ class _RecordsFormState extends State<RecordsForm> {
 
                 // Form Sections
                 _buildSectionHeader('1. General Information'),
-                _buildReadOnlyField('Inspection Date', _formatDate(_inspectionDate)),
+                _buildReadOnlyField(
+                    'Inspection Date', _formatDate(_inspectionDate)),
                 _buildTextField('Beekeeper Name', _beekeeperNameController),
-                _buildTextField('Weather Conditions', _weatherConditionsController),
-                _buildReadOnlyField('Apiary Location', _apiaryLocationController.text),
+                _buildTextField(
+                    'Weather Conditions', _weatherConditionsController),
+                _buildReadOnlyField(
+                    'Apiary Location', _apiaryLocationController.text),
                 _buildReadOnlyField('Hive ID', _hiveIdController.text),
                 const SizedBox(height: 24),
 
                 _buildSectionHeader('2. Hive Information'),
-                _buildTextField('Type of Hive', _hiveTypeController, hint: 'e.g., Langstroth, Top Bar'),
-                _buildDropdownField('Hive Condition', _hiveConditionController, ['Good', 'Fair', 'Poor']),
-                _buildYesNoField('Presence of Queen?', _queenPresenceController),
+                _buildTextField('Type of Hive', _hiveTypeController,
+                    hint: 'e.g., Langstroth, Top Bar'),
+                _buildDropdownField('Hive Condition', _hiveConditionController,
+                    ['Good', 'Fair', 'Poor']),
+                _buildYesNoField(
+                    'Presence of Queen?', _queenPresenceController),
                 _buildYesNoField('Queen Cells Present?', _queenCellsController),
-                _buildDropdownField('Brood Pattern', _broodPatternController, ['Good', 'Irregular', 'Spotty', 'None']),
-                _buildYesNoField('Eggs & Larvae Present?', _eggsLarvaeController),
-                _buildDropdownField('Honey Stores', _honeyStoresController, ['Low', 'Medium', 'Full']),
-                _buildDropdownField('Pollen Stores', _pollenStoresController, ['Low', 'Medium', 'Full']),
+                _buildDropdownField('Brood Pattern', _broodPatternController,
+                    ['Good', 'Irregular', 'Spotty', 'None']),
+                _buildYesNoField(
+                    'Eggs & Larvae Present?', _eggsLarvaeController),
+                _buildDropdownField('Honey Stores', _honeyStoresController,
+                    ['Low', 'Medium', 'Full']),
+                _buildDropdownField('Pollen Stores', _pollenStoresController,
+                    ['Low', 'Medium', 'Full']),
                 const SizedBox(height: 24),
 
                 _buildSectionHeader('3. Colony Health'),
-                _buildDropdownField('Bee Population', _beePopulationController, ['Strong', 'Moderate', 'Weak']),
-                _buildDropdownField('Aggressiveness', _aggressivenessController, ['Calm', 'Moderate', 'Aggressive']),
-                _buildYesNoField('Diseases or Pests Observed?', _diseasesObservedController),
+                _buildDropdownField('Bee Population', _beePopulationController,
+                    ['Strong', 'Moderate', 'Weak']),
+                _buildDropdownField('Aggressiveness', _aggressivenessController,
+                    ['Calm', 'Moderate', 'Aggressive']),
+                _buildYesNoField(
+                    'Diseases or Pests Observed?', _diseasesObservedController),
                 if (_diseasesObservedController.text == 'Yes')
-                  _buildTextField('Specify Diseases/Pests', _diseasesSpecifyController),
-                _buildTextField('Other Pests Present', _pestsPresentController, hint: 'e.g., Varroa mites, Small Hive Beetles'),
+                  _buildTextField(
+                      'Specify Diseases/Pests', _diseasesSpecifyController),
+                _buildTextField('Other Pests Present', _pestsPresentController,
+                    hint: 'e.g., Varroa mites, Small Hive Beetles'),
                 const SizedBox(height: 24),
 
                 _buildSectionHeader('4. Maintenance Actions'),
                 _buildNumberField('Frames Checked', _framesCheckedController),
                 _buildYesNoField('Frames Replaced?', _framesReplacedController),
                 _buildYesNoField('Hive Cleaned?', _hiveCleanedController),
-                _buildYesNoField('Supers Added/Removed?', _supersChangedController),
+                _buildYesNoField(
+                    'Supers Added/Removed?', _supersChangedController),
                 _buildTextField('Other Actions Taken', _otherActionsController),
                 const SizedBox(height: 24),
 
@@ -230,7 +258,8 @@ class _RecordsFormState extends State<RecordsForm> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {String? hint}) {
+  Widget _buildTextField(String label, TextEditingController controller,
+      {String? hint}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: TextFormField(
@@ -292,15 +321,16 @@ class _RecordsFormState extends State<RecordsForm> {
     );
   }
 
-  Widget _buildDropdownField(String label, TextEditingController controller, List<String> items) {
+  Widget _buildDropdownField(
+      String label, TextEditingController controller, List<String> items) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: DropdownButtonFormField<String>(
-        style: const TextStyle(fontFamily: "Sans", 
+        style: const TextStyle(
+          fontFamily: "Sans",
 
-        // color: Colors.brown[800]
+          // color: Colors.brown[800]
         ),
-        
         decoration: InputDecoration(
           labelText: label,
           filled: true,

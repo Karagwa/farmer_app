@@ -199,7 +199,8 @@ class AutoVideoProcessingService with ChangeNotifier {
       } catch (e) {
         retryCount++;
         if (retryCount >= _maxRetries) {
-          _handleError('Failed to fetch videos after $_maxRetries attempts: $e');
+          _handleError(
+              'Failed to fetch videos after $_maxRetries attempts: $e');
           return null;
         }
 
@@ -242,8 +243,9 @@ class AutoVideoProcessingService with ChangeNotifier {
           timestamp: DateTime.now(),
           // Make sure these property names match with what's used in background service
           beesEntering: analysisResult.beesEntering, // or inCount
-          beesExiting: analysisResult.beesExiting,   // or outCount
-          confidence: analysisResult.confidence,     // Make sure this property exists
+          beesExiting: analysisResult.beesExiting, // or outCount
+          confidence:
+              analysisResult.confidence, // Make sure this property exists
         );
 
         await BeeCountDatabase.instance.updateBeeCount(beeCount);

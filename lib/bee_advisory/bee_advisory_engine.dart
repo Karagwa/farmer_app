@@ -5,15 +5,14 @@ import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_engine.dart';
 // import 'package:HPGM/analytics/foraging_analysis/time_based_return_rate_database.dart';
 import 'package:HPGM/Services/bee_analysis_service.dart';
 import 'dart:async';
+
 class BeeAdvisoryEngine {
   BeeAdvisoryDatabase get database => BeeAdvisoryDatabase.instance;
-    
+
   // Singleton instance
   static final BeeAdvisoryEngine instance = BeeAdvisoryEngine._init();
 
   BeeAdvisoryEngine._init();
-  
-  
 
   // Update the generateRecommendations method in BeeAdvisoryEngine
   Future<List<Map<String, dynamic>>> generateRecommendations({
@@ -46,8 +45,8 @@ class BeeAdvisoryEngine {
       final distributions = foragingData['distributions'];
 
       // Get existing recommendations from the database
-      final existingRecommendations = await BeeAdvisoryDatabase.instance
-          .readRecommendationsByHive(hiveId);
+      final existingRecommendations =
+          await BeeAdvisoryDatabase.instance.readRecommendationsByHive(hiveId);
 
       // Generate new recommendations based on the analysis
       List<Map<String, dynamic>> recommendations = [];
@@ -196,9 +195,9 @@ class BeeAdvisoryEngine {
             // Add historical comparison
             recommendation['historicalComparison'] =
                 await compareWithHistoricalRecommendations(
-                  hiveId,
-                  recommendation,
-                );
+              hiveId,
+              recommendation,
+            );
 
             recommendations.add(recommendation);
           }
@@ -212,9 +211,9 @@ class BeeAdvisoryEngine {
             // Add historical comparison
             recommendation['historicalComparison'] =
                 await compareWithHistoricalRecommendations(
-                  hiveId,
-                  recommendation,
-                );
+              hiveId,
+              recommendation,
+            );
 
             recommendations.add(recommendation);
           }
@@ -246,16 +245,16 @@ class BeeAdvisoryEngine {
           if (hasPoorHealthIndicators) {
             var recommendation =
                 await _generatePoorTimeBlockHealthRecommendation(
-                  hiveId,
-                  problematicTimeBlocks,
-                );
+              hiveId,
+              problematicTimeBlocks,
+            );
 
             // Add historical comparison
             recommendation['historicalComparison'] =
                 await compareWithHistoricalRecommendations(
-                  hiveId,
-                  recommendation,
-                );
+              hiveId,
+              recommendation,
+            );
 
             recommendations.add(recommendation);
           }
@@ -274,9 +273,9 @@ class BeeAdvisoryEngine {
             // Add historical comparison
             recommendation['historicalComparison'] =
                 await compareWithHistoricalRecommendations(
-                  hiveId,
-                  recommendation,
-                );
+              hiveId,
+              recommendation,
+            );
 
             recommendations.add(recommendation);
           }
@@ -325,9 +324,9 @@ class BeeAdvisoryEngine {
           // Add historical comparison
           recommendation['historicalComparison'] =
               await compareWithHistoricalRecommendations(
-                hiveId,
-                recommendation,
-              );
+            hiveId,
+            recommendation,
+          );
 
           recommendations.add(recommendation);
         }
@@ -438,8 +437,8 @@ class BeeAdvisoryEngine {
       if (weatherData.containsKey('windSpeed') &&
           weatherData['windSpeed'].containsKey('correlations') &&
           weatherData['windSpeed']['correlations'].containsKey('returnRate')) {
-        double correlation =
-            weatherData['windSpeed']['correlations']['returnRate']['correlation'];
+        double correlation = weatherData['windSpeed']['correlations']
+            ['returnRate']['correlation'];
         if (correlation < -0.4) {
           // Negative correlation stronger than -0.4
           actions.add(
@@ -453,8 +452,8 @@ class BeeAdvisoryEngine {
           weatherData['precipitation']['correlations'].containsKey(
             'returnRate',
           )) {
-        double correlation =
-            weatherData['precipitation']['correlations']['returnRate']['correlation'];
+        double correlation = weatherData['precipitation']['correlations']
+            ['returnRate']['correlation'];
         if (correlation < -0.4) {
           actions.add(
             'Ensure hives are tilted forward slightly to prevent water accumulation during rain',
@@ -539,14 +538,13 @@ class BeeAdvisoryEngine {
   ) async {
     // Get plants that can be grown near hives
     final allPlants = await BeeAdvisoryDatabase.instance.readAllPlants();
-    final nearbyPlants =
-        allPlants
-            .where(
-              (p) =>
-                  p['maintenance_level'] == 'Low' ||
-                  p['maintenance_level'] == 'Medium',
-            )
-            .toList();
+    final nearbyPlants = allPlants
+        .where(
+          (p) =>
+              p['maintenance_level'] == 'Low' ||
+              p['maintenance_level'] == 'Medium',
+        )
+        .toList();
 
     // Create detailed actions
     List<String> actions = [
@@ -765,15 +763,14 @@ class BeeAdvisoryEngine {
   ) async {
     // Get plants that can be grown near hives
     final allPlants = await BeeAdvisoryDatabase.instance.readAllPlants();
-    final nearbyPlants =
-        allPlants
-            .where(
-              (p) =>
-                  (p['maintenance_level'] == 'Low' ||
-                      p['maintenance_level'] == 'Medium') &&
-                  p['nectar_value'] >= 4,
-            )
-            .toList();
+    final nearbyPlants = allPlants
+        .where(
+          (p) =>
+              (p['maintenance_level'] == 'Low' ||
+                  p['maintenance_level'] == 'Medium') &&
+              p['nectar_value'] >= 4,
+        )
+        .toList();
 
     // Create detailed actions
     List<String> actions = [
@@ -885,10 +882,8 @@ class BeeAdvisoryEngine {
       'issue_identified': 'Low Overall Foraging Health',
       'severity': healthScore < 40 ? 'High' : 'Medium',
       'recommended_plants': plants.map((p) => p['id']).join(','),
-      'recommended_supplements': allSupplements
-          .take(5)
-          .map((s) => s['id'])
-          .join(','),
+      'recommended_supplements':
+          allSupplements.take(5).map((s) => s['id']).join(','),
       'management_actions': actions.join('. '),
       'expected_outcome':
           'Comprehensive improvement in colony health and foraging performance.',
@@ -932,10 +927,8 @@ class BeeAdvisoryEngine {
       'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       'issue_identified': 'Swarming Risk Detected',
       'severity': 'High',
-      'recommended_plants': swarmingPlants
-          .take(5)
-          .map((p) => p['id'])
-          .join(','),
+      'recommended_plants':
+          swarmingPlants.take(5).map((p) => p['id']).join(','),
       'recommended_supplements': '',
       'management_actions': actions.join('. '),
       'expected_outcome':
@@ -960,32 +953,30 @@ class BeeAdvisoryEngine {
 
     if (peakTimeBlock.contains('Early Morning')) {
       // If early morning is peak, add afternoon/evening plants
-      selectedPlants =
-          plants
-              .where(
-                (plant) =>
-                    plant['flowering_season'].toString().toLowerCase().contains(
+      selectedPlants = plants
+          .where(
+            (plant) =>
+                plant['flowering_season'].toString().toLowerCase().contains(
                       'summer',
                     ) ||
-                    plant['description'].toString().toLowerCase().contains(
+                plant['description'].toString().toLowerCase().contains(
                       'afternoon',
                     ),
-              )
-              .toList();
+          )
+          .toList();
     } else if (peakTimeBlock.contains('Evening')) {
       // If evening is peak, add morning plants
-      selectedPlants =
-          plants
-              .where(
-                (plant) =>
-                    plant['flowering_season'].toString().toLowerCase().contains(
+      selectedPlants = plants
+          .where(
+            (plant) =>
+                plant['flowering_season'].toString().toLowerCase().contains(
                       'spring',
                     ) ||
-                    plant['description'].toString().toLowerCase().contains(
+                plant['description'].toString().toLowerCase().contains(
                       'morning',
                     ),
-              )
-              .toList();
+          )
+          .toList();
     } else {
       // For other peaks, add generally diverse plants
       selectedPlants =
@@ -1010,10 +1001,8 @@ class BeeAdvisoryEngine {
       'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       'issue_identified': 'Foraging Activity Imbalance',
       'severity': 'Medium',
-      'recommended_plants': selectedPlants
-          .take(5)
-          .map((p) => p['id'])
-          .join(','),
+      'recommended_plants':
+          selectedPlants.take(5).map((p) => p['id']).join(','),
       'recommended_supplements': '',
       'management_actions': actions.join('. '),
       'expected_outcome':
@@ -1080,10 +1069,9 @@ class BeeAdvisoryEngine {
         // Track specific issues
         for (var rec in monthRecs) {
           String issue = rec['issue_identified'];
-          double severity =
-              rec['severity'] == 'High'
-                  ? 3
-                  : rec['severity'] == 'Medium'
+          double severity = rec['severity'] == 'High'
+              ? 3
+              : rec['severity'] == 'Medium'
                   ? 2
                   : 1;
 
@@ -1104,7 +1092,7 @@ class BeeAdvisoryEngine {
         // Calculate month's severity score (weighted average)
         double severityScore =
             (highSeverity * 3 + mediumSeverity * 2 + lowSeverity) /
-            (highSeverity + mediumSeverity + lowSeverity);
+                (highSeverity + mediumSeverity + lowSeverity);
 
         improvementMetrics[month] = {
           'recommendationCount': monthRecs.length,
@@ -1173,10 +1161,9 @@ class BeeAdvisoryEngine {
           .getImplementedRecommendations(hiveId);
 
       // Calculate implementation rate
-      double implementationRate =
-          recommendations.isEmpty
-              ? 0
-              : implementedRecs.length / recommendations.length * 100;
+      double implementationRate = recommendations.isEmpty
+          ? 0
+          : implementedRecs.length / recommendations.length * 100;
 
       return {
         'hasData': true,
@@ -1204,11 +1191,11 @@ class BeeAdvisoryEngine {
   ) async {
     try {
       // Get past recommendations for the same issue
-      final pastRecommendations = await BeeAdvisoryDatabase.instance
-          .getRecommendationsByIssue(
-            hiveId,
-            newRecommendation['issue_identified'],
-          );
+      final pastRecommendations =
+          await BeeAdvisoryDatabase.instance.getRecommendationsByIssue(
+        hiveId,
+        newRecommendation['issue_identified'],
+      );
 
       if (pastRecommendations.isEmpty) {
         return {
@@ -1228,17 +1215,16 @@ class BeeAdvisoryEngine {
       final mostRecent = pastRecommendations.last;
 
       // Calculate days since last occurrence
-      final daysSinceLastOccurrence =
-          DateTime.now()
-              .difference(DateFormat('yyyy-MM-dd').parse(mostRecent['date']))
-              .inDays;
+      final daysSinceLastOccurrence = DateTime.now()
+          .difference(DateFormat('yyyy-MM-dd').parse(mostRecent['date']))
+          .inDays;
 
       // Compare severity
       final severityChanged =
           mostRecent['severity'] != newRecommendation['severity'];
       final severityWorsened =
           _getSeverityValue(newRecommendation['severity']) >
-          _getSeverityValue(mostRecent['severity']);
+              _getSeverityValue(mostRecent['severity']);
 
       // Check if any recommended actions are the same
       List<String> previousActions = mostRecent['management_actions'].split(
@@ -1260,14 +1246,13 @@ class BeeAdvisoryEngine {
 
       // Calculate recurrence frequency
       int occurrences = pastRecommendations.length + 1; // +1 for current
-      int totalDays =
-          DateTime.now()
-              .difference(
-                DateFormat(
-                  'yyyy-MM-dd',
-                ).parse(pastRecommendations.first['date']),
-              )
-              .inDays;
+      int totalDays = DateTime.now()
+          .difference(
+            DateFormat(
+              'yyyy-MM-dd',
+            ).parse(pastRecommendations.first['date']),
+          )
+          .inDays;
 
       double recurrenceFrequency =
           occurrences / (totalDays / 30); // Occurrences per month
@@ -1385,8 +1370,8 @@ class BeeAdvisoryEngine {
           .where(
             (plant) =>
                 plant['climate_preference'].toString().toLowerCase().contains(
-                  climate.toLowerCase(),
-                ) &&
+                      climate.toLowerCase(),
+                    ) &&
                 (plant['nectar_value'] >= 4),
           )
           .toList();
@@ -1415,13 +1400,11 @@ class BeeAdvisoryEngine {
     List<Map<String, dynamic>> diversePlants = [];
 
     // First add high-value plants (both nectar and pollen)
-    var highValuePlants =
-        allPlants
-            .where(
-              (plant) =>
-                  plant['nectar_value'] >= 4 && plant['pollen_value'] >= 4,
-            )
-            .toList();
+    var highValuePlants = allPlants
+        .where(
+          (plant) => plant['nectar_value'] >= 4 && plant['pollen_value'] >= 4,
+        )
+        .toList();
 
     // Add some high-value plants, tracking their seasons
     for (var plant in highValuePlants.take(3)) {
@@ -1431,16 +1414,15 @@ class BeeAdvisoryEngine {
     }
 
     // Then fill in any missing seasons
-    var seasonalPlants =
-        allPlants
-            .where(
-              (plant) =>
-                  !diversePlants.any(
-                    (p) => p['id'] == plant['id'],
-                  ) && // Not already included
-                  (plant['nectar_value'] >= 3 || plant['pollen_value'] >= 3),
-            ) // Decent value
-            .toList();
+    var seasonalPlants = allPlants
+        .where(
+          (plant) =>
+              !diversePlants.any(
+                (p) => p['id'] == plant['id'],
+              ) && // Not already included
+              (plant['nectar_value'] >= 3 || plant['pollen_value'] >= 3),
+        ) // Decent value
+        .toList();
 
     for (var plant in seasonalPlants) {
       String season = plant['flowering_season'].toString().toLowerCase();
@@ -1472,8 +1454,8 @@ class BeeAdvisoryEngine {
               (plant) =>
                   plant['maintenance_level'] == 'Low' &&
                   !plant['description'].toString().toLowerCase().contains(
-                    'tall',
-                  ),
+                        'tall',
+                      ),
             )
             .toList();
       } else if (factor == 'temperature') {
@@ -1482,11 +1464,11 @@ class BeeAdvisoryEngine {
             .where(
               (plant) =>
                   plant['climate_preference'].toString().toLowerCase().contains(
-                    'varied',
-                  ) ||
+                        'varied',
+                      ) ||
                   plant['climate_preference'].toString().toLowerCase().contains(
-                    'diverse',
-                  ),
+                        'diverse',
+                      ),
             )
             .toList();
       } else if (factor == 'precipitation') {
@@ -1551,8 +1533,7 @@ class BeeAdvisoryEngine {
 
       // Get hive location data (if available)
       final hiveData = await BeeAnalysisService.instance.getHiveData(hiveId);
-      String userHemisphere =
-          hemisphere ??
+      String userHemisphere = hemisphere ??
           (hiveData != null && hiveData.containsKey('hemisphere')
               ? hiveData['hemisphere']
               : 'northern');
@@ -1563,19 +1544,19 @@ class BeeAdvisoryEngine {
       // Current season recommendations
       Map<String, dynamic> currentSeasonRec =
           await _generateCurrentSeasonRecommendation(
-            hiveId,
-            currentSeason,
-            userHemisphere,
-          );
+        hiveId,
+        currentSeason,
+        userHemisphere,
+      );
       recommendations.add(currentSeasonRec);
 
       // Preparation for next season
       Map<String, dynamic> nextSeasonPrep =
           await _generateNextSeasonPreparation(
-            hiveId,
-            nextSeason,
-            userHemisphere,
-          );
+        hiveId,
+        nextSeason,
+        userHemisphere,
+      );
       recommendations.add(nextSeasonPrep);
 
       // Store recommendations in the database
@@ -1616,16 +1597,15 @@ class BeeAdvisoryEngine {
   ) async {
     // Get plants appropriate for the current season
     final allPlants = await BeeAdvisoryDatabase.instance.readAllPlants();
-    final seasonalPlants =
-        allPlants
-            .where(
-              (plant) =>
-                  plant['flowering_season'].toString().toLowerCase().contains(
+    final seasonalPlants = allPlants
+        .where(
+          (plant) =>
+              plant['flowering_season'].toString().toLowerCase().contains(
                     season.toLowerCase(),
                   ) ||
-                  _isPlantInSeason(plant, season, hemisphere),
-            )
-            .toList();
+              _isPlantInSeason(plant, season, hemisphere),
+        )
+        .toList();
 
     // Get supplements appropriate for the season
     final allSupplements =
@@ -1634,60 +1614,56 @@ class BeeAdvisoryEngine {
 
     switch (season) {
       case 'Spring':
-        seasonalSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        seasonalSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'build',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'growth',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
       case 'Summer':
-        seasonalSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        seasonalSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'production',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'nectar',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
       case 'Fall':
-        seasonalSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        seasonalSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'winter',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'health',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
       case 'Winter':
-        seasonalSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        seasonalSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'survival',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'cluster',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
     }
 
@@ -1699,14 +1675,10 @@ class BeeAdvisoryEngine {
       'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       'issue_identified': '$season Season Management',
       'severity': 'Medium',
-      'recommended_plants': seasonalPlants
-          .take(5)
-          .map((p) => p['id'])
-          .join(','),
-      'recommended_supplements': seasonalSupplements
-          .take(3)
-          .map((s) => s['id'])
-          .join(','),
+      'recommended_plants':
+          seasonalPlants.take(5).map((p) => p['id']).join(','),
+      'recommended_supplements':
+          seasonalSupplements.take(3).map((s) => s['id']).join(','),
       'management_actions': actions.join('. '),
       'expected_outcome': 'Optimal colony management for $season conditions.',
       'priority': 2,
@@ -1724,16 +1696,15 @@ class BeeAdvisoryEngine {
   ) async {
     // Get plants that will bloom in the next season
     final allPlants = await BeeAdvisoryDatabase.instance.readAllPlants();
-    final nextSeasonPlants =
-        allPlants
-            .where(
-              (plant) =>
-                  plant['flowering_season'].toString().toLowerCase().contains(
+    final nextSeasonPlants = allPlants
+        .where(
+          (plant) =>
+              plant['flowering_season'].toString().toLowerCase().contains(
                     nextSeason.toLowerCase(),
                   ) ||
-                  _isPlantInSeason(plant, nextSeason, hemisphere),
-            )
-            .toList();
+              _isPlantInSeason(plant, nextSeason, hemisphere),
+        )
+        .toList();
 
     // Generate next season preparation actions
     List<String> actions = _getNextSeasonPreparationActions(
@@ -1748,60 +1719,56 @@ class BeeAdvisoryEngine {
 
     switch (nextSeason) {
       case 'Spring':
-        preparationSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        preparationSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'stimulate',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'preparation',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
       case 'Summer':
-        preparationSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        preparationSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'production',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'strength',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
       case 'Fall':
-        preparationSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        preparationSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'winter',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'preparation',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
       case 'Winter':
-        preparationSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        preparationSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'immunity',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'health',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
     }
 
@@ -1810,14 +1777,10 @@ class BeeAdvisoryEngine {
       'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       'issue_identified': 'Preparing for $nextSeason',
       'severity': 'Medium',
-      'recommended_plants': nextSeasonPlants
-          .take(5)
-          .map((p) => p['id'])
-          .join(','),
-      'recommended_supplements': preparationSupplements
-          .take(3)
-          .map((s) => s['id'])
-          .join(','),
+      'recommended_plants':
+          nextSeasonPlants.take(5).map((p) => p['id']).join(','),
+      'recommended_supplements':
+          preparationSupplements.take(3).map((s) => s['id']).join(','),
       'management_actions': actions.join('. '),
       'expected_outcome':
           'Well-prepared colony for the upcoming $nextSeason season.',
@@ -1907,11 +1870,11 @@ class BeeAdvisoryEngine {
 
       final historicalData =
           await ForagingAnalysisEngine.analyzeForagingActivity(
-            hiveId: hiveId,
-            startDate: startDate,
-            endDate: now,
-            includeWeatherData: true,
-          );
+        hiveId: hiveId,
+        startDate: startDate,
+        endDate: now,
+        includeWeatherData: true,
+      );
 
       if (!historicalData.containsKey('hasData') ||
           !historicalData['hasData']) {
@@ -1992,10 +1955,9 @@ class BeeAdvisoryEngine {
 
     // Get hive location data (if available)
     final hiveData = await BeeAnalysisService.instance.getHiveData(hiveId);
-    String hemisphere =
-        hiveData != null && hiveData.containsKey('hemisphere')
-            ? hiveData['hemisphere']
-            : 'northern';
+    String hemisphere = hiveData != null && hiveData.containsKey('hemisphere')
+        ? hiveData['hemisphere']
+        : 'northern';
 
     // Check if we have seasonal patterns in historical data
     if (!historicalData.containsKey('patterns') ||
@@ -2055,16 +2017,15 @@ class BeeAdvisoryEngine {
 
     // Get plants appropriate for the upcoming season
     final allPlants = await BeeAdvisoryDatabase.instance.readAllPlants();
-    final seasonalPlants =
-        allPlants
-            .where(
-              (plant) =>
-                  plant['flowering_season'].toString().toLowerCase().contains(
+    final seasonalPlants = allPlants
+        .where(
+          (plant) =>
+              plant['flowering_season'].toString().toLowerCase().contains(
                     nextSeason.toLowerCase(),
                   ) ||
-                  _isPlantInSeason(plant, nextSeason, hemisphere),
-            )
-            .toList();
+              _isPlantInSeason(plant, nextSeason, hemisphere),
+        )
+        .toList();
 
     // Get supplements appropriate for the upcoming season
     final allSupplements =
@@ -2073,60 +2034,56 @@ class BeeAdvisoryEngine {
 
     switch (nextSeason) {
       case 'Spring':
-        seasonalSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        seasonalSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'build',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'growth',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
       case 'Summer':
-        seasonalSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        seasonalSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'production',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'nectar',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
       case 'Fall':
-        seasonalSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        seasonalSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'winter',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'health',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
       case 'Winter':
-        seasonalSupplements =
-            allSupplements
-                .where(
-                  (supp) =>
-                      supp['benefits'].toString().toLowerCase().contains(
+        seasonalSupplements = allSupplements
+            .where(
+              (supp) =>
+                  supp['benefits'].toString().toLowerCase().contains(
                         'survival',
                       ) ||
-                      supp['benefits'].toString().toLowerCase().contains(
+                  supp['benefits'].toString().toLowerCase().contains(
                         'cluster',
                       ),
-                )
-                .toList();
+            )
+            .toList();
         break;
     }
 
@@ -2159,14 +2116,10 @@ class BeeAdvisoryEngine {
       'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       'issue_identified': 'Predicted $nextSeason Season Issues',
       'severity': severity,
-      'recommended_plants': seasonalPlants
-          .take(5)
-          .map((p) => p['id'])
-          .join(','),
-      'recommended_supplements': seasonalSupplements
-          .take(3)
-          .map((s) => s['id'])
-          .join(','),
+      'recommended_plants':
+          seasonalPlants.take(5).map((p) => p['id']).join(','),
+      'recommended_supplements':
+          seasonalSupplements.take(3).map((s) => s['id']).join(','),
       'management_actions': actions.join('. '),
       'expected_outcome':
           'Prevention of predicted issues in the upcoming $nextSeason season.',
@@ -2206,9 +2159,9 @@ class BeeAdvisoryEngine {
         weatherData[mostInfluentialFactor]['correlations'].containsKey(
           'totalActivity',
         )) {
-      correlationStrength =
-          weatherData[mostInfluentialFactor]['correlations']['totalActivity']['correlation']
-              .abs();
+      correlationStrength = weatherData[mostInfluentialFactor]['correlations']
+              ['totalActivity']['correlation']
+          .abs();
     }
 
     // If correlation is not strong enough, no prediction
@@ -2334,10 +2287,8 @@ class BeeAdvisoryEngine {
       'issue_identified': 'Predicted Weather Impact',
       'severity': 'Medium',
       'recommended_plants': plants.take(5).map((p) => p['id']).join(','),
-      'recommended_supplements': supplements
-          .take(3)
-          .map((s) => s['id'])
-          .join(','),
+      'recommended_supplements':
+          supplements.take(3).map((s) => s['id']).join(','),
       'management_actions': actions.join('. '),
       'expected_outcome':
           'Minimized impact of forecasted weather conditions on colony activity and health.',
@@ -2565,10 +2516,8 @@ class BeeAdvisoryEngine {
       'issue_identified': 'Predicted Issues Based on Trends',
       'severity': severity,
       'recommended_plants': plants.take(5).map((p) => p['id']).join(','),
-      'recommended_supplements': allSupplements
-          .take(5)
-          .map((s) => s['id'])
-          .join(','),
+      'recommended_supplements':
+          allSupplements.take(5).map((s) => s['id']).join(','),
       'management_actions': actions.join('. '),
       'expected_outcome':
           'Reversal of concerning trends and improved colony performance.',
@@ -2658,14 +2607,13 @@ class BeeAdvisoryEngine {
         recommendedPlants = await _getSuitablePlantsByValue('nectar', 4);
       } else {
         recommendedPlants = await BeeAdvisoryDatabase.instance.readAllPlants();
-        recommendedPlants =
-            recommendedPlants
-                .where(
-                  (p) =>
-                      p['maintenance_level'] == 'Low' ||
-                      p['maintenance_level'] == 'Medium',
-                )
-                .toList();
+        recommendedPlants = recommendedPlants
+            .where(
+              (p) =>
+                  p['maintenance_level'] == 'Low' ||
+                  p['maintenance_level'] == 'Medium',
+            )
+            .toList();
       }
       recommendedSupplements = await _getSuitableSupplements('Feed');
     } else {
@@ -2737,14 +2685,10 @@ class BeeAdvisoryEngine {
       'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       'issue_identified': 'Recurring Issue: $mostFrequentIssue',
       'severity': severity,
-      'recommended_plants': recommendedPlants
-          .take(5)
-          .map((p) => p['id'])
-          .join(','),
-      'recommended_supplements': recommendedSupplements
-          .take(3)
-          .map((s) => s['id'])
-          .join(','),
+      'recommended_plants':
+          recommendedPlants.take(5).map((p) => p['id']).join(','),
+      'recommended_supplements':
+          recommendedSupplements.take(3).map((s) => s['id']).join(','),
       'management_actions': actions.join('. '),
       'expected_outcome':
           'Resolution of persistent issue and improved colony stability.',
@@ -2870,17 +2814,14 @@ class BeeAdvisoryEngine {
       // Filter based on climate zone
       if (formData.containsKey('climate_zone') &&
           formData['climate_zone'] != null) {
-        recommendedPlants =
-            allPlants
-                .where(
-                  (plant) => plant['climate_preference']
-                      .toString()
-                      .toLowerCase()
-                      .contains(
+        recommendedPlants = allPlants
+            .where(
+              (plant) =>
+                  plant['climate_preference'].toString().toLowerCase().contains(
                         formData['climate_zone'].toString().toLowerCase(),
                       ),
-                )
-                .toList();
+            )
+            .toList();
       } else {
         recommendedPlants = allPlants;
       }
@@ -2894,18 +2835,17 @@ class BeeAdvisoryEngine {
         if (area < 100) {
           // Small area (less than 100 sq meters)
           // Prioritize compact plants
-          recommendedPlants =
-              recommendedPlants
-                  .where(
-                    (plant) =>
-                        !plant['description'].toString().toLowerCase().contains(
+          recommendedPlants = recommendedPlants
+              .where(
+                (plant) =>
+                    !plant['description'].toString().toLowerCase().contains(
                           'large',
                         ) &&
-                        !plant['description'].toString().toLowerCase().contains(
+                    !plant['description'].toString().toLowerCase().contains(
                           'tall',
                         ),
-                  )
-                  .toList();
+              )
+              .toList();
 
           managementActions.add(
             'Consider vertical gardening to maximize space',
@@ -2926,10 +2866,9 @@ class BeeAdvisoryEngine {
         String issues = formData['current_issues'].toString().toLowerCase();
 
         if (issues.contains('low honey')) {
-          recommendedPlants =
-              recommendedPlants
-                  .where((plant) => plant['nectar_value'] >= 4)
-                  .toList();
+          recommendedPlants = recommendedPlants
+              .where((plant) => plant['nectar_value'] >= 4)
+              .toList();
 
           recommendedSupplements.addAll(
             allSupplements.where((supp) => supp['type'] == 'Feed').toList(),
@@ -2957,11 +2896,11 @@ class BeeAdvisoryEngine {
                 .where(
                   (supp) =>
                       supp['benefits'].toString().toLowerCase().contains(
-                        'strength',
-                      ) ||
+                            'strength',
+                          ) ||
                       supp['benefits'].toString().toLowerCase().contains(
-                        'health',
-                      ),
+                            'health',
+                          ),
                 )
                 .toList(),
           );
@@ -3022,11 +2961,11 @@ class BeeAdvisoryEngine {
                 .where(
                   (supp) =>
                       supp['name'].toString().toLowerCase().contains(
-                        'pollen',
-                      ) ||
+                            'pollen',
+                          ) ||
                       supp['description'].toString().toLowerCase().contains(
-                        'protein',
-                      ),
+                            'protein',
+                          ),
                 )
                 .toList(),
           );
@@ -3043,11 +2982,11 @@ class BeeAdvisoryEngine {
                 .where(
                   (supp) =>
                       supp['name'].toString().toLowerCase().contains(
-                        'probiotic',
-                      ) ||
+                            'probiotic',
+                          ) ||
                       supp['description'].toString().toLowerCase().contains(
-                        'gut health',
-                      ),
+                            'gut health',
+                          ),
                 )
                 .toList(),
           );
@@ -3095,11 +3034,11 @@ class BeeAdvisoryEngine {
                 .where(
                   (supp) =>
                       supp['benefits'].toString().toLowerCase().contains(
-                        'immune',
-                      ) ||
+                            'immune',
+                          ) ||
                       supp['benefits'].toString().toLowerCase().contains(
-                        'resistance',
-                      ),
+                            'resistance',
+                          ),
                 )
                 .toList(),
           );
@@ -3118,11 +3057,11 @@ class BeeAdvisoryEngine {
                 .where(
                   (supp) =>
                       supp['benefits'].toString().toLowerCase().contains(
-                        'gut',
-                      ) ||
+                            'gut',
+                          ) ||
                       supp['benefits'].toString().toLowerCase().contains(
-                        'digestive',
-                      ),
+                            'digestive',
+                          ),
                 )
                 .toList(),
           );
@@ -3143,10 +3082,9 @@ class BeeAdvisoryEngine {
 
         if (budget.contains('low') || budget.contains('limited')) {
           // Prioritize low-cost solutions
-          recommendedSupplements =
-              recommendedSupplements
-                  .where((supp) => supp['price_range'] == 'Low')
-                  .toList();
+          recommendedSupplements = recommendedSupplements
+              .where((supp) => supp['price_range'] == 'Low')
+              .toList();
 
           managementActions.add('Focus on easy-to-grow, self-seeding plants');
           managementActions.add(
@@ -3184,7 +3122,7 @@ class BeeAdvisoryEngine {
 
   Future<Map<String, dynamic>?> getHiveData(String hiveId) async {
     final db = await instance.database;
-    
+
     try {
       // First check if we have custom hive data in our database
       final List<Map<String, dynamic>> maps = await db.query(
@@ -3192,18 +3130,18 @@ class BeeAdvisoryEngine {
         where: 'hive_id = ?',
         whereArgs: [hiveId],
       );
-      
+
       if (maps.isNotEmpty) {
         return maps.first;
       }
-      
+
       // If we don't have custom data, try to get data from the main hives table
       final List<Map<String, dynamic>> hiveMaps = await db.query(
         'hives',
         where: 'id = ?',
         whereArgs: [hiveId],
       );
-      
+
       if (hiveMaps.isNotEmpty) {
         // Default hemisphere to northern if not specified
         Map<String, dynamic> result = hiveMaps.first;
@@ -3212,7 +3150,7 @@ class BeeAdvisoryEngine {
         }
         return result;
       }
-      
+
       // Return null if no data found
       return null;
     } catch (e) {
@@ -3220,7 +3158,7 @@ class BeeAdvisoryEngine {
       return null;
     }
   }
-  
+
   // Helper method to get the most influential weather factor
   String _getMostInfluentialWeatherFactor(
     Map<String, dynamic> environmentalFactors,
@@ -3244,9 +3182,9 @@ class BeeAdvisoryEngine {
       if (weatherData.containsKey(factor) &&
           weatherData[factor].containsKey('correlations') &&
           weatherData[factor]['correlations'].containsKey('totalActivity')) {
-        double correlation =
-            weatherData[factor]['correlations']['totalActivity']['correlation']
-                .abs();
+        double correlation = weatherData[factor]['correlations']
+                ['totalActivity']['correlation']
+            .abs();
         if (correlation > highestCorrelation) {
           highestCorrelation = correlation;
           mostInfluential = factor;

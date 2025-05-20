@@ -12,10 +12,12 @@ class NotificationService {
   NotificationService._internal();
 
   final List<HiveNotification> _notifications = [];
-  final _notificationsController = StreamController<List<HiveNotification>>.broadcast();
-  Stream<List<HiveNotification>> get notificationsStream => _notificationsController.stream;
-  
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = 
+  final _notificationsController =
+      StreamController<List<HiveNotification>>.broadcast();
+  Stream<List<HiveNotification>> get notificationsStream =>
+      _notificationsController.stream;
+
+  final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   // Thresholds for different parameters
@@ -48,39 +50,22 @@ class NotificationService {
 
   // Weather thresholds
   final Map<String, Map<String, dynamic>> _weatherThresholds = {
-    'temperature': {
-      'min': 5.0,
-      'max': 35.0,
-    },
-    'humidity': {
-      'min': 30.0,
-      'max': 90.0,
-    },
+    'temperature': {'min': 5.0, 'max': 35.0},
+    'humidity': {'min': 30.0, 'max': 90.0},
     'wind_speed': {
       'max': 30.0, // km/h
     },
   };
 
-  Future<void> init() async {
-    // Initialize local notifications
+  Future<void> initialize() async {
+    // Initialize notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    
-    final DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-      requestSoundPermission: true,
-      requestBadgePermission: true,
-      requestAlertPermission: true,
-    );
-    
-    final InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
-    
-    await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-    );
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+
+    await _notificationsPlugin.initialize(initializationSettings);
   }
 
   List<HiveNotification> get notifications => List.unmodifiable(_notifications);
@@ -111,8 +96,36 @@ class NotificationService {
     _notificationsController.add(_notifications);
   }
 
+  Future<void> showNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'bee_monitor_channel',
+      'Bee Monitoring',
+      channelDescription: 'Notifications for bee monitoring events',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+    );
+
+    await _notificationsPlugin.show(
+      id,
+      title,
+      body,
+      notificationDetails,
+      payload: payload,
+    );
+  }
+
   Future<void> _showLocalNotification(HiveNotification notification) async {
-    AndroidNotificationDetails androidPlatformChannelSpecifics =
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'beehive_monitoring_channel',
       'Beehive Monitoring',
@@ -121,16 +134,12 @@ class NotificationService {
       priority: Priority.high,
       color: notification.color,
     );
-    
-    DarwinNotificationDetails iOSPlatformChannelSpecifics =
-        DarwinNotificationDetails();
-    
-    NotificationDetails platformChannelSpecifics = NotificationDetails(
+
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
     );
-    
-    await flutterLocalNotificationsPlugin.show(
+
+    await _notificationsPlugin.show(
       notification.hashCode,
       notification.title,
       notification.message,
@@ -141,7 +150,7 @@ class NotificationService {
   // Check hive data against thresholds and generate notifications
   void checkHiveData(Hive hive) {
     if (hive.id != 1) return; // Only focus on Hive 1 as requested
-    
+
     // Check temperature
     if (hive.temperature != null) {
       _checkParameter(
@@ -153,7 +162,7 @@ class NotificationService {
         '°C',
       );
     }
-    
+
     // Check humidity
     if (hive.humidity != null) {
       _checkParameter(
@@ -165,7 +174,7 @@ class NotificationService {
         '%',
       );
     }
-    
+
     // Check weight
     if (hive.weight != null) {
       _checkParameter(
@@ -177,7 +186,7 @@ class NotificationService {
         'kg',
       );
     }
-    
+
     // Check carbon dioxide
     if (hive.carbonDioxide != null) {
       _checkParameter(
@@ -189,12 +198,12 @@ class NotificationService {
         'ppm',
       );
     }
-    
+
     // Check connection status
     if (!hive.isConnected) {
       _addConnectionNotification(hive.id);
     }
-    
+
     // Check colonization status
     if (!hive.isColonized) {
       _addColonizationNotification(hive.id);
@@ -210,7 +219,7 @@ class NotificationService {
     String unit,
   ) {
     final thresholds = _thresholds[paramName]!;
-    
+
     // Check critical thresholds first
     if (value < thresholds['critical_min']) {
       _addParameterNotification(
@@ -279,7 +288,7 @@ class NotificationService {
         hiveId: hiveId,
       ),
     );
-    
+
     if (existingNotification.id.isEmpty) {
       final notification = HiveNotification(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -289,12 +298,9 @@ class NotificationService {
         type: type,
         severity: severity,
         hiveId: hiveId,
-        data: {
-          'value': value,
-          'unit': unit,
-        },
+        data: {'value': value, 'unit': unit},
       );
-      
+
       addNotification(notification);
     }
   }
@@ -312,7 +318,7 @@ class NotificationService {
         hiveId: hiveId,
       ),
     );
-    
+
     if (existingNotification.id.isEmpty) {
       final notification = HiveNotification(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -323,7 +329,7 @@ class NotificationService {
         severity: NotificationSeverity.high,
         hiveId: hiveId,
       );
-      
+
       addNotification(notification);
     }
   }
@@ -341,7 +347,7 @@ class NotificationService {
         hiveId: hiveId,
       ),
     );
-    
+
     if (existingNotification.id.isEmpty) {
       final notification = HiveNotification(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -352,7 +358,7 @@ class NotificationService {
         severity: NotificationSeverity.medium,
         hiveId: hiveId,
       );
-      
+
       addNotification(notification);
     }
   }
@@ -367,7 +373,8 @@ class NotificationService {
         NotificationSeverity.medium,
         weatherData,
       );
-    } else if (weatherData.temperature > _weatherThresholds['temperature']!['max']) {
+    } else if (weatherData.temperature >
+        _weatherThresholds['temperature']!['max']) {
       _addWeatherNotification(
         'High External Temperature',
         'External temperature is ${weatherData.temperature}°C, which may affect your hives.',
@@ -375,7 +382,7 @@ class NotificationService {
         weatherData,
       );
     }
-    
+
     // Check humidity
     if (weatherData.humidity < _weatherThresholds['humidity']!['min']) {
       _addWeatherNotification(
@@ -392,7 +399,7 @@ class NotificationService {
         weatherData,
       );
     }
-    
+
     // Check wind speed
     if (weatherData.windSpeed > _weatherThresholds['wind_speed']!['max']) {
       _addWeatherNotification(
@@ -402,7 +409,7 @@ class NotificationService {
         weatherData,
       );
     }
-    
+
     // Check for rain
     if (weatherData.isRaining) {
       _addWeatherNotification(
@@ -432,7 +439,7 @@ class NotificationService {
         hiveId: 1, // Default to Hive 1
       ),
     );
-    
+
     if (existingNotification.id.isEmpty) {
       final notification = HiveNotification(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -444,7 +451,7 @@ class NotificationService {
         hiveId: 1, // Default to Hive 1
         data: weatherData.toJson(),
       );
-      
+
       addNotification(notification);
     }
   }
