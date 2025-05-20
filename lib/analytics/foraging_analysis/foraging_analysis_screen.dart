@@ -135,12 +135,12 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
 
       if (widget.hiveId != null) {
         // Get data for specific hive
-        results = await BeeCountDatabase.instance.readBeeCountsByHiveId(
+        results = await BeeCountDatabase.instance.getBeeCountsForHive(
           widget.hiveId!,
         );
       } else {
         // Get all data
-        results = await BeeCountDatabase.instance.readAllBeeCounts();
+        results = await BeeCountDatabase.instance.getAllBeeCounts();
       }
 
       if (results.isEmpty) {
@@ -182,12 +182,12 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
 
       if (widget.hiveId != null) {
         // Get data for specific hive
-        results = await BeeCountDatabase.instance.readBeeCountsByHiveId(
+        results = await BeeCountDatabase.instance.getBeeCountsForHive(
           widget.hiveId!,
         );
       } else {
         // Get all data
-        results = await BeeCountDatabase.instance.readAllBeeCounts();
+        results = await BeeCountDatabase.instance.getAllBeeCounts();
       }
 
       // Filter by date range
@@ -449,11 +449,35 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
         !_analysisResults['hasData']) {
       return _buildNoDataView();
     }
-
-    final recommendations =
-        _analysisResults['recommendations'] as List<Map<String, dynamic>>;
-    final environmentalFactors = _analysisResults['environmentalFactors'];
-
+  
+    // Fix the type casting issue
+    List<Map<String, dynamic>> recommendations = [];
+    
+    // Check if recommendations exists and handle different possible types
+    if (_analysisResults.containsKey('recommendations')) {
+      var rawRecommendations = _analysisResults['recommendations'];
+      
+      if (rawRecommendations is List) {
+        // If it's already a list, convert each item to Map<String, dynamic>
+        recommendations = List<Map<String, dynamic>>.from(
+          rawRecommendations.map((item) => 
+            item is Map<String, dynamic> ? item : <String, dynamic>{}
+          )
+        );
+      } else if (rawRecommendations is Map) {
+        // If it's a map, convert it to a list with a single item
+        recommendations = [Map<String, dynamic>.from(rawRecommendations)];
+      }
+    }
+  
+    final environmentalFactors = _analysisResults.containsKey('environmentalFactors') 
+        ? _analysisResults['environmentalFactors'] 
+        : <String, dynamic>{};
+  
+    // Add this at the beginning of _buildRecommendationsTab()#
+    print("Recommendations data: ${_analysisResults['recommendations']}");
+    print("Environmental factors: ${_analysisResults['environmentalFactors']}");
+  
     return SingleChildScrollView(
       padding: EdgeInsets.all(16),
       child: Column(
@@ -461,16 +485,30 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
         children: [
           _buildSectionHeader('Recommendations'),
           SizedBox(height: 16),
-          _buildRecommendationsCard(recommendations),
-          SizedBox(height: 24), // Increased spacing
+          recommendations.isNotEmpty 
+              ? _buildRecommendationsCard(recommendations)
+              : Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        'No recommendations available for this time period.',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      ),
+                    ),
+                  ),
+                ),
+          SizedBox(height: 24),
           _buildSectionHeader('Environmental Insights'),
           SizedBox(height: 16),
           _buildEnvironmentalInsightsCard(environmentalFactors),
-          SizedBox(height: 24), // Increased spacing
+          SizedBox(height: 24),
           _buildSectionHeader('Optimal Foraging Conditions'),
           SizedBox(height: 16),
           _buildOptimalConditionsCard(environmentalFactors),
-          SizedBox(height: 32), // Extra bottom padding
+          SizedBox(height: 32),
         ],
       ),
     );
@@ -1514,9 +1552,54 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
   }
 
   Widget _buildEfficiencyCard(Map<String, dynamic> efficiency) {
-    final efficiencyScore = efficiency['efficiencyScore'];
-    final benchmarkComparison = efficiency['benchmarkComparison'];
-
+    if (efficiency == null) {
+       return SizedBox(); 
+     }
+   
+     // Check if the required keys exist
+     final efficiencyScore = efficiency.containsKey('efficiencyScore') ? efficiency['efficiencyScore'] : 0.0;
+     final benchmarkComparison = efficiency.containsKey('benchmarkComparison') ? efficiency['benchmarkComparison'] : {};
+   
+     // Check if benchmarkComparison contains the required keys
+     if (!benchmarkComparison.containsKey('efficiencyScore') ||
+         !benchmarkComparison.containsKey('returnRate') ||
+         !benchmarkComparison.containsKey('foragingDuration') ||
+         !benchmarkComparison.containsKey('entryExitImbalance')) {
+       return Card(
+         elevation: 4,
+         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+         child: Padding(
+           padding: EdgeInsets.all(20),
+           child: Column(
+             crossAxisAlignment: CrossAxisAlignment.start,
+             children: [
+               Text(
+                 'Foraging Efficiency',
+                 style: TextStyle(
+                   fontSize: 18, 
+                   fontWeight: FontWeight.bold,
+                   color: _textColor,
+                 ),
+               ),
+               SizedBox(height: 20),
+               Center(
+                 child: Padding(
+                   padding: const EdgeInsets.all(16.0),
+                   child: Text(
+                     'Insufficient data to calculate efficiency metrics',
+                     style: TextStyle(
+                       fontSize: 14,
+                       color: Colors.grey[600],
+                       fontStyle: FontStyle.italic,
+                     ),
+                   ),
+                 ),
+               ),
+             ],
+           ),
+         ),
+       );
+     }
     Color efficiencyColor;
     if (efficiencyScore >= 80) {
       efficiencyColor = Colors.green;
@@ -2029,10 +2112,7 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
                         SizedBox(height: 4),
                         Text(
                           entry.value,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                          ),
+                          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                         ),
                       ],
                     ),
@@ -2093,8 +2173,7 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
 
     // Filter to daylight hours (5 AM to 9 PM)
     sortedActivity =
-        sortedActivity
-            .where((entry) => entry.key >= 5 && entry.key <= 21)
+        sortedActivity.where((entry) => entry.key >= 5 && entry.key <= 21)
             .toList();
 
     // Prepare data for the chart
@@ -2274,11 +2353,21 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
   }
 
   Widget _buildForagingPatternsCard(Map<String, dynamic> patterns) {
+    // Add null checks for all values
+    final primaryForagingPeriod = patterns['primaryForagingPeriod']?.toString() ?? 'Unknown';
+    final morningActivityPercentage = patterns['morningActivityPercentage'] ?? 0.0;
+    final afternoonActivityPercentage = patterns['afternoonActivityPercentage'] ?? 0.0;
+    final patternConsistency = patterns['patternConsistency'] ?? 0.0;
+    final suspectedWeatherDependency = patterns['suspectedWeatherDependency'] ?? false;
+    final hasBimodalPattern = patterns['hasBimodalPattern'] ?? false;
+    final possibleSwarmingBehavior = patterns['possibleSwarmingBehavior'] ?? false;
+    final peakActivityHours = patterns['peakActivityHours'] ?? [];
+  
     return Card(
-      elevation: 4, // Increased elevation
+      elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: EdgeInsets.all(20), // Increased padding
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2290,7 +2379,7 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
                 color: _textColor,
               ),
             ),
-            SizedBox(height: 20), // Increased spacing
+            SizedBox(height: 20),
             Container(
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -2301,79 +2390,74 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
                 children: [
                   _buildPatternItem(
                     'Primary Foraging Period',
-                    patterns['primaryForagingPeriod'],
+                    primaryForagingPeriod,
                     Icons.wb_twilight,
                     Colors.amber,
                   ),
-                  Divider(height: 24), // Increased divider spacing
+                  Divider(height: 24),
                   Row(
                     children: [
                       Expanded(
                         child: _buildPercentageItem(
                           'Morning Activity',
-                          patterns['morningActivityPercentage'],
+                          morningActivityPercentage,
                           Colors.amber[300]!,
                         ),
                       ),
                       Expanded(
                         child: _buildPercentageItem(
                           'Afternoon Activity',
-                          patterns['afternoonActivityPercentage'],
+                          afternoonActivityPercentage,
                           Colors.amber[700]!,
                         ),
                       ),
                     ],
                   ),
-                  Divider(height: 24), // Increased divider spacing
+                  Divider(height: 24),
                   _buildPatternItem(
                     'Pattern Consistency',
-                    '${patterns['patternConsistency'].toStringAsFixed(1)}%',
+                    '${patternConsistency.toStringAsFixed(1)}%',
                     Icons.repeat,
-                    _getConsistencyColor(patterns['patternConsistency']),
-                    subtitle: _getConsistencyLabel(patterns['patternConsistency']),
+                    _getConsistencyColor(patternConsistency),
+                    subtitle: _getConsistencyLabel(patternConsistency),
                   ),
-                  Divider(height: 24), // Increased divider spacing
+                  Divider(height: 24),
                   _buildPatternItem(
                     'Weather Dependency',
-                    patterns['suspectedWeatherDependency'] ? 'High' : 'Low',
+                    suspectedWeatherDependency ? 'High' : 'Low',
                     Icons.wb_cloudy,
-                    patterns['suspectedWeatherDependency']
-                        ? Colors.orange
-                        : Colors.green,
+                    suspectedWeatherDependency ? Colors.orange : Colors.green,
                   ),
-                  Divider(height: 24), // Increased divider spacing
+                  Divider(height: 24),
                   _buildPatternItem(
                     'Bimodal Pattern',
-                    patterns['hasBimodalPattern'] ? 'Present' : 'Not Present',
+                    hasBimodalPattern ? 'Present' : 'Not Present',
                     Icons.show_chart,
-                    patterns['hasBimodalPattern'] ? Colors.blue : Colors.grey,
-                    subtitle:
-                        patterns['hasBimodalPattern']
-                            ? 'Two distinct activity peaks'
-                            : 'Single activity peak pattern',
+                    hasBimodalPattern ? Colors.blue : Colors.grey,
+                    subtitle: hasBimodalPattern
+                        ? 'Two distinct activity peaks'
+                        : 'Single activity peak pattern',
                   ),
-                  if (patterns['hasBimodalPattern'] &&
-                      patterns['peakActivityHours'] != null &&
-                      patterns['peakActivityHours'].isNotEmpty)
+                  if (hasBimodalPattern && peakActivityHours is List && peakActivityHours.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(left: 32.0, top: 8.0),
                       child: Text(
-                        'Peak hours: ${patterns['peakActivityHours'].map((hour) => hour < 12 ? '$hour AM' : (hour == 12 ? '12 PM' : '${hour - 12} PM')).join(', ')}',
+                        'Peak hours: ${peakActivityHours.map((hour) {
+                          final h = hour is int ? hour : 0;
+                          return h < 12 ? '$h AM' : (h == 12 ? '12 PM' : '${h - 12} PM');
+                        }).join(', ')}',
                         style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ),
-                  Divider(height: 24), // Increased divider spacing
+                  Divider(height: 24),
                   _buildPatternItem(
                     'Swarming Behavior',
-                    patterns['possibleSwarmingBehavior']
-                        ? 'Possible'
-                        : 'Not Detected',
+                    possibleSwarmingBehavior ? 'Possible' : 'Not Detected',
                     Icons.warning_amber,
-                    patterns['possibleSwarmingBehavior'] ? Colors.red : Colors.green,
-                    subtitle:
-                        patterns['possibleSwarmingBehavior']
-                            ? 'Unusual outbound activity detected'
-                            : 'Normal outbound/inbound ratio',
+                    possibleSwarmingBehavior ? Colors.red : Colors.green,
+                    subtitle: possibleSwarmingBehavior
+                        ? 'Unusual outbound activity detected'
+                        : 'Normal outbound/inbound ratio',
                   ),
                 ],
               ),
@@ -2386,11 +2470,14 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
 
   Widget _buildPatternItem(
     String label,
-    String value,
+    String? value,  // Change to accept nullable String
     IconData icon,
     Color color, {
     String? subtitle,
   }) {
+    // Provide a default value if null
+    final displayValue = value ?? 'N/A';
+    
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -2420,7 +2507,7 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
-              value,
+              displayValue,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -2469,7 +2556,7 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
               color: color,
               fontWeight: FontWeight.bold,
             ),
-          ),
+                   ),
         ],
       ),
     );
@@ -2996,11 +3083,27 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
   }
 
   Widget _buildRecommendationsCard(List<Map<String, dynamic>> recommendations) {
+    if (recommendations.isEmpty) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(
+            child: Text(
+              'No recommendations available for this time period.',
+              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+            ),
+          ),
+        ),
+      );
+    }
+  
     return Card(
-      elevation: 4, // Increased elevation
+      elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: EdgeInsets.all(20), // Increased padding
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -3012,10 +3115,17 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
                 color: _textColor,
               ),
             ),
-            SizedBox(height: 20), // Increased spacing
+            SizedBox(height: 20),
             ...recommendations.map((recommendation) {
+              // Add null checks for all string values
+              final priority = recommendation['priority']?.toString() ?? 'Medium';
+              final category = recommendation['category']?.toString() ?? 'General';
+              final title = recommendation['recommendation']?.toString() ?? 'No title';
+              final details = recommendation['details']?.toString() ?? 'No details available';
+              final actionItems = recommendation['actionItems'] ?? <dynamic>[];
+              
               Color priorityColor;
-              switch (recommendation['priority']) {
+              switch (priority) {
                 case 'High':
                   priorityColor = Colors.red;
                   break;
@@ -3025,9 +3135,9 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
                 default:
                   priorityColor = Colors.green;
               }
-
+  
               return Container(
-                margin: EdgeInsets.only(bottom: 20), // Increased spacing between recommendations
+                margin: EdgeInsets.only(bottom: 20),
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.grey[50],
@@ -3049,7 +3159,7 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            recommendation['priority'],
+                            priority,
                             style: TextStyle(
                               fontSize: 12,
                               color: priorityColor,
@@ -3068,7 +3178,7 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            recommendation['category'],
+                            category,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.blue,
@@ -3078,9 +3188,9 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
                         ),
                       ],
                     ),
-                    SizedBox(height: 12), // Increased spacing
+                    SizedBox(height: 12),
                     Text(
-                      recommendation['recommendation'],
+                      title,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -3088,41 +3198,40 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
                     ),
                     SizedBox(height: 8),
                     Text(
-                      recommendation['details'],
+                      details,
                       style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                     ),
-                    SizedBox(height: 12), // Increased spacing
-                    ...((recommendation['actionItems'] as List<dynamic>).map((
-                      action,
-                    ) {
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16.0,
-                          top: 4.0,
-                          bottom: 4.0,
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.arrow_right,
-                              size: 16,
-                              color: Colors.grey[700],
-                            ),
-                            SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                action,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[700],
+                    SizedBox(height: 12),
+                    if (actionItems is List && actionItems.isNotEmpty)
+                      ...actionItems.map((action) {
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                            left: 16.0,
+                            top: 4.0,
+                            bottom: 4.0,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.arrow_right,
+                                size: 16,
+                                color: Colors.grey[700],
+                              ),
+                              SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  action?.toString() ?? '',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[700],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList()),
+                            ],
+                          ),
+                        );
+                      }).toList(),
                   ],
                 ),
               );
@@ -3217,9 +3326,7 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
     );
   }
 
-// Add the missing _buildEnvironmentalInsightsCard method after the _buildOptimalConditionsCard method
-
-Widget _buildEnvironmentalInsightsCard(
+  Widget _buildEnvironmentalInsightsCard(
   Map<String, dynamic> environmentalFactors,
 ) {
   if (!environmentalFactors.containsKey('environmentalInsights') ||
@@ -3275,17 +3382,14 @@ Widget _buildEnvironmentalInsightsCard(
                             Text(
                               _formatWeatherFactor(entry.key),
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             SizedBox(height: 4),
                             Text(
                               entry.value,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[700],
-                              ),
+                              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                             ),
                           ],
                         ),
@@ -3300,7 +3404,7 @@ Widget _buildEnvironmentalInsightsCard(
       ),
     ),
   );
-}
+  }
 
   Widget _buildOptimalRangeIndicator(Map<String, dynamic> conditions) {
     double min = conditions.containsKey('min') ? conditions['min'] : 0;

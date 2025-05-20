@@ -61,10 +61,10 @@ class ForagingAnalysisEngine {
 
       if (hiveId != null) {
         // Get data for specific hive
-        results = await BeeCountDatabase.instance.readBeeCountsByHiveId(hiveId);
+        results = await BeeCountDatabase.instance.getBeeCountsForHive(hiveId);
       } else {
         // Get all data
-        results = await BeeCountDatabase.instance.readAllBeeCounts();
+        results = await BeeCountDatabase.instance.getAllBeeCounts();
       }
 
       // Filter by date range if provided

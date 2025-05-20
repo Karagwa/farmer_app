@@ -6,8 +6,6 @@ import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_engine.dart';
 import 'package:HPGM/Services/bee_analysis_service.dart';
 import 'dart:async';
 class BeeAdvisoryEngine {
-  BeeAdvisoryDatabase get database => BeeAdvisoryDatabase.instance;
-    
   // Singleton instance
   static final BeeAdvisoryEngine instance = BeeAdvisoryEngine._init();
 
@@ -1550,7 +1548,7 @@ class BeeAdvisoryEngine {
       final nextSeason = _getNextSeason(currentSeason);
 
       // Get hive location data (if available)
-      final hiveData = await BeeAnalysisService.instance.getHiveData(hiveId);
+      final hiveData = await BeeAdvisoryDatabase.instance.getHiveData(hiveId);
       String userHemisphere =
           hemisphere ??
           (hiveData != null && hiveData.containsKey('hemisphere')
@@ -1893,7 +1891,7 @@ class BeeAdvisoryEngine {
     return false;
   }
 
-  // Add th
+  // Add these methods to the BeeAdvisoryEngine class
 
   // Generate predictive recommendations
   Future<List<Map<String, dynamic>>> generatePredictiveRecommendations(
@@ -1991,7 +1989,7 @@ class BeeAdvisoryEngine {
     final nextSeason = _getNextSeason(currentSeason);
 
     // Get hive location data (if available)
-    final hiveData = await BeeAnalysisService.instance.getHiveData(hiveId);
+    final hiveData = await BeeAdvisoryDatabase.instance.getHiveData(hiveId);
     String hemisphere =
         hiveData != null && hiveData.containsKey('hemisphere')
             ? hiveData['hemisphere']
@@ -3182,44 +3180,6 @@ class BeeAdvisoryEngine {
 
   // Add this method to the BeeAdvisoryService class
 
-  Future<Map<String, dynamic>?> getHiveData(String hiveId) async {
-    final db = await instance.database;
-    
-    try {
-      // First check if we have custom hive data in our database
-      final List<Map<String, dynamic>> maps = await db.query(
-        'custom_hive_data',
-        where: 'hive_id = ?',
-        whereArgs: [hiveId],
-      );
-      
-      if (maps.isNotEmpty) {
-        return maps.first;
-      }
-      
-      // If we don't have custom data, try to get data from the main hives table
-      final List<Map<String, dynamic>> hiveMaps = await db.query(
-        'hives',
-        where: 'id = ?',
-        whereArgs: [hiveId],
-      );
-      
-      if (hiveMaps.isNotEmpty) {
-        // Default hemisphere to northern if not specified
-        Map<String, dynamic> result = hiveMaps.first;
-        if (!result.containsKey('hemisphere')) {
-          result['hemisphere'] = 'northern';
-        }
-        return result;
-      }
-      
-      // Return null if no data found
-      return null;
-    } catch (e) {
-      print('Error getting hive data: $e');
-      return null;
-    }
-  }
   
   // Helper method to get the most influential weather factor
   String _getMostInfluentialWeatherFactor(
@@ -3231,7 +3191,7 @@ class BeeAdvisoryEngine {
 
     Map<String, dynamic> weatherData = environmentalFactors['weatherData'];
     double highestCorrelation = 0;
-    String mostInfluential = 'temperature'; // Default
+    String mostInfluential = 'temperature';
 
     // Check all weather factors for their correlation with bee activity
     List<String> factors = [

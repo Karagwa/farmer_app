@@ -9,9 +9,6 @@ import 'package:HPGM/bee_advisory/bee_advisory_visualizations.dart';
 import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_engine.dart';
 // import 'package:HPGM/Services/bee_analysis_service.dart';
 
-
-
-
 class BeeAdvisoryScreen extends StatefulWidget {
   final String? hiveId;
 
@@ -1138,12 +1135,187 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
   }
 
   void _viewRecommendationDetails(Map<String, dynamic> recommendation) {
-    // Implement the logic to view recommendation details
-    // This could open a detailed view or dialog
+    // Show a dialog with detailed information about the recommendation
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(recommendation['issue_identified']),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Display severity with appropriate styling
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getPriorityColor(recommendation['severity'] ?? recommendation['priority']),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'Severity: ${recommendation['severity'] ?? recommendation['priority']}',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                
+                // Description section
+                Text(
+                  'Issue Details:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text(recommendation['description'] ?? recommendation['issue_identified']),
+                SizedBox(height: 16),
+                
+                // Management actions section
+                Text(
+                  'Management Actions:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text(recommendation['management_actions'] ?? recommendation['recommended_action']),
+                SizedBox(height: 16),
+                
+                // Expected outcome section
+                if (recommendation.containsKey('expected_outcome'))
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Expected Outcome:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      SizedBox(height: 8),
+                      Text(recommendation['expected_outcome']),
+                      SizedBox(height: 16),
+                    ],
+                  ),
+                
+                // Historical data if available
+                if (recommendation.containsKey('historicalComparison'))
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Historical Data:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        recommendation['historicalComparison']['isRecurring'] 
+                            ? 'This issue has occurred ${recommendation['historicalComparison']['occurrences']} times in the past.'
+                            : 'This is a new issue.',
+                      ),
+                      if (recommendation['historicalComparison']['isRecurring'])
+                        Text(
+                          'Last occurrence: ${recommendation['historicalComparison']['lastOccurrence'] ?? 'Unknown'}',
+                        ),
+                      SizedBox(height: 16),
+                    ],
+                  ),
+                
+                // Notes section if available
+                if (recommendation.containsKey('notes') && recommendation['notes'] != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Additional Notes:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      SizedBox(height: 8),
+                      Text(recommendation['notes']),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Close dialog and implement recommendation
+                Navigator.of(context).pop();
+                _implementRecommendation(recommendation);
+              },
+              child: Text('Implement'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF4CAF50),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
-
-  void _implementRecommendation(Map<String, dynamic> recommendation) {
-    // Implement the logic to mark a recommendation as implemented
-    // This could update a database or state
+  
+  void _implementRecommendation(Map<String, dynamic> recommendation) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                ),
+                SizedBox(width: 16),
+                Text("Updating recommendation status..."),
+              ],
+            ),
+          );
+        },
+      );
+  
+      // Update the recommendation in the database
+      await BeeAdvisoryDatabase.instance.updateRecommendationImplementation(
+        recommendation['id'],
+        true,
+      );
+      
+      // Close loading dialog
+      Navigator.of(context).pop();
+  
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recommendation implemented successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+  
+      // Refresh recommendations to update UI
+      await _loadRecommendations();
+      
+    } catch (e) {
+      // Close loading dialog if it's open
+      Navigator.of(context).pop();
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error implementing recommendation: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      print('Error implementing recommendation: $e');
+    }
   }
 }

@@ -165,7 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 MaterialPageRoute(
                                   builder:
                                       (context) =>
-                                          BeeVideoAnalysisScreen(hiveId: '1'),
+                                          BeeMonitoringScreen(hiveId: '1'),
                                 ),
                               );
                             },
