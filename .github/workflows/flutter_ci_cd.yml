@@ -51,36 +51,28 @@ jobs:
 
   build_android:
     name: Build Android APK
-    needs: analyze_and_test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.29.3"
           channel: "stable"
           cache: true
-
-      - name: Check Flutter setup
-        run: flutter doctor -v
-
-      - name: Install dependencies
-        run: flutter pub get
+      - run: flutter doctor -v
+      - run: flutter pub get
 
       - name: Configure Keystore
+        if: github.ref == 'refs/heads/main'
         run: |
           echo "${{ secrets.KEY_PROPERTIES }}" > android/key.properties
           echo "${{ secrets.KEYSTORE_JKS_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-        if: github.ref == 'refs/heads/main'
 
       - name: Build APK
         run: flutter build apk --release
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
