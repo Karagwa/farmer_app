@@ -5,8 +5,10 @@ import 'package:HPGM/hive_model.dart';
 import 'package:HPGM/notifications/notification_service.dart';
 import 'package:HPGM/notifications/hive_data_service.dart';
 import 'package:HPGM/notifications/weather_data_service.dart';
+import 'package:HPGM/notifications/weather_model.dart';
 import 'package:HPGM/notifications/notification_card.dart';
 import 'package:HPGM/notifications/hive_status_card.dart';
+import 'package:HPGM/Services/weather_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
@@ -46,15 +48,15 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   Future<void> _initializeServices() async {
     try {
       // Initialize notification service
-      await _notificationService.init();
+      await _notificationService.initialize();
 
       // Subscribe to notifications
-      _notificationSubscription =
-          _notificationService.notificationsStream.listen((notifications) {
-        setState(() {
-          _notifications = notifications;
-        });
-      });
+      _notificationSubscription = _notificationService.notificationsStream
+          .listen((notifications) {
+            setState(() {
+              _notifications = notifications;
+            });
+          });
 
       // Subscribe to hive data
       _hiveSubscription = _hiveDataService.hiveStream.listen((hive) {
@@ -72,7 +74,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
       // Start monitoring hive data
       _hiveDataService.startMonitoring(
-          refreshInterval: const Duration(minutes: 1));
+        refreshInterval: const Duration(minutes: 1),
+      );
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to initialize: $e';
@@ -87,8 +90,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       final latitude = double.tryParse(hive.latitude) ?? 0.0;
       final longitude = double.tryParse(hive.longitude) ?? 0.0;
 
-      final weatherData =
-          await _weatherService.getWeatherData(latitude, longitude);
+      final weatherData = await _weatherService.getWeatherData(
+        latitude,
+        longitude,
+      );
       setState(() {
         _weatherData = weatherData;
       });
@@ -104,7 +109,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     return _notifications.where((notification) {
       bool typeMatch =
           _selectedType == null || notification.type == _selectedType;
-      bool severityMatch = _selectedSeverity == null ||
+      bool severityMatch =
+          _selectedSeverity == null ||
           notification.severity == _selectedSeverity;
       return typeMatch && severityMatch;
     }).toList();
@@ -128,10 +134,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         backgroundColor: Colors.amber[700],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Notifications'),
-            Tab(text: 'Hive Status'),
-          ],
+          tabs: const [Tab(text: 'Notifications'), Tab(text: 'Hive Status')],
           indicatorColor: Colors.white,
         ),
         actions: [
@@ -148,36 +151,40 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             },
           ),
           PopupMenuButton<void>(
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                child: const Text('Mark all as read'),
-                onTap: () {
-                  _notificationService.markAllAsRead();
-                },
-              ),
-              PopupMenuItem(
-                child: const Text('Clear all notifications'),
-                onTap: () {
-                  _notificationService.clearNotifications();
-                },
-              ),
-            ],
+            itemBuilder:
+                (context) => [
+                  PopupMenuItem(
+                    child: const Text('Mark all as read'),
+                    onTap: () {
+                      _notificationService.markAllAsRead();
+                    },
+                  ),
+                  PopupMenuItem(
+                    child: const Text('Clear all notifications'),
+                    onTap: () {
+                      _notificationService.clearNotifications();
+                    },
+                  ),
+                ],
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.amber))
-          : _errorMessage != null
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(color: Colors.amber),
+              )
+              : _errorMessage != null
               ? Center(
-                  child: Text(_errorMessage!,
-                      style: const TextStyle(color: Colors.red)))
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildNotificationsTab(),
-                    _buildHiveStatusTab(),
-                  ],
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.red),
                 ),
+              )
+              : TabBarView(
+                controller: _tabController,
+                children: [_buildNotificationsTab(), _buildHiveStatusTab()],
+              ),
     );
   }
 
@@ -186,38 +193,45 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       children: [
         _buildFilterBar(),
         Expanded(
-          child: _filteredNotifications.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.notifications_none,
-                          size: 64, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No notifications',
-                        style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () async {
-                    await _hiveDataService.fetchHiveData(1);
-                  },
-                  child: ListView.builder(
-                    itemCount: _filteredNotifications.length,
-                    itemBuilder: (context, index) {
-                      final notification = _filteredNotifications[index];
-                      return NotificationCard(
-                        notification: notification,
-                        onTap: () {
-                          _notificationService.markAsRead(notification.id);
-                        },
-                      );
+          child:
+              _filteredNotifications.isEmpty
+                  ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_none,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No notifications',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                  : RefreshIndicator(
+                    onRefresh: () async {
+                      await _hiveDataService.fetchHiveData(1);
                     },
+                    child: ListView.builder(
+                      itemCount: _filteredNotifications.length,
+                      itemBuilder: (context, index) {
+                        final notification = _filteredNotifications[index];
+                        return NotificationCard(
+                          notification: notification,
+                          onTap: () {
+                            _notificationService.markAsRead(notification.id);
+                          },
+                        );
+                      },
+                    ),
                   ),
-                ),
         ),
       ],
     );
@@ -237,7 +251,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 children: [
                   _buildTypeFilterChip(null, 'All Types'),
                   _buildTypeFilterChip(
-                      NotificationType.temperature, 'Temperature'),
+                    NotificationType.temperature,
+                    'Temperature',
+                  ),
                   _buildTypeFilterChip(NotificationType.humidity, 'Humidity'),
                   _buildTypeFilterChip(NotificationType.weight, 'Weight'),
                   _buildTypeFilterChip(NotificationType.weather, 'Weather'),
@@ -246,7 +262,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   _buildSeverityFilterChip(null, 'All Severities'),
                   _buildSeverityFilterChip(NotificationSeverity.high, 'High'),
                   _buildSeverityFilterChip(
-                      NotificationSeverity.medium, 'Medium'),
+                    NotificationSeverity.medium,
+                    'Medium',
+                  ),
                   _buildSeverityFilterChip(NotificationSeverity.low, 'Low'),
                 ],
               ),
@@ -275,7 +293,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   Widget _buildSeverityFilterChip(
-      NotificationSeverity? severity, String label) {
+    NotificationSeverity? severity,
+    String label,
+  ) {
     Color? chipColor;
     if (severity != null) {
       switch (severity) {
@@ -395,13 +415,18 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     _buildThresholdLabel(
-                        'Warning', Colors.orange, warningRange),
+                      'Warning',
+                      Colors.orange,
+                      warningRange,
+                    ),
                     const SizedBox(width: 16),
                     _buildThresholdLabel('Critical', Colors.red, criticalRange),
                   ],
@@ -420,14 +445,13 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
-        Text('$label: $value',
-            style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        Text(
+          '$label: $value',
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
       ],
     );
   }

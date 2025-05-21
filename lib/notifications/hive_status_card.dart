@@ -2,23 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:HPGM/hive_model.dart';
 import 'package:HPGM/notifications/weather_data_service.dart';
+import 'package:HPGM/notifications/weather_model.dart';
 
 class HiveStatusCard extends StatelessWidget {
   final Hive hive;
   final WeatherData? weatherData;
 
-  const HiveStatusCard({
-    Key? key,
-    required this.hive,
-    this.weatherData,
-  }) : super(key: key);
+  const HiveStatusCard({Key? key, required this.hive, this.weatherData})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM d, yyyy h:mm a');
-    final lastUpdated = hive.lastUpdated != null
-        ? dateFormat.format(DateTime.parse(hive.lastUpdated!))
-        : 'Unknown';
+    final lastUpdated =
+        hive.lastUpdated != null
+            ? dateFormat.format(DateTime.parse(hive.lastUpdated!))
+            : 'Unknown';
 
     return Card(
       elevation: 4,
@@ -128,15 +127,12 @@ class HiveStatusCard extends StatelessWidget {
           '${hive.temperature?.toStringAsFixed(1) ?? 'N/A'}°C',
           Icons.thermostat,
           _getTemperatureColor(hive.temperature),
-          _getStatusText(
-            hive.temperature,
-            {
-              'min': 20.0,
-              'max': 35.0,
-              'critical_min': 15.0,
-              'critical_max': 40.0
-            },
-          ),
+          _getStatusText(hive.temperature, {
+            'min': 20.0,
+            'max': 35.0,
+            'critical_min': 15.0,
+            'critical_max': 40.0,
+          }),
         ),
         _buildStatusItem(
           context,
@@ -144,15 +140,12 @@ class HiveStatusCard extends StatelessWidget {
           '${hive.humidity?.toStringAsFixed(1) ?? 'N/A'}%',
           Icons.water_drop,
           _getHumidityColor(hive.humidity),
-          _getStatusText(
-            hive.humidity,
-            {
-              'min': 40.0,
-              'max': 80.0,
-              'critical_min': 30.0,
-              'critical_max': 90.0
-            },
-          ),
+          _getStatusText(hive.humidity, {
+            'min': 40.0,
+            'max': 80.0,
+            'critical_min': 30.0,
+            'critical_max': 90.0,
+          }),
         ),
         _buildStatusItem(
           context,
@@ -160,15 +153,12 @@ class HiveStatusCard extends StatelessWidget {
           '${hive.weight?.toStringAsFixed(2) ?? 'N/A'} kg',
           Icons.scale,
           _getWeightColor(hive.weight),
-          _getStatusText(
-            hive.weight,
-            {
-              'min': 10.0,
-              'max': 30.0,
-              'critical_min': 5.0,
-              'critical_max': 35.0
-            },
-          ),
+          _getStatusText(hive.weight, {
+            'min': 10.0,
+            'max': 30.0,
+            'critical_min': 5.0,
+            'critical_max': 35.0,
+          }),
         ),
         _buildStatusItem(
           context,
@@ -176,15 +166,12 @@ class HiveStatusCard extends StatelessWidget {
           '${hive.carbonDioxide ?? 'N/A'} ppm',
           Icons.co2,
           _getCO2Color(hive.carbonDioxide),
-          _getStatusText(
-            hive.carbonDioxide?.toDouble(),
-            {
-              'min': 400.0,
-              'max': 5000.0,
-              'critical_min': 300.0,
-              'critical_max': 8000.0
-            },
-          ),
+          _getStatusText(hive.carbonDioxide?.toDouble(), {
+            'min': 400.0,
+            'max': 5000.0,
+            'critical_min': 300.0,
+            'critical_max': 8000.0,
+          }),
         ),
       ],
     );
@@ -235,10 +222,7 @@ class HiveStatusCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const Spacer(),
           Container(
@@ -267,10 +251,7 @@ class HiveStatusCard extends StatelessWidget {
       children: [
         const Text(
           'Weather Conditions',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         Container(
