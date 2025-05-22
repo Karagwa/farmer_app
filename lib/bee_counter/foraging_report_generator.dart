@@ -9,11 +9,11 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:permission_handler/permission_handler.dart';
-// import 'package:HPGM/bee_counter/bee_dashboard_screen.dart';
-import 'package:HPGM/bee_counter/bee_counter_model.dart';
-import 'package:HPGM/bee_counter/bee_count_database.dart';
-import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_engine.dart';
-import 'package:HPGM/bee_counter/foraging_efficiency_metric.dart';
+// import 'package:farmer_app/bee_counter/bee_dashboard_screen.dart';
+import 'package:farmer_app/bee_counter/bee_counter_model.dart';
+import 'package:farmer_app/bee_counter/bee_count_database.dart';
+import 'package:farmer_app/analytics/foraging_analysis/foraging_analysis_engine.dart';
+import 'package:farmer_app/bee_counter/foraging_efficiency_metric.dart';
 
 /// Class to generate bee foraging analysis reports in PDF format
 class ForagingReportGenerator {
@@ -1200,3 +1200,4 @@ class ForagingReportGenerator {
     }
   }
 }
+

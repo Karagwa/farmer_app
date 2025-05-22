@@ -1,9 +1,9 @@
 // import 'dart:io';
 // import 'package:flutter/material.dart';
-// import 'package:HPGM/bee_counter/bee_counter_model.dart';
-// import 'package:HPGM/bee_counter/server_video_service.dart';
-// import 'package:HPGM/bee_counter/bee_counter_results_screen.dart';
-// import 'package:HPGM/Services/bee_analysis_service.dart';
+// import 'package:farmer_app/bee_counter/bee_counter_model.dart';
+// import 'package:farmer_app/bee_counter/server_video_service.dart';
+// import 'package:farmer_app/bee_counter/bee_counter_results_screen.dart';
+// import 'package:farmer_app/Services/bee_analysis_service.dart';
 // import 'package:video_player/video_player.dart';
 // import 'package:path_provider/path_provider.dart';
 // import 'package:http/http.dart' as http;
