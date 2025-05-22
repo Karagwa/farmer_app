@@ -2,6 +2,10 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        jcenter()
+        
+        // Add this repository
+        maven { url = uri("https://jitpack.io") }
     }
 }
 

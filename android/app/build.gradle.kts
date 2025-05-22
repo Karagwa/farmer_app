@@ -34,10 +34,15 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+    packagingOptions {
+        pickFirst("lib/x86/libc++_shared.so")
+        pickFirst("lib/x86_64/libc++_shared.so")
+        pickFirst("lib/armeabi-v7a/libc++_shared.so")
+        pickFirst("lib/arm64-v8a/libc++_shared.so")
     }
 }
 
@@ -48,4 +53,5 @@ flutter {
 dependencies{
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.2.2")
     implementation("androidx.multidex:multidex:2.0.1")
+
 }
