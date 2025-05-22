@@ -1,10 +1,10 @@
-import 'package:HPGM/mediamenu.dart';
+import 'package:farmer_app/mediamenu.dart';
 import 'package:flutter/material.dart';
-import 'package:HPGM/humidity.dart';
-import 'package:HPGM/media.dart';
-import 'package:HPGM/temperature.dart';
+import 'package:farmer_app/humidity.dart';
+import 'package:farmer_app/media.dart';
+import 'package:farmer_app/temperature.dart';
 import 'hive_humidity_monitoring.dart';
-import 'package:HPGM/weight.dart';
+import 'package:farmer_app/weight.dart';
 
 class TabView extends StatefulWidget {
   final int hiveId;
@@ -175,3 +175,4 @@ class _TabViewState extends State<TabView> {
     );
   }
 }
+
