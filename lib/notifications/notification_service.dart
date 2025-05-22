@@ -272,6 +272,7 @@ class NotificationService {
       orElse: () => HiveNotification(
         id: '',
         title: '',
+      
         message: '',
         timestamp: DateTime.now(),
         type: type,

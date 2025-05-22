@@ -85,8 +85,11 @@ dev_dependencies:
   permission_handler: ^11.0.0
   cross_file: ^0.3.3+4
   args: ^2.4.0 
+  ffmpeg_kit_flutter_new: ^1.6.0
   # workmanager: ^0.5.2
   # path_provider: ^2.1.0
+
+
    
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -95,10 +98,10 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
-  ffmpeg_kit_flutter:
-    git:
-      url: https://github.com/Carapacik/ffmpeg-kit
-      path: flutter/flutter
+  # ffmpeg_kit_flutter:
+  #   git:
+  #     url: https://github.com/Carapacik/ffmpeg-kit
+  #     path: flutter/flutter
   
   # flutter_launcher_icons:
   #   android: "launcher_icon"
