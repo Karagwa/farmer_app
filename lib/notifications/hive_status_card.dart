@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:HPGM/hive_model.dart';
-import 'package:HPGM/notifications/weather_data_service.dart';
+import 'package:farmer_app/hive_model.dart';
+import 'package:farmer_app/notifications/weather_data_service.dart';
 
 class HiveStatusCard extends StatelessWidget {
   final Hive hive;

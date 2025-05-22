@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:HPGM/notifications/notification_model.dart';
-import 'package:HPGM/hive_model.dart';
-import 'package:HPGM/notifications/notification_service.dart';
-import 'package:HPGM/notifications/hive_data_service.dart';
-import 'package:HPGM/notifications/weather_data_service.dart';
-import 'package:HPGM/notifications/notification_card.dart';
-import 'package:HPGM/notifications/hive_status_card.dart';
+import 'package:farmer_app/notifications/notification_model.dart';
+import 'package:farmer_app/hive_model.dart';
+import 'package:farmer_app/notifications/notification_service.dart';
+import 'package:farmer_app/notifications/hive_data_service.dart';
+import 'package:farmer_app/notifications/weather_data_service.dart';
+import 'package:farmer_app/notifications/notification_card.dart';
+import 'package:farmer_app/notifications/hive_status_card.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
