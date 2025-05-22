@@ -6,9 +6,9 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:HPGM/Services/bee_analysis_service.dart';
-import 'package:HPGM/bee_counter/server_video_service.dart';
-import 'package:HPGM/utilities/video_processor.dart';
+import 'package:farmer_app/Services/bee_analysis_service.dart';
+import 'package:farmer_app/bee_counter/server_video_service.dart';
+import 'package:farmer_app/utilities/video_processor.dart';
 
 // The port name used for communication with the background service
 const String PORT_NAME = 'bee_monitoring_port';
@@ -49,15 +49,11 @@ class BeeMonitoringService {
     // Create the channel before using it
     await FlutterLocalNotificationsPlugin()
         .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
-
     await service.configure(
       androidConfiguration: AndroidConfiguration(
-        // Remove the foregroundServiceType parameter if it's not supported
-        // If it is supported in your newer version, use it like this:
-        // foregroundServiceType: AndroidServiceForegroundType.dataSync,
+        // We'll rely on the foreground service type defined in AndroidManifest.xml
         onStart: _onStart,
         autoStart: false,
         isForegroundMode: true,
@@ -85,8 +81,7 @@ class BeeMonitoringService {
 
     await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
   }
 
@@ -169,11 +164,7 @@ class BeeMonitoringService {
           content: 'Checking for new videos...',
         );
       }
-
       final prefs = await SharedPreferences.getInstance();
-      final lastCheckTime = DateTime.fromMillisecondsSinceEpoch(
-        prefs.getInt('last_check_time') ?? 0,
-      );
 
       service.invoke('update', {
         'status': 'Checking for new videos',
@@ -200,10 +191,9 @@ class BeeMonitoringService {
       int successfulCount = result['successful'] as int;
 
       service.invoke('update', {
-        'status':
-            processedCount > 0
-                ? 'Processing complete: $successfulCount videos processed successfully'
-                : 'No new videos to process',
+        'status': processedCount > 0
+            ? 'Processing complete: $successfulCount videos processed successfully'
+            : 'No new videos to process',
         'timestamp': DateTime.now().toIso8601String(),
         'result': {
           'totalVideos': result['totalVideos'],
@@ -230,7 +220,7 @@ class BeeMonitoringService {
               channelDescription: 'Notifications for bee monitoring',
               importance: Importance.high,
               priority: Priority.high,
-              icon: '@drawable/app_icon',
+              icon: '@mipmap/ic_launcher',
             ),
           ),
         );

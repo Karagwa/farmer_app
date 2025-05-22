@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:HPGM/bee_counter/bee_counter_model.dart';
-import 'package:HPGM/bee_counter/bee_count_database.dart';
-import 'package:HPGM/bee_counter/bee_monitoring_background_service.dart';
-import 'package:HPGM/bee_counter/server_video_service.dart';
+import 'package:farmer_app/bee_counter/bee_counter_model.dart';
+import 'package:farmer_app/bee_counter/bee_count_database.dart';
+import 'package:farmer_app/bee_counter/bee_monitoring_background_service.dart';
+import 'package:farmer_app/bee_counter/server_video_service.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:HPGM/bee_counter/process_videos_widget.dart';
+import 'package:farmer_app/bee_counter/process_videos_widget.dart';
 
 class BeeMonitoringScreen extends StatefulWidget {
   final String hiveId;
