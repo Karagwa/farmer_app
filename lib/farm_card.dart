@@ -1,5 +1,5 @@
-// import 'package:HPGM/components/custom_progress_bar.dart';
-import 'package:HPGM/components/pop_up.dart';
+// import 'package:farmer_app/components/custom_progress_bar.dart';
+import 'package:farmer_app/components/pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
 import 'farm_model.dart';
@@ -58,15 +58,13 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                       value: farm.average_temperature ?? 0,
                       maxValue: 50,
                       unit: '°C',
-                      onTap:
-                          () => showModalBottomSheet(
-                            context: context,
-                            builder:
-                                (context) => buildTempSheet(
-                                  "Temperature Details",
-                                  farm.average_temperature ?? 0,
-                                ),
-                          ),
+                      onTap: () => showModalBottomSheet(
+                        context: context,
+                        builder: (context) => buildTempSheet(
+                          "Temperature Details",
+                          farm.average_temperature ?? 0,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -77,15 +75,13 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                       value: farm.honeypercent ?? 0,
                       maxValue: 100,
                       unit: '%',
-                      onTap:
-                          () => showModalBottomSheet(
-                            context: context,
-                            builder:
-                                (context) => buildHoneySheet(
-                                  "Honey Levels",
-                                  farm.honeypercent ?? 0,
-                                ),
-                          ),
+                      onTap: () => showModalBottomSheet(
+                        context: context,
+                        builder: (context) => buildHoneySheet(
+                          "Honey Levels",
+                          farm.honeypercent ?? 0,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -108,14 +104,12 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder:
-                            (context) => Hives(
-                              farmId: farm.id,
-                              token: token,
-                              apiaryLocation:
-                                  '${farm.district}, ${farm.address}',
-                              farmName: farm.name,
-                            ),
+                        builder: (context) => Hives(
+                          farmId: farm.id,
+                          token: token,
+                          apiaryLocation: '${farm.district}, ${farm.address}',
+                          farmName: farm.name,
+                        ),
                       ),
                     );
                   },
@@ -202,13 +196,16 @@ Widget _buildStatusIndicator({
             children: [
               Icon(icon, color: Colors.orange[700], size: 20),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                  fontFamily: "Sans",
+              Flexible(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                    fontFamily: "Sans",
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -217,13 +214,16 @@ Widget _buildStatusIndicator({
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${value.toStringAsFixed(1)}$unit',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  fontFamily: "Sans",
+              Flexible(
+                child: Text(
+                  '${value.toStringAsFixed(1)}$unit',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontFamily: "Sans",
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               SizedBox(

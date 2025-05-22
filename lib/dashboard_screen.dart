@@ -1,10 +1,10 @@
-import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_screen.dart';
-import 'package:HPGM/bee_counter/bee_monitoring_screen.dart';
-import 'package:HPGM/bee_counter/bee_video_analysis_screen.dart';
-import 'package:HPGM/notifications/notification_screen.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_screen.dart';
-import 'package:HPGM/navbar.dart';
-import 'package:HPGM/profile.dart';
+import 'package:farmer_app/analytics/foraging_analysis/foraging_analysis_screen.dart';
+import 'package:farmer_app/bee_counter/bee_monitoring_screen.dart';
+import 'package:farmer_app/bee_counter/bee_video_analysis_screen.dart';
+import 'package:farmer_app/notifications/notification_screen.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_screen.dart';
+import 'package:farmer_app/navbar.dart';
+import 'package:farmer_app/profile.dart';
 import 'package:flutter/material.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -394,3 +394,4 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
+
