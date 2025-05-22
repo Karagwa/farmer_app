@@ -1,6 +1,6 @@
-import 'package:HPGM/components/imageslider.dart';
-import 'package:HPGM/parameter_tab_view.dart';
-import 'package:HPGM/components/notificationbar.dart';
+import 'package:farmer_app/components/imageslider.dart';
+import 'package:farmer_app/parameter_tab_view.dart';
+import 'package:farmer_app/components/notificationbar.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
@@ -408,3 +408,4 @@ class _HiveDetailsState extends State<HiveDetails> {
     );
   }
 }
+
