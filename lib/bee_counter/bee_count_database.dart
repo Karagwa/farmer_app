@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:HPGM/bee_counter/bee_counter_model.dart';
+import 'package:farmer_app/bee_counter/bee_counter_model.dart';
 
 class BeeCountDatabase {
   static final BeeCountDatabase instance = BeeCountDatabase._init();

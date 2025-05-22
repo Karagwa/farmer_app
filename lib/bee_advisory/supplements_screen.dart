@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_database.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_database.dart';
 
 class SupplementsScreen extends StatefulWidget {
   const SupplementsScreen({Key? key}) : super(key: key);
@@ -416,3 +416,4 @@ class _SupplementsScreenState extends State<SupplementsScreen> {
     );
   }
 }
+
