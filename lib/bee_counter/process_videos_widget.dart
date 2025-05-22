@@ -3,10 +3,10 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:HPGM/bee_counter/bee_counter_model.dart';
-import 'package:HPGM/bee_counter/bee_count_database.dart';
-import 'package:HPGM/bee_counter/server_video_service.dart';
-import 'package:HPGM/Services/bee_analysis_service.dart';
+import 'package:farmer_app/bee_counter/bee_counter_model.dart';
+import 'package:farmer_app/bee_counter/bee_count_database.dart';
+import 'package:farmer_app/bee_counter/server_video_service.dart';
+import 'package:farmer_app/Services/bee_analysis_service.dart';
 
 class ProcessVideosWidget extends StatefulWidget {
   final String hiveId;

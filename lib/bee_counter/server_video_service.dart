@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:HPGM/bee_counter/bee_counter_model.dart';
-import 'package:HPGM/Services/bee_analysis_service.dart';
-import 'package:HPGM/bee_counter/bee_count_database.dart';
+import 'package:farmer_app/bee_counter/bee_counter_model.dart';
+import 'package:farmer_app/Services/bee_analysis_service.dart';
+import 'package:farmer_app/bee_counter/bee_count_database.dart';
+import 'package:farmer_app/bee_counter/bee_counter_integration.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -264,15 +265,19 @@ class ServerVideoService {
         // Return the existing count
         final existingCount = beeCounts.firstWhere(
           (count) => count.videoId == video.id,
-          orElse:
-              () => BeeCount(
-                hiveId: hiveId,
-                beesEntering: 0,
-                beesExiting: 0,
-                timestamp: DateTime.now(),
-              ),
+          orElse: () => BeeCount(
+            hiveId: hiveId,
+            beesEntering: 0,
+            beesExiting: 0,
+            timestamp: DateTime.now(),
+          ),
         );
-        return existingCount;
+
+        // If the existing count has actual bee counts, return it
+        if (existingCount.beesEntering > 0 || existingCount.beesExiting > 0) {
+          return existingCount;
+        }
+        // Otherwise, continue processing to get better counts
       }
 
       // Download the video
@@ -301,30 +306,28 @@ class ServerVideoService {
       // Use provided hiveId unless it's empty, then fall back to extracted one
       final finalHiveId = hiveId.isNotEmpty ? hiveId : extractedHiveId;
 
-      print('Using hive ID: $finalHiveId for video ID: ${video.id}');
-
-      // Analyze the video using the ML model
+      print(
+          'Using hive ID: $finalHiveId for video ID: ${video.id}'); // Use our improved bee counter fix for more reliable results
       try {
-        print('Starting video analysis for path: $videoPath');
-        final result = await _beeAnalysisService.analyzeVideo(
-          finalHiveId,
-          video.id,
-          videoPath,
-        );
+        print('Starting enhanced video analysis for path: $videoPath');
 
-        if (result != null) {
-          print('Analysis completed successfully: ${result.toString()}');
-          onStatusUpdate('Analysis complete');
+        // Import the fix dynamically to avoid circular dependencies
+        final beeCounterFix =
+            await import('package:farmer_app/bee_counter/bee_counter_fix.dart');
+        final countFix = beeCounterFix.BeeCounterFix.instance;
 
-          // Save the analysis timestamp in shared preferences
-          await _saveVideoProcessTime(video.id);
+        final result = await countFix.processVideo(
+            finalHiveId, video.id, videoPath, onStatusUpdate: (status) {
+          onStatusUpdate('Analysis: $status');
+        });
 
-          return result;
-        } else {
-          print('ERROR: BeeAnalysisService.analyzeVideo returned null');
-          onStatusUpdate('Analysis failed: ML model returned null result');
-          return null;
-        }
+        print('Enhanced analysis completed successfully: ${result.toString()}');
+        onStatusUpdate('Analysis complete');
+
+        // Save the analysis timestamp in shared preferences
+        await _saveVideoProcessTime(video.id);
+
+        return result;
       } catch (analysisError) {
         print('ERROR in analyzeVideo: $analysisError');
         onStatusUpdate('Analysis failed: $analysisError');
@@ -397,9 +400,8 @@ class ServerVideoService {
       final url = '$baseUrl/videos/$hiveId/interval/$interval';
       print('Fetching videos from: $url');
 
-      final response = await _client
-          .get(Uri.parse(url))
-          .timeout(Duration(seconds: 15));
+      final response =
+          await _client.get(Uri.parse(url)).timeout(Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         // Check if response body is null or empty
