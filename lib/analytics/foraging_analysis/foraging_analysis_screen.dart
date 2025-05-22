@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math' as math;
-import 'package:HPGM/bee_counter/bee_counter_model.dart';
-import 'package:HPGM/bee_counter/bee_count_database.dart';
-import 'package:HPGM/Services/weather_service.dart';
+import 'package:farmer_app/bee_counter/bee_counter_model.dart';
+import 'package:farmer_app/bee_counter/bee_count_database.dart';
+import 'package:farmer_app/Services/weather_service.dart';
 import 'foraging_analysis_engine.dart';
 
 class ForagingAnalysisScreen extends StatefulWidget {
@@ -3782,3 +3782,4 @@ class _ForagingAnalysisScreenState extends State<ForagingAnalysisScreen>
     );
   }
 }
+
