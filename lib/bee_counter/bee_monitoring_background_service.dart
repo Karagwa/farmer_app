@@ -148,7 +148,6 @@ class BeeMonitoringService {
       service.stopSelf();
     });
 
-    
     // Using periodic timer that runs every 30 minutes
     Timer.periodic(
       const Duration(minutes: 30),
@@ -170,18 +169,18 @@ class BeeMonitoringService {
           content: 'Checking for new videos...',
         );
       }
-  
+
       final prefs = await SharedPreferences.getInstance();
       final lastCheckTime = DateTime.fromMillisecondsSinceEpoch(
         prefs.getInt('last_check_time') ?? 0,
       );
-  
+
       service.invoke('update', {
         'status': 'Checking for new videos',
         'timestamp': DateTime.now().toIso8601String(),
       });
-  
-      // FIXED: Call the static method directly and await its result
+
+      // Create a new instance of VideoProcessor to avoid static method issues
       final result = await VideoProcessor.processVideos(
         hiveId: '1', // Default hive ID
         date: DateTime.now(), // Process today's videos
@@ -195,10 +194,16 @@ class BeeMonitoringService {
           });
         },
       );
-  
+
       // Update service with results
+      int processedCount = result['processed'] as int;
+      int successfulCount = result['successful'] as int;
+
       service.invoke('update', {
-        'status': 'Processing complete: ${result['successful']} videos processed',
+        'status':
+            processedCount > 0
+                ? 'Processing complete: $successfulCount videos processed successfully'
+                : 'No new videos to process',
         'timestamp': DateTime.now().toIso8601String(),
         'result': {
           'totalVideos': result['totalVideos'],
@@ -208,40 +213,42 @@ class BeeMonitoringService {
           'skipped': result['skipped'],
         },
       });
-  
-      // Show notification with results if any videos were processed
-      if ((result['processed'] as int) > 0) {
+
+      // Only show notification if we actually processed videos
+      if (processedCount > 0) {
         final FlutterLocalNotificationsPlugin notificationsPlugin =
             FlutterLocalNotificationsPlugin();
-  
+
         notificationsPlugin.show(
           DateTime.now().millisecond,
           'Bee Activity Update',
-          'Processed ${result['processed']} videos: ${result['successful']} successful, ${result['failed']} failed',
+          'Processed $processedCount videos: $successfulCount successful',
           const NotificationDetails(
             android: AndroidNotificationDetails(
               'bee_monitoring_channel',
               'Bee Monitoring Service',
+              channelDescription: 'Notifications for bee monitoring',
               importance: Importance.high,
               priority: Priority.high,
+              icon: '@drawable/app_icon',
             ),
           ),
         );
       }
-  
+
       // Update last check time
       await prefs.setInt(
         'last_check_time',
         DateTime.now().millisecondsSinceEpoch,
       );
-    } catch (e, stack) {
-      print('Error in background service: $e');
-      print('Stack trace: $stack');
-  
-      service.invoke('update', {
-        'status': 'Error: ${e.toString()}',
-        'timestamp': DateTime.now().toIso8601String(),
-      });
+    } catch (e) {
+      print('Error in checking for new videos: $e');
+      if (service is AndroidServiceInstance) {
+        service.setForegroundNotificationInfo(
+          title: 'Bee Monitoring Error',
+          content: 'Error: $e',
+        );
+      }
     }
   }
 
