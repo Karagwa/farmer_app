@@ -556,7 +556,14 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading bee activity data...')
+          ],
+        ),
       );
     }
     
@@ -580,28 +587,29 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton(
+                ElevatedButton.icon(
                   onPressed: _checkForVideosNow,
-                  child: const Text('Check for videos now'),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Check for videos now'),
                 ),
                 const SizedBox(width: 16),
-                ElevatedButton(
+                ElevatedButton.icon(
                   onPressed: _showVideoProcessingDialog,
+                  icon: const Icon(Icons.settings),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                   ),
-                  child: const Text('Process Videos'),
+                  label: const Text('Process Videos'),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Text(
-              'There might be videos available on the server for this date.',
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              'Click "Process Videos" to check and analyze them.',
-              textAlign: TextAlign.center,
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                'There might be videos available on the server for this date. Click "Check for videos now" to verify.',
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),
