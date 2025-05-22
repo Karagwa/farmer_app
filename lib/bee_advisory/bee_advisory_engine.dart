@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'package:intl/intl.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_database.dart';
-import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_engine.dart';
-// import 'package:HPGM/analytics/foraging_analysis/time_based_return_rate_database.dart';
-import 'package:HPGM/Services/bee_analysis_service.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_database.dart';
+import 'package:farmer_app/analytics/foraging_analysis/foraging_analysis_engine.dart';
+// import 'package:farmer_app/analytics/foraging_analysis/time_based_return_rate_database.dart';
+import 'package:farmer_app/Services/bee_analysis_service.dart';
 import 'dart:async';
 class BeeAdvisoryEngine {
   // Singleton instance
@@ -3217,3 +3217,4 @@ class BeeAdvisoryEngine {
     return mostInfluential;
   }
 }
+

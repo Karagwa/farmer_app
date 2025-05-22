@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_database.dart';
-import 'package:HPGM/bee_advisory/plant_detail_screen.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_database.dart';
+import 'package:farmer_app/bee_advisory/plant_detail_screen.dart';
 
 class PlantGalleryScreen extends StatefulWidget {
   const PlantGalleryScreen({Key? key}) : super(key: key);
@@ -341,3 +341,4 @@ class _PlantGalleryScreenState extends State<PlantGalleryScreen> {
     );
   }
 }
+

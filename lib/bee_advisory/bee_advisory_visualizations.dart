@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_database.dart';
-import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_engine.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_database.dart';
+import 'package:farmer_app/analytics/foraging_analysis/foraging_analysis_engine.dart';
 
 class BeeAdvisoryVisualizations {
   // Generate a visualization dashboard for a recommendation

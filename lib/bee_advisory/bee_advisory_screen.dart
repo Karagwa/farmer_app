@@ -1,13 +1,13 @@
-import 'package:HPGM/bee_advisory/plant_gallery_screen.dart';
+import 'package:farmer_app/bee_advisory/plant_gallery_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_engine.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_database.dart';
-import 'package:HPGM/bee_advisory/plant_detail_screen.dart';
-import 'package:HPGM/bee_advisory/supplements_screen.dart';
-import 'package:HPGM/bee_advisory/farmer_form_screen.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_visualizations.dart';
-import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_engine.dart';
-// import 'package:HPGM/Services/bee_analysis_service.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_engine.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_database.dart';
+import 'package:farmer_app/bee_advisory/plant_detail_screen.dart';
+import 'package:farmer_app/bee_advisory/supplements_screen.dart';
+import 'package:farmer_app/bee_advisory/farmer_form_screen.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_visualizations.dart';
+import 'package:farmer_app/analytics/foraging_analysis/foraging_analysis_engine.dart';
+// import 'package:farmer_app/Services/bee_analysis_service.dart';
 
 class BeeAdvisoryScreen extends StatefulWidget {
   final String? hiveId;
