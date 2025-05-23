@@ -92,7 +92,6 @@ class BeeCount {
   final DateTime timestamp;
   final String? notes;
   final double confidence;
-  
 
   BeeCount({
     this.id,
@@ -107,7 +106,6 @@ class BeeCount {
 
   int get netChange => beesEntering - beesExiting;
   int get totalActivity => beesEntering + beesExiting;
-
   factory BeeCount.fromJson(Map<String, dynamic> json) {
     return BeeCount(
       id: json['id'],
@@ -117,6 +115,7 @@ class BeeCount {
       beesExiting: json['bees_exiting'],
       timestamp: DateTime.parse(json['timestamp']),
       notes: json['notes'],
+      confidence: json['confidence']?.toDouble() ?? 0.0,
     );
   }
 
@@ -129,6 +128,7 @@ class BeeCount {
       'bees_exiting': beesExiting,
       'timestamp': timestamp.toIso8601String(),
       'notes': notes,
+      'confidence': confidence,
     };
   }
 
@@ -140,6 +140,7 @@ class BeeCount {
     int? beesExiting,
     DateTime? timestamp,
     String? notes,
+    double? confidence,
   }) {
     return BeeCount(
       id: id ?? this.id,
@@ -149,6 +150,7 @@ class BeeCount {
       beesExiting: beesExiting ?? this.beesExiting,
       timestamp: timestamp ?? this.timestamp,
       notes: notes ?? this.notes,
+      confidence: confidence ?? this.confidence,
     );
   }
 }
