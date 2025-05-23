@@ -1,5 +1,4 @@
 // File: lib/bee_counter/bee_counter_fix.dart
-import 'package:farmer_app/bee_counter/server_video_service.dart';
 import 'package:farmer_app/bee_counter/bee_counter_model.dart';
 import 'package:farmer_app/Services/bee_analysis_service.dart';
 import 'dart:math';
@@ -12,9 +11,7 @@ class BeeCounterFix {
 
   // Get the singleton instance
   static BeeCounterFix get instance => _instance;
-
   // Services
-  final ServerVideoService _serverVideoService = ServerVideoService();
   final BeeAnalysisService _beeAnalysisService = BeeAnalysisService.instance;
 
   // Process a video and ensure we get valid results
@@ -81,7 +78,7 @@ class BeeCounterFix {
       // Early morning - typically more bees leaving than entering
       if (beesIn > beesOut * 2) {
         // Suspicious pattern for morning, adjust slightly
-        double totalActivity = beesIn + beesOut;
+        double totalActivity = (beesIn + beesOut).toDouble();
         adjustedBeesIn = (totalActivity * 0.4).round();
         adjustedBeesOut = (totalActivity * 0.6).round();
       }
@@ -89,7 +86,7 @@ class BeeCounterFix {
       // Late afternoon/evening - typically more bees entering than leaving
       if (beesOut > beesIn * 2) {
         // Suspicious pattern for evening, adjust slightly
-        double totalActivity = beesIn + beesOut;
+        double totalActivity = (beesIn + beesOut).toDouble();
         adjustedBeesIn = (totalActivity * 0.6).round();
         adjustedBeesOut = (totalActivity * 0.4).round();
       }

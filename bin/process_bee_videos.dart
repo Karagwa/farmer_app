@@ -2,7 +2,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:args/args.dart';
-import 'package:HPGM/utilities/video_processor.dart';
+import 'package:farmer_app/utilities/video_processor.dart';
 
 void main(List<String> args) async {
   // Initialize Flutter
