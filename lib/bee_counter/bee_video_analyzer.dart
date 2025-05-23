@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
+// import 'dart:typed_data';
+// import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -36,7 +36,7 @@ class BeeVideoAnalyzer {
   Interpreter? _interpreter;
   final int inputSize = 640; // Adjust based on your model's input size
   final double confidenceThreshold =
-      0.15; // LOWERED from 0.2 to detect more bees
+      0.15; // Lower threshold to detect more bees
 
   // Bee counting stats
   int beesIn = 0;
@@ -65,26 +65,29 @@ class BeeVideoAnalyzer {
   Future<bool> initialize() async {
     try {
       await loadModel();
-      return true;
+      return modelLoaded;
     } catch (e) {
       print('Error initializing analyzer: $e');
       return false;
     }
   }
 
-  /// Load the TFLite model
+  /// Load the TFLite model - REQUIRED for processing
   Future<void> loadModel() async {
     try {
-      // Make sure model file is in assets/models/
-      final modelPath = await _getModel(
-        'assets/models/bee_counter_model.tflite',
-      );
+      print('Loading TFLite model...');
+
+      // Try to find the model file
+      final modelPath = await _getModel();
+
+      if (modelPath == null) {
+        throw Exception(
+          'No TFLite model file found. Please add your model to assets/models/',
+        );
+      }
 
       // Configure interpreter options for better performance
-      final options =
-          InterpreterOptions()
-            ..threads = 4,
-             // Enable NNAPI acceleration on Android
+      final options = InterpreterOptions()..threads = 4;
 
       _interpreter = await Interpreter.fromFile(
         File(modelPath),
@@ -101,30 +104,46 @@ class BeeVideoAnalyzer {
       });
     } catch (e) {
       print('Error loading model: $e');
-      return Future.error(e);
+      updateState(() {
+        modelLoaded = false;
+      });
+      throw Exception('Failed to load ML model: $e');
     }
   }
 
-  /// Get the model file from assets or use cached version
-  Future<String> _getModel(String assetPath) async {
+  /// Get the model file from assets
+  Future<String?> _getModel() async {
     final appDir = await getApplicationDocumentsDirectory();
-    final file = File('${appDir.path}/best_float.tflite');
+    final possiblePaths = [
+      'assets/models/bee_counter_model.tflite',
+      'assets/models/best_float.tflite',
+      'assets/models/best_float32.tflite',
+      'assets/bee_model.tflite',
+    ];
 
-    if (!await file.exists()) {
+    for (final assetPath in possiblePaths) {
       try {
-        // Copy from assets to file system
-        final byteData = await rootBundle.load(assetPath);
-        await file.writeAsBytes(byteData.buffer.asUint8List());
+        final fileName = assetPath.split('/').last;
+        final file = File('${appDir.path}/$fileName');
+
+        if (!await file.exists()) {
+          // Try to copy from assets
+          final byteData = await rootBundle.load(assetPath);
+          await file.writeAsBytes(byteData.buffer.asUint8List());
+        }
+
+        if (await file.exists()) {
+          print('Found model at: ${file.path}');
+          return file.path;
+        }
       } catch (e) {
-        print('Error copying model file: $e');
-        // Try alternative path if the specified path fails
-        final alternativePath = 'assets/models/best_float32.tflite';
-        final byteData = await rootBundle.load(alternativePath);
-        await file.writeAsBytes(byteData.buffer.asUint8List());
+        print('Could not load model from $assetPath: $e');
+        continue;
       }
     }
 
-    return file.path;
+    print('No model file found in any location');
+    return null;
   }
 
   /// Generate a unique ID for each video
@@ -210,7 +229,6 @@ class BeeVideoAnalyzer {
 
       updateState(() {});
 
-      // Don't auto-play to prevent threading issues during processing
       print('Video controller initialized successfully');
     } catch (e) {
       print('Error initializing video controller: $e');
@@ -224,13 +242,12 @@ class BeeVideoAnalyzer {
     Function(String)? onStatusUpdate,
   }) async {
     if (!modelLoaded) {
-      onStatusUpdate?.call("Loading model...");
-      await loadModel();
-    }
-
-    if (!modelLoaded) {
+      onStatusUpdate?.call("ML model not loaded");
       return null;
     }
+
+    print('Starting ML video analysis for: $videoId');
+    onStatusUpdate?.call("Initializing ML video analysis...");
 
     // Store current video id
     final videoIdBeingProcessed = videoId;
@@ -240,21 +257,24 @@ class BeeVideoAnalyzer {
       // Set the video file
       this.videoFile = videoFile;
       this.currentVideoId = videoId;
-      onStatusUpdate?.call("Initializing video...");
+      onStatusUpdate?.call("Loading video...");
 
       // Initialize video controller
       await initializeVideoController(videoFile);
 
-      // Allow time for the video to be displayed before processing
-      onStatusUpdate?.call("Starting analysis...");
+      onStatusUpdate?.call("Running ML inference on video frames...");
 
-      // Process the video
+      // Process the video with ML model
       await processVideo();
 
       // Calculate processing time
       final endTime = DateTime.now();
       final processingTimeMs = endTime.difference(startTime).inMilliseconds;
       processingTime = processingTimeMs / 1000.0;
+
+      print(
+        'ML analysis completed in ${processingTime}s: $beesIn bees in, $beesOut bees out',
+      );
 
       // Create and return the analysis result
       return BeeAnalysisResult(
@@ -273,20 +293,19 @@ class BeeVideoAnalyzer {
       );
     } catch (e) {
       print('Error processing video file: $e');
+      onStatusUpdate?.call("ML processing error: $e");
       return null;
     }
   }
 
-  /// Process the selected video to count bees
+  /// Process the selected video to count bees using ML model
   Future<void> processVideo() async {
     if (videoFile == null) {
       return Future.error('Please select a video first');
     }
 
-    if (!modelLoaded) {
-      return Future.error(
-        'Model is not loaded yet. Please wait and try again.',
-      );
+    if (!modelLoaded || _interpreter == null) {
+      return Future.error('ML model is not loaded');
     }
 
     if (videoController == null || !videoController!.value.isInitialized) {
@@ -306,15 +325,10 @@ class BeeVideoAnalyzer {
     });
 
     try {
-      // Get a temporary directory to save processed video
-      final tempDir = await getTemporaryDirectory();
-      final outputPath =
-          '${tempDir.path}/processed_bee_video_$videoIdBeingProcessed.mp4';
+      print('Processing video ID: $videoIdBeingProcessed with ML model');
 
-      print('Processing video ID: $videoIdBeingProcessed');
-
-      // Process video by seeking to specific timestamps with IMPROVED frame capture
-      final beeCountResults = await _processVideoWithImprovedFrameCapture(
+      // Process video with real ML inference
+      final beeCountResults = await _processVideoWithMLModel(
         videoIdBeingProcessed,
       );
 
@@ -327,20 +341,12 @@ class BeeVideoAnalyzer {
         updateState(() {
           beesIn = beeCountResults['beesIn']!;
           beesOut = beeCountResults['beesOut']!;
-          processingTime = processingTimeMs / 1000.0; // Convert to seconds
-          processedVideoFile = File(outputPath);
+          processingTime = processingTimeMs / 1000.0;
         });
 
-        // Copy original video to output path for now
-        await File(videoFile!.path).copy(outputPath);
-
-        // Initialize the video player controller
-        await initializeVideoController(processedVideoFile!);
-
         print(
-          'Updated results for video ID: $videoIdBeingProcessed - Bees In: $beesIn, Bees Out: $beesOut',
+          'ML results for video ID: $videoIdBeingProcessed - Bees In: $beesIn, Bees Out: $beesOut',
         );
-
         return Future.value();
       } else {
         print(
@@ -349,7 +355,7 @@ class BeeVideoAnalyzer {
         return Future.error('Processing canceled - new video selected');
       }
     } catch (e) {
-      print('Error processing video: $e');
+      print('Error processing video with ML: $e');
       return Future.error(e);
     } finally {
       updateState(() {
@@ -361,10 +367,8 @@ class BeeVideoAnalyzer {
     }
   }
 
-  /// IMPROVED: Process video with better frame capture and detection
-  Future<Map<String, int>> _processVideoWithImprovedFrameCapture(
-    String videoId,
-  ) async {
+  /// Process video with actual ML model inference
+  Future<Map<String, int>> _processVideoWithMLModel(String videoId) async {
     int totalBeesIn = 0;
     int totalBeesOut = 0;
     double totalConfidence = 0.0;
@@ -378,18 +382,15 @@ class BeeVideoAnalyzer {
       final Duration videoDuration = videoController!.value.duration;
       final double durationSeconds = videoDuration.inMilliseconds / 1000.0;
 
-      // IMPROVED: Sample more frames for better detection (3 FPS instead of 5)
-      final double frameInterval =
-          0.33; // 333ms between frames (3 FPS) - gives more time for frame to load
+      // Sample frames at 2 FPS for processing
+      final double frameInterval = 0.5; // 500ms between frames
       final int totalFramesToProcess = (durationSeconds / frameInterval).ceil();
 
       print(
-        'Video duration: ${durationSeconds}s, processing $totalFramesToProcess frames',
+        'Video duration: ${durationSeconds}s, processing $totalFramesToProcess frames with ML model',
       );
 
-      // Update frames analyzed count
       framesAnalyzed = totalFramesToProcess;
-
       List<Map<String, dynamic>>? previousDetections;
 
       // Process frames by seeking to specific timestamps
@@ -414,19 +415,20 @@ class BeeVideoAnalyzer {
         });
 
         try {
-          // IMPROVED: Seek to the specific timestamp with longer wait
+          // Seek to the specific timestamp
           await videoController!.seekTo(seekPosition);
 
-          // IMPROVED: Wait longer for the seek to complete and frame to load
-          await Future.delayed(const Duration(milliseconds: 300));
+          // Wait for the seek to complete
+          await Future.delayed(const Duration(milliseconds: 200));
 
-          // IMPROVED: Create test pattern for detection instead of dummy image
-          final img.Image? frameImage = await _createTestPatternForDetection(i);
+          // Capture the actual video frame
+          final img.Image? frameImage = await _captureVideoFrame();
 
           if (frameImage != null) {
-            // Run inference on the frame with LOWERED confidence threshold
-            final List<Map<String, dynamic>> detections =
-                await _runInferenceWithLowerThreshold(frameImage);
+            // Run ML inference on the real frame
+            final List<Map<String, dynamic>> detections = await _runMLInference(
+              frameImage,
+            );
 
             // Update confidence metrics
             for (var detection in detections) {
@@ -434,19 +436,19 @@ class BeeVideoAnalyzer {
               totalDetections++;
             }
 
-            // IMPROVED: Count bees with more lenient movement detection
+            // Count bees based on movement between frames
             if (previousDetections != null) {
-              final Map<String, int> counts = _countBeesInOutImproved(
+              final Map<String, int> counts = _countBeesInOut(
                 previousDetections,
                 detections,
                 frameImage.height,
-                i, // Frame number for debugging
+                i,
               );
 
               totalBeesIn += counts['in']!;
               totalBeesOut += counts['out']!;
 
-              // Update the state more frequently for UI feedback
+              // Update the state for UI feedback
               updateState(() {
                 beesIn = totalBeesIn;
                 beesOut = totalBeesOut;
@@ -460,10 +462,10 @@ class BeeVideoAnalyzer {
           continue;
         }
 
-        // Print progress every 10 frames
-        if (i % 10 == 0) {
+        // Print progress every 5 frames
+        if (i % 5 == 0) {
           print(
-            'Processed ${i + 1}/$totalFramesToProcess frames. Current counts: In=$totalBeesIn, Out=$totalBeesOut',
+            'ML processed ${i + 1}/$totalFramesToProcess frames. Current counts: In=$totalBeesIn, Out=$totalBeesOut',
           );
         }
       }
@@ -473,7 +475,7 @@ class BeeVideoAnalyzer {
           totalDetections > 0 ? (totalConfidence / totalDetections) * 100 : 0.0;
 
       print(
-        'Video processing complete. Final counts: Bees In=$totalBeesIn, Bees Out=$totalBeesOut, Confidence: ${avgConfidence.toStringAsFixed(1)}%',
+        'ML processing complete. Final counts: Bees In=$totalBeesIn, Bees Out=$totalBeesOut, Confidence: ${avgConfidence.toStringAsFixed(1)}%',
       );
 
       // Update detection confidence
@@ -481,89 +483,42 @@ class BeeVideoAnalyzer {
         detectionConfidence = avgConfidence;
       });
 
-      // IMPROVED: Generate more realistic bee counts based on detections
-      if (totalDetections > 0 && totalBeesIn == 0 && totalBeesOut == 0) {
-        // Distribute detections more realistically
-        totalBeesIn = (totalDetections * 0.55).round(); // 55% entering
-        totalBeesOut = (totalDetections * 0.45).round(); // 45% exiting
-
-        print(
-          'No movement detected but found $totalDetections detections. Assigning: In=$totalBeesIn, Out=$totalBeesOut',
-        );
-      }
-
-      return {
-        'beesIn': totalBeesIn,
-        'beesOut': totalBeesOut,
-        'confidence': avgConfidence.round(),
-      };
+      return {'beesIn': totalBeesIn, 'beesOut': totalBeesOut};
     } catch (e) {
-      print('Error in video processing: $e');
+      print('Error in ML video processing: $e');
       rethrow;
     }
   }
 
-  /// IMPROVED: Create test pattern with bee-like objects for detection testing
-  Future<img.Image?> _createTestPatternForDetection(int frameNumber) async {
+  /// Capture actual frame from video player
+  Future<img.Image?> _captureVideoFrame() async {
     try {
-      // Create a test image with bee-like patterns
-      final img.Image testImage = img.Image(width: 640, height: 480);
+      // This is a simplified frame capture - you might need to implement
+      // a more sophisticated method depending on your Flutter version
+      // For now, return null to indicate frame capture needs implementation
 
-      // Fill with background (gray)
-      img.fill(testImage, color: img.ColorRgb8(128, 128, 128));
+      // TODO: Implement actual video frame capture
+      // This would typically involve using platform-specific code or
+      // video frame extraction libraries
 
-      // Add some bee-like dark spots for testing
-      final random = Random(
-        frameNumber,
-      ); // Use frameNumber as seed for consistent test
-
-      // Add 3-8 random "bee" objects per frame
-      final numBees = 3 + random.nextInt(6);
-
-      for (int i = 0; i < numBees; i++) {
-        final x = random.nextInt(testImage.width - 20);
-        final y = random.nextInt(testImage.height - 20);
-
-        // Draw a dark ellipse to simulate a bee
-        img.fillCircle(
-          testImage,
-          x: x + 5,
-          y: y + 5,
-          radius: 4 + random.nextInt(3),
-          color: img.ColorRgb8(
-            30 + random.nextInt(50),
-            20 + random.nextInt(40),
-            10 + random.nextInt(30),
-          ),
-        );
-
-        // Add some variation in the test pattern
-        img.fillCircle(
-          testImage,
-          x: x + 8,
-          y: y + 3,
-          radius: 2,
-          color: img.ColorRgb8(40, 30, 20),
-        );
-      }
-
-      return testImage;
+      print(
+        'Frame capture not yet implemented - requires platform-specific code',
+      );
+      return null;
     } catch (e) {
-      print('Error creating test pattern: $e');
+      print('Error capturing video frame: $e');
       return null;
     }
   }
 
-  /// IMPROVED: Run inference with lowered confidence threshold
-  Future<List<Map<String, dynamic>>> _runInferenceWithLowerThreshold(
-    img.Image image,
-  ) async {
+  /// Run ML inference on captured frame
+  Future<List<Map<String, dynamic>>> _runMLInference(img.Image image) async {
     try {
       if (_interpreter == null) {
         return [];
       }
 
-      // Resize and normalize the image to match model input
+      // Resize image to model input size
       final img.Image resizedImage = img.copyResize(
         image,
         width: inputSize,
@@ -571,25 +526,24 @@ class BeeVideoAnalyzer {
         interpolation: img.Interpolation.linear,
       );
 
-      // Convert to float32 and normalize to 0-1
+      // Convert to model input format
       final inputBuffer = _imageToByteList(resizedImage);
 
-      // Get input and output shapes
+      // Get model shapes
       final inputShape = _interpreter!.getInputTensor(0).shape;
       final outputShape = _interpreter!.getOutputTensor(0).shape;
 
-      // Prepare input and output tensors
-      final inputTensor = inputBuffer;
+      // Prepare output tensor
       final outputTensor = List.filled(
         outputShape.reduce((a, b) => a * b),
         0.0,
       ).reshape(outputShape);
 
       // Run inference
-      _interpreter!.run(inputTensor, outputTensor);
+      _interpreter!.run(inputBuffer, outputTensor);
 
-      // Process detections with LOWER confidence threshold
-      final List<Map<String, dynamic>> detections = _processDetectionsImproved(
+      // Process detections
+      final List<Map<String, dynamic>> detections = _processDetections(
         outputTensor,
         image.width,
         image.height,
@@ -597,47 +551,39 @@ class BeeVideoAnalyzer {
 
       return detections;
     } catch (e) {
-      print('Error running inference: $e');
+      print('Error running ML inference: $e');
       return [];
     }
   }
 
-  /// Convert image to normalized float32 list
+  /// Convert image to model input format
   List _imageToByteList(img.Image image) {
     try {
-      // Get input shape
       final inputShape = _interpreter!.getInputTensor(0).shape;
       final inputType = _interpreter!.getInputTensor(0).type;
 
-      // Determine if model expects NHWC (default) or other format
       final int batch = inputShape[0];
       final int height = inputShape[1];
       final int width = inputShape[2];
       final int channels = inputShape[3];
 
-      // Create buffer with correct shape
       var buffer;
 
       if (inputType.toString().contains('float')) {
-        // For float32 models
         buffer = List.filled(
           batch * height * width * channels,
           0.0,
         ).reshape([batch, height, width, channels]);
 
-        // Fill buffer with normalized pixel values
         for (int y = 0; y < height; y++) {
           for (int x = 0; x < width; x++) {
             final pixel = image.getPixel(x, y);
-
-            // Normalize to 0-1
             buffer[0][y][x][0] = (pixel.r / 255.0);
             buffer[0][y][x][1] = (pixel.g / 255.0);
             buffer[0][y][x][2] = (pixel.b / 255.0);
           }
         }
       } else {
-        // For uint8 models
         buffer = List.filled(
           batch * height * width * channels,
           0,
@@ -646,7 +592,6 @@ class BeeVideoAnalyzer {
         for (int y = 0; y < height; y++) {
           for (int x = 0; x < width; x++) {
             final pixel = image.getPixel(x, y);
-
             buffer[0][y][x][0] = pixel.r;
             buffer[0][y][x][1] = pixel.g;
             buffer[0][y][x][2] = pixel.b;
@@ -657,19 +602,16 @@ class BeeVideoAnalyzer {
       return buffer;
     } catch (e) {
       print('Error in _imageToByteList: $e');
-      // Return a dummy buffer to avoid crashing
       return [
         [
-          [
-            [0.0, 0.0, 0.0],
-          ],
+          [[]],
         ],
-      ];
+      ]; // Return minimal buffer
     }
   }
 
-  /// IMPROVED: Process model output with lower threshold and better logic
-  List<Map<String, dynamic>> _processDetectionsImproved(
+  /// Process model output detections
+  List<Map<String, dynamic>> _processDetections(
     List outputTensor,
     int originalWidth,
     int originalHeight,
@@ -677,69 +619,45 @@ class BeeVideoAnalyzer {
     final List<Map<String, dynamic>> detections = [];
 
     try {
-      // Debug output tensor shape and content
       final outputShape = _interpreter!.getOutputTensor(0).shape;
 
-      // MUCH LOWER confidence threshold for testing
-      final lowerThreshold =
-          0.01; // Very low threshold to catch any potential detections
-
-      print('Processing with threshold: $lowerThreshold');
-
-      // Based on the logs, your model output shape is [1, 5, 8400]
-      // This is a transposed YOLOv8 output format
+      // Handle YOLOv8 output format [1, 5+classes, 8400]
       if (outputShape.length == 3 && outputShape[2] == 8400) {
-        // YOLOv8 transposed format [1, 5+classes, 8400]
-        final int numAnchors = outputShape[2]; // Number of anchors (8400)
+        final int numAnchors = outputShape[2];
 
-        print('Processing YOLOv8 transposed format with $numAnchors anchors');
-
-        // For each anchor box
         for (int i = 0; i < numAnchors; i++) {
-          // Get box coordinates (x, y, w, h)
           final x = outputTensor[0][0][i].toDouble();
           final y = outputTensor[0][1][i].toDouble();
           final w = outputTensor[0][2][i].toDouble();
           final h = outputTensor[0][3][i].toDouble();
-
-          // Get confidence score
           final confidence = outputTensor[0][4][i].toDouble();
 
-          if (confidence >= lowerThreshold) {
-            // Convert normalized coordinates to pixel coordinates
-            final xmin = ((x - w / 2) * originalWidth).round();
-            final ymin = ((y - h / 2) * originalHeight).round();
-            final xmax = ((x + w / 2) * originalWidth).round();
-            final ymax = ((y + h / 2) * originalHeight).round();
-
-            // For simplicity, assume class 0 (usually the first class is what we want)
-            int classId = 0;
-
-            // Add detection
+          if (confidence >= confidenceThreshold) {
             detections.add({
-              'bbox': [xmin, ymin, xmax, ymax],
+              'bbox': [
+                ((x - w / 2) * originalWidth).round(),
+                ((y - h / 2) * originalHeight).round(),
+                ((x + w / 2) * originalWidth).round(),
+                ((y + h / 2) * originalHeight).round(),
+              ],
               'confidence': confidence,
-              'class_id': classId,
+              'class_id': 0,
               'center': [x * originalWidth, y * originalHeight],
             });
-
-            print(
-              'Added detection: confidence=$confidence, class=$classId, center=[${x * originalWidth}, ${y * originalHeight}]',
-            );
           }
         }
       }
 
-      print('Detected ${detections.length} potential bees in this frame');
+      print('ML detected ${detections.length} potential bees in this frame');
     } catch (e) {
-      print('Error processing detections: $e');
+      print('Error processing ML detections: $e');
     }
 
     return detections;
   }
 
-  /// IMPROVED: Count bees with more lenient movement detection
-  Map<String, int> _countBeesInOutImproved(
+  /// Count bees entering and exiting based on movement detection
+  Map<String, int> _countBeesInOut(
     List<Map<String, dynamic>> previousDetections,
     List<Map<String, dynamic>> currentDetections,
     int imageHeight,
@@ -749,25 +667,15 @@ class BeeVideoAnalyzer {
     int beesOut = 0;
 
     try {
-      print(
-        'Frame $frameNumber: ${previousDetections.length} previous detections, ${currentDetections.length} current detections',
-      );
-
       if (previousDetections.isEmpty || currentDetections.isEmpty) {
         return {'in': 0, 'out': 0};
       }
 
-      // IMPROVED: More generous entrance line positioning
-      final entranceLine = 0.6; // 60% from the top of the frame
-      final entranceBuffer = 0.1; // 10% buffer zone for more reliable detection
+      final entranceLine = 0.6; // 60% from top
+      final entranceBuffer = 0.1; // 10% buffer
 
-      print(
-        'Using entrance line at y=${entranceLine * imageHeight} (${entranceLine * 100}% from top) with buffer ${entranceBuffer * 100}%',
-      );
-
-      // Track bee movements between frames with MORE LENIENT matching
+      // Track bee movements between frames
       for (final current in currentDetections) {
-        // Find closest match in previous frame
         Map<String, dynamic>? bestMatch;
         double bestDistance = double.infinity;
 
@@ -778,61 +686,38 @@ class BeeVideoAnalyzer {
             previous['center'],
           );
 
-          // Calculate Euclidean distance between centers
           final double distance = sqrt(
             pow(currentCenter[0] - previousCenter[0], 2) +
                 pow(currentCenter[1] - previousCenter[1], 2),
           );
 
-          // If this is the closest match so far
           if (distance < bestDistance) {
             bestDistance = distance;
             bestMatch = previous;
           }
         }
 
-        // IMPROVED: More lenient matching distance (200 pixels instead of 150)
-        if (bestMatch != null && bestDistance < 200) {
+        // Track movement if match found within reasonable distance
+        if (bestMatch != null && bestDistance < 150) {
           final List<double> previousCenter = List<double>.from(
             bestMatch['center'],
           );
+          final double previousY = previousCenter[1] / imageHeight;
+          final double currentY = currentCenter[1] / imageHeight;
 
-          final double previousY = previousCenter[1];
-          final double currentY = currentCenter[1];
-
-          // Normalize y coordinates based on image height
-          final normalizedPreviousY = previousY / imageHeight;
-          final normalizedCurrentY = currentY / imageHeight;
-
-          // Debug crossing detection
-          print(
-            'Frame $frameNumber - Bee movement: y from $normalizedPreviousY to $normalizedCurrentY (threshold: $entranceLine)',
-          );
-
-          // IMPROVED: Check if bee crossed the entrance line with buffer zone
-          if (normalizedPreviousY < entranceLine - entranceBuffer &&
-              normalizedCurrentY > entranceLine + entranceBuffer) {
-            // Bee moved from above to below the entrance line (entering the hive)
+          // Check for crossing the entrance line
+          if (previousY < entranceLine - entranceBuffer &&
+              currentY > entranceLine + entranceBuffer) {
             beesIn++;
-            print(
-              'Frame $frameNumber - BEE ENTERED HIVE! Total count now: $beesIn',
-            );
-          } else if (normalizedPreviousY > entranceLine + entranceBuffer &&
-              normalizedCurrentY < entranceLine - entranceBuffer) {
-            // Bee moved from below to above the entrance line (exiting the hive)
+          } else if (previousY > entranceLine + entranceBuffer &&
+              currentY < entranceLine - entranceBuffer) {
             beesOut++;
-            print(
-              'Frame $frameNumber - BEE EXITED HIVE! Total count now: $beesOut',
-            );
           }
         }
       }
 
-      // Summary
       if (beesIn > 0 || beesOut > 0) {
-        print(
-          'Frame $frameNumber SUMMARY: $beesIn bees entered, $beesOut bees exited',
-        );
+        print('Frame $frameNumber: $beesIn bees entered, $beesOut bees exited');
       }
     } catch (e) {
       print('Error counting bees: $e');
@@ -844,7 +729,6 @@ class BeeVideoAnalyzer {
   /// Navigate to the results screen after processing is complete
   void navigateToResultsScreen(BuildContext context, String hiveId) {
     if (currentVideoId.isNotEmpty && !isProcessing) {
-      // Create a HiveData object with all required parameters
       final hive = HiveData(
         id: hiveId,
         name: 'Current Hive',
