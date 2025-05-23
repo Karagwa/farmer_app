@@ -40,14 +40,20 @@ class FixBeeDetection {
       }
 
       // Generate realistic bee counts based on video metadata
-      final beeCount = _generateRealisticBeeCount(video);
-
-      // Save to database if needed
+      final beeCount =
+          _generateRealisticBeeCount(video); // Save to database if needed
       if (existingCount.id == null) {
         onStatusUpdate('Saving new bee count to database');
-        final savedCount =
+        final savedId =
             await BeeCountDatabase.instance.createBeeCount(beeCount);
-        return savedCount;
+        // Retrieve the saved BeeCount object using its ID
+        final savedCount = await BeeCountDatabase.instance.getBeeCount(savedId);
+        // Make sure we're returning a BeeCount object, not a String
+        if (savedCount != null) {
+          return savedCount;
+        } else {
+          return beeCount.copyWith(id: savedId);
+        }
       } else {
         // Update existing count
         onStatusUpdate('Updating existing bee count in database');
