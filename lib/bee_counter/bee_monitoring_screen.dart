@@ -8,6 +8,7 @@ import 'package:farmer_app/bee_counter/bee_monitoring_background_service.dart';
 import 'package:farmer_app/bee_counter/server_video_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:farmer_app/bee_counter/process_videos_widget.dart';
+import 'package:farmer_app/bee_counter/bee_activity_correlation_screen.dart';
 
 class BeeMonitoringScreen extends StatefulWidget {
   final String hiveId;
@@ -24,16 +25,16 @@ class BeeMonitoringScreen extends StatefulWidget {
 class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
   final BeeMonitoringService _monitoringService = BeeMonitoringService();
   final ServerVideoService _serverVideoService = ServerVideoService();
-  
+
   List<BeeCount> _beeCounts = [];
   bool _isLoading = true;
   String _statusMessage = 'Initializing...';
   bool _isServiceRunning = false;
   StreamSubscription? _serviceStatusSubscription;
-  
+
   // Selected date for filtering
   DateTime _selectedDate = DateTime.now();
-  
+
   @override
   void initState() {
     super.initState();
@@ -41,24 +42,24 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
     _loadBeeCounts();
     _setupServiceStatusListener();
   }
-  
+
   // Initialize the background service
   Future<void> _initializeBackgroundService() async {
     setState(() {
       _statusMessage = 'Initializing background service...';
     });
-    
+
     await _monitoringService.initializeService();
     final isRunning = await _monitoringService.isServiceRunning();
-    
+
     setState(() {
       _isServiceRunning = isRunning;
-      _statusMessage = isRunning 
+      _statusMessage = isRunning
           ? 'Bee monitoring service is running'
           : 'Bee monitoring service is not running';
     });
   }
-  
+
   // Setup listener for service status updates
   void _setupServiceStatusListener() {
     // Use the service's built-in messaging system through your BeeMonitoringService instance
@@ -66,7 +67,7 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
       if (event != null && event is Map<String, dynamic>) {
         setState(() {
           _statusMessage = event['status'] ?? 'Unknown status';
-          
+
           // If it's a result update, refresh bee counts
           if (event.containsKey('result')) {
             _loadBeeCounts();
@@ -75,7 +76,7 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
       }
     });
   }
-  
+
   void _showVideoProcessingDialog() {
     showDialog(
       context: context,
@@ -105,21 +106,21 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
     );
   }
 
-  
   // Load bee counts from database
   Future<void> _loadBeeCounts() async {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       // Load bee counts for the selected date
-      final counts = await BeeCountDatabase.instance.readBeeCountsByDate(_selectedDate);
-      
+      final counts =
+          await BeeCountDatabase.instance.readBeeCountsByDate(_selectedDate);
+
       setState(() {
         _beeCounts = counts;
         _isLoading = false;
-        _statusMessage = counts.isEmpty 
+        _statusMessage = counts.isEmpty
             ? 'No bee activity data found for ${DateFormat('MMMM d, yyyy').format(_selectedDate)}'
             : 'Loaded ${counts.length} bee activity records';
       });
@@ -139,25 +140,28 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         hiveId: widget.hiveId,
         beesEntering: 0,
         beesExiting: 0,
-        timestamp: DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 7),
+        timestamp: DateTime(
+            _selectedDate.year, _selectedDate.month, _selectedDate.day, 7),
       ),
       'noon': BeeCount(
         hiveId: widget.hiveId,
         beesEntering: 0,
         beesExiting: 0,
-        timestamp: DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 12),
+        timestamp: DateTime(
+            _selectedDate.year, _selectedDate.month, _selectedDate.day, 12),
       ),
       'evening': BeeCount(
         hiveId: widget.hiveId,
         beesEntering: 0,
         beesExiting: 0,
-        timestamp: DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 18),
+        timestamp: DateTime(
+            _selectedDate.year, _selectedDate.month, _selectedDate.day, 18),
       ),
     };
-    
+
     for (final count in _beeCounts) {
       final hour = count.timestamp.hour;
-      
+
       // Assign to morning, noon, or evening based on time
       if (hour >= 5 && hour < 10) {
         result['morning'] = count;
@@ -167,10 +171,10 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         result['evening'] = count;
       }
     }
-    
+
     return result;
   }
-  
+
   // Toggle the background service
   Future<void> _toggleService() async {
     if (_isServiceRunning) {
@@ -178,30 +182,30 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
     } else {
       await _monitoringService.startService();
     }
-    
+
     final isRunning = await _monitoringService.isServiceRunning();
     setState(() {
       _isServiceRunning = isRunning;
-      _statusMessage = isRunning 
+      _statusMessage = isRunning
           ? 'Bee monitoring service started'
           : 'Bee monitoring service stopped';
     });
   }
-  
+
   // Manually check for videos now
   Future<void> _checkForVideosNow() async {
     setState(() {
       _statusMessage = 'Checking for new videos...';
       _isLoading = true;
     });
-    
+
     try {
       // Fetch videos from server
       final videos = await _serverVideoService.fetchVideosFromServer(
         widget.hiveId,
         fetchAllIntervals: true,
       );
-      
+
       if (videos.isEmpty) {
         setState(() {
           _statusMessage = 'No videos found on server';
@@ -209,14 +213,15 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         });
         return;
       }
-      
+
       // Process each video
       int processedCount = 0;
       for (final video in videos) {
         setState(() {
-          _statusMessage = 'Processing video ${processedCount + 1}/${videos.length}: ${video.id}';
+          _statusMessage =
+              'Processing video ${processedCount + 1}/${videos.length}: ${video.id}';
         });
-        
+
         await _serverVideoService.processServerVideo(
           video,
           hiveId: widget.hiveId,
@@ -226,13 +231,13 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
             });
           },
         );
-        
+
         processedCount++;
       }
-      
+
       // Reload bee counts
       await _loadBeeCounts();
-      
+
       setState(() {
         _statusMessage = 'Processed $processedCount videos';
       });
@@ -244,7 +249,7 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
       });
     }
   }
-  
+
   // Pick a date to view bee activity
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
@@ -253,7 +258,7 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
       firstDate: DateTime(2023),
       lastDate: DateTime.now().add(const Duration(days: 1)),
     );
-    
+
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
@@ -261,16 +266,16 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
       _loadBeeCounts();
     }
   }
-  
+
   // Build a chart of bee activity
   Widget _buildActivityChart(Map<String, BeeCount> timeBasedCounts) {
     final List<BarChartGroupData> barGroups = [];
     final periods = ['morning', 'noon', 'evening'];
-    
+
     for (int i = 0; i < periods.length; i++) {
       final period = periods[i];
       final count = timeBasedCounts[period]!;
-      
+
       barGroups.add(
         BarChartGroupData(
           x: i,
@@ -297,7 +302,7 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         ),
       );
     }
-    
+
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
@@ -310,7 +315,8 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
               final period = periods[group.x.toInt()];
               final count = timeBasedCounts[period]!;
               final String label = rodIndex == 0 ? 'Entering' : 'Exiting';
-              final int value = rodIndex == 0 ? count.beesEntering : count.beesExiting;
+              final int value =
+                  rodIndex == 0 ? count.beesEntering : count.beesExiting;
               return BarTooltipItem(
                 '$label: $value',
                 const TextStyle(color: Colors.white),
@@ -379,36 +385,44 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
       ),
     );
   }
-  
+
   // Calculate max Y value for chart
   double _calculateMaxY(Map<String, BeeCount> timeBasedCounts) {
     double maxY = 10; // Default minimum height
-    
+
     for (final count in timeBasedCounts.values) {
       if (count.beesEntering > maxY) maxY = count.beesEntering.toDouble();
       if (count.beesExiting > maxY) maxY = count.beesExiting.toDouble();
     }
-    
+
     // Add some room at the top
     return (maxY * 1.2).ceilToDouble();
   }
-  
+
   // Build time period reports
   List<Widget> _buildTimePeriodReports(Map<String, BeeCount> timeBasedCounts) {
     final List<Widget> widgets = [];
-    
+
     final periods = [
       {'key': 'morning', 'name': 'Morning (5AM-10AM)', 'icon': Icons.wb_sunny},
-      {'key': 'noon', 'name': 'Noon (10AM-3PM)', 'icon': Icons.wb_sunny_outlined},
-      {'key': 'evening', 'name': 'Evening (3PM-8PM)', 'icon': Icons.nights_stay},
+      {
+        'key': 'noon',
+        'name': 'Noon (10AM-3PM)',
+        'icon': Icons.wb_sunny_outlined
+      },
+      {
+        'key': 'evening',
+        'name': 'Evening (3PM-8PM)',
+        'icon': Icons.nights_stay
+      },
     ];
-    
+
     for (final period in periods) {
       final key = period['key'] as String;
       final name = period['name'] as String;
       final icon = period['icon'] as IconData;
       final count = timeBasedCounts[key]!;
-      
+
       widgets.add(
         Card(
           elevation: 3,
@@ -462,10 +476,10 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         ),
       );
     }
-    
+
     return widgets;
   }
-  
+
   // Build a metric row
   Widget _buildMetricRow(
     String label,
@@ -485,13 +499,13 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         Text(
           value,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
       ],
     );
   }
-  
+
   // Build status bar
   Widget _buildStatusBar() {
     return Container(
@@ -516,13 +530,13 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
       ),
     );
   }
-  
+
   @override
   void dispose() {
     _serviceStatusSubscription?.cancel();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -546,13 +560,29 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _toggleService,
         child: Icon(_isServiceRunning ? Icons.pause : Icons.play_arrow),
-        tooltip: _isServiceRunning 
-            ? 'Stop bee monitoring service' 
+        tooltip: _isServiceRunning
+            ? 'Stop bee monitoring service'
             : 'Start bee monitoring service',
       ),
+      persistentFooterButtons: [
+        ElevatedButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => BeeActivityCorrelationScreen(
+                  hiveId: widget.hiveId,
+                ),
+              ),
+            );
+          },
+          icon: const Icon(Icons.analytics_outlined),
+          label: const Text('Activity Correlations'),
+        ),
+      ],
     );
   }
-  
+
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
@@ -566,7 +596,7 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         ),
       );
     }
-    
+
     if (_beeCounts.isEmpty) {
       return Center(
         child: Column(
@@ -615,10 +645,10 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         ),
       );
     }
-    
+
     // Group bee counts by time period
     final Map<String, BeeCount> timeBasedCounts = _groupCountsByTimePeriod();
-    
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: SingleChildScrollView(
@@ -630,20 +660,56 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 24),
-            
+
             // Show bee activity chart
             Container(
               height: 220,
               padding: const EdgeInsets.only(bottom: 16),
               child: _buildActivityChart(timeBasedCounts),
             ),
-            
+
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 16),
-            
             // Display time period reports
             ..._buildTimePeriodReports(timeBasedCounts),
+
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+
+            // Add button to navigate to correlation analysis
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BeeActivityCorrelationScreen(
+                        hiveId: widget.hiveId,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.analytics),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber[800],
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+                label: const Text('View Activity Correlations'),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'See detailed correlations between bee activity and environmental factors like temperature, humidity, and hive weight.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
           ],
         ),
       ),
