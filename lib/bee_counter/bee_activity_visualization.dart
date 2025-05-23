@@ -2,15 +2,15 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'dart:math';
 import 'package:farmer_app/bee_counter/bee_counter_model.dart';
 import 'package:farmer_app/bee_counter/weatherdata.dart';
-import 'package:farmer_app/hive_model.dart';
 
 /// A class to generate visualizations of bee activity correlated with environmental factors
 class BeeActivityVisualization {
   /// Generate a chart showing bee activity over time
-  static Widget buildActivityTimelineChart(
-    List<BeeCount> beeCounts, {
+  static Widget buildActivityTimelineChart({
+    required List<BeeCount> beeCounts,
     required BuildContext context,
     bool showLegend = true,
     bool showEnteringBees = true,
@@ -200,27 +200,104 @@ class BeeActivityVisualization {
     );
   }
 
-  /// Generate a chart showing bee activity correlated with temperature
-  static Widget buildTemperatureCorrelationChart(
-    List<BeeCount> beeCounts,
-    Map<DateTime, WeatherData> weatherData, {
+  /// Builds insights text about correlations between bee activity and environmental factors
+  static Widget buildCorrelationInsights({
+    required Map<String, double> correlations,
     required BuildContext context,
-    bool showTrendline = true,
   }) {
-    if (beeCounts.isEmpty || weatherData.isEmpty) {
-      return _buildNoDataWidget('No weather correlation data available');
+    // Function to describe the strength of a correlation
+    String describeCorrelation(double value) {
+      final absValue = value.abs();
+      if (absValue < 0.1) return 'very weak';
+      if (absValue < 0.3) return 'weak';
+      if (absValue < 0.5) return 'moderate';
+      if (absValue < 0.7) return 'strong';
+      return 'very strong';
     }
 
-    // Prepare data by matching bee counts with nearest weather data point
-    final List<ScatterSpot> spots = [];
-    final Map<double, List<int>> tempBasedActivity = {};
+    // Function to describe the direction of a correlation
+    String correlationDirection(double value) {
+      if (value > 0.05) return 'positive';
+      if (value < -0.05) return 'negative';
+      return 'no clear';
+    }
+
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Data Insights',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            for (final entry in correlations.entries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: RichText(
+                  text: TextSpan(
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    children: [
+                      TextSpan(
+                        text: '${entry.key}: ',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(
+                        text:
+                            'There is a ${describeCorrelation(entry.value)} ${correlationDirection(entry.value)} correlation '
+                            '(r = ${entry.value.toStringAsFixed(2)}) between bee activity and ${entry.key.toLowerCase()}.',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 16),
+            Text(
+              'What does this mean?',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'These correlation values show how strongly bee activity is related to each factor. '
+              'A positive correlation means bee activity increases when the factor increases. '
+              'A negative correlation means bee activity decreases when the factor increases. '
+              'Stronger correlations (closer to 1 or -1) indicate a more reliable relationship.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build a chart showing bee activity correlation with temperature
+  static Widget buildTemperatureCorrelationChart({
+    required List<BeeCount> beeCounts,
+    required Map<DateTime, WeatherData> weatherData,
+    required BuildContext context,
+  }) {
+    if (beeCounts.isEmpty || weatherData.isEmpty) {
+      return _buildNoDataWidget(
+          'No data available for temperature correlation');
+    }
+
+    // Prepare data points
+    final dataPoints = <FlSpot>[];
+    final entries = weatherData.entries.toList();
 
     for (final count in beeCounts) {
-      // Find the closest weather data point
+      // Find closest weather data
       WeatherData? nearestWeather;
       Duration smallestDiff = const Duration(days: 1);
 
-      for (final entry in weatherData.entries) {
+      for (final entry in entries) {
         final diff = (entry.key.difference(count.timestamp)).abs();
         if (diff < smallestDiff) {
           smallestDiff = diff;
@@ -228,116 +305,76 @@ class BeeActivityVisualization {
         }
       }
 
-      // Only use if we found a weather point within a reasonable timeframe (4 hours)
-      if (nearestWeather != null && smallestDiff.inHours < 4) {
-        // Round temperature to nearest 0.5°C for grouping
-        final temp = (nearestWeather.temperature * 2).round() / 2;
+      if (nearestWeather != null) {
+        final temperature = nearestWeather.temperature;
+        final activity = count.beesEntering + count.beesExiting;
 
-        // Add to spots for scatter chart
-        spots.add(
-          ScatterSpot(
-            temp,
-            (count.beesEntering + count.beesExiting).toDouble(),
-            dotPainter: FlDotCirclePainter(
-              color: Colors.blue,
-              strokeWidth: 1,
-              strokeColor: Colors.blue.shade800,
-            ),
-          ),
-        );
-
-        // Group by temperature for trend line
-        if (!tempBasedActivity.containsKey(temp)) {
-          tempBasedActivity[temp] = [];
-        }
-        tempBasedActivity[temp]!.add(count.beesEntering + count.beesExiting);
+        dataPoints.add(FlSpot(temperature, activity.toDouble()));
       }
     }
 
-    if (spots.isEmpty) {
-      return _buildNoDataWidget(
-          'No matching weather and bee activity data found');
-    }
-
-    // Calculate min/max values for chart
-    double minTemp = double.infinity;
-    double maxTemp = -double.infinity;
-    double maxActivity = 0;
-
-    for (final spot in spots) {
-      if (spot.x < minTemp) minTemp = spot.x;
-      if (spot.x > maxTemp) maxTemp = spot.x;
-      if (spot.y > maxActivity) maxActivity = spot.y;
-    }
-
-    // Add some padding
-    minTemp = (minTemp - 2).floorToDouble();
-    maxTemp = (maxTemp + 2).ceilToDouble();
-    maxActivity = (maxActivity * 1.1).ceilToDouble();
-
-    // Calculate trend line points if enabled
-    List<FlSpot> trendPoints = [];
-    if (showTrendline) {
-      // Sort temperature points
-      final sortedTemps = tempBasedActivity.keys.toList()..sort();
-
-      for (final temp in sortedTemps) {
-        final activities = tempBasedActivity[temp]!;
-        if (activities.isNotEmpty) {
-          final avgActivity =
-              activities.reduce((a, b) => a + b) / activities.length;
-          trendPoints.add(FlSpot(temp, avgActivity));
-        }
-      }
-
-      // Sort trend points by temperature
-      trendPoints.sort((a, b) => a.x.compareTo(b.x));
-    }
+    // Sort data points by temperature for cleaner visualization
+    dataPoints.sort((a, b) => a.x.compareTo(b.x));
 
     return SizedBox(
-      height: 300,
+      height: 250,
       child: ScatterChart(
         ScatterChartData(
-          scatterSpots: spots,
-          minX: minTemp,
-          maxX: maxTemp,
+          scatterSpots: dataPoints
+              .map((spot) => ScatterSpot(
+                    spot.x,
+                    spot.y,
+                  ))
+              .toList(),
+          minX: dataPoints.isEmpty
+              ? 0
+              : dataPoints.map((e) => e.x).reduce(min) - 2,
+          maxX: dataPoints.isEmpty
+              ? 40
+              : dataPoints.map((e) => e.x).reduce(max) + 2,
           minY: 0,
-          maxY: maxActivity,
+          maxY: dataPoints.isEmpty
+              ? 100
+              : dataPoints.map((e) => e.y).reduce(max) * 1.1,
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: const Color(0xff37434d), width: 1),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawHorizontalLine: true,
+            horizontalInterval: 20,
+            drawVerticalLine: true,
+            verticalInterval: 2,
+          ),
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
-              axisNameWidget: const Text(
-                'Temperature (°C)',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              axisNameSize: 25,
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
                 getTitlesWidget: (value, meta) {
                   return Text(
-                    value.toStringAsFixed(1),
-                    style: TextStyle(
-                      color: Colors.grey[600],
+                    value.toInt().toString() + '°C',
+                    style: const TextStyle(
+                      color: Color(0xff68737d),
+                      fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
                   );
                 },
+                interval: 5,
               ),
             ),
             leftTitles: AxisTitles(
-              axisNameWidget: const Text(
-                'Bee Activity',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              axisNameSize: 25,
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 40,
                 getTitlesWidget: (value, meta) {
                   return Text(
                     value.toInt().toString(),
-                    style: TextStyle(
-                      color: Colors.grey[600],
+                    style: const TextStyle(
+                      color: Color(0xff68737d),
+                      fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
                   );
@@ -346,21 +383,6 @@ class BeeActivityVisualization {
             ),
             topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          ),
-          gridData: FlGridData(
-            show: true,
-            checkToShowHorizontalLine: (value) => true,
-            checkToShowVerticalLine: (value) => true,
-            drawVerticalLine: true,
-            drawHorizontalLine: true,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: Colors.grey.withOpacity(0.2),
-              strokeWidth: 1,
-            ),
-            getDrawingVerticalLine: (value) => FlLine(
-              color: Colors.grey.withOpacity(0.2),
-              strokeWidth: 1,
-            ),
           ),
           scatterTouchData: ScatterTouchData(
             touchTooltipData: ScatterTouchTooltipData(
@@ -369,198 +391,37 @@ class BeeActivityVisualization {
                 return ScatterTooltipItem(
                   'Temperature: ${touchedSpot.x.toStringAsFixed(1)}°C\n'
                   'Bee Activity: ${touchedSpot.y.toInt()}',
-                  textStyle: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  textStyle: const TextStyle(color: Colors.white),
+                  bottomMargin: 8,
                 );
               },
             ),
-          ),
-        ),
-        swapAnimationDuration: const Duration(milliseconds: 600),
-      ),
-    );
-  }
-
-  /// Generate a chart showing bee activity by time of day
-  static Widget buildTimeOfDayActivityChart(
-    List<BeeCount> beeCounts, {
-    required BuildContext context,
-  }) {
-    if (beeCounts.isEmpty) {
-      return _buildNoDataWidget('No bee activity data available');
-    }
-
-    // Group activity by hour of day
-    final Map<int, List<int>> hourlyActivities = {};
-    for (int i = 0; i < 24; i++) {
-      hourlyActivities[i] = [];
-    }
-
-    for (final count in beeCounts) {
-      final hour = count.timestamp.hour;
-      hourlyActivities[hour]!.add(count.beesEntering + count.beesExiting);
-    }
-
-    // Calculate average activity by hour
-    final List<BarChartGroupData> barGroups = [];
-
-    for (int hour = 0; hour < 24; hour++) {
-      final activities = hourlyActivities[hour]!;
-      final double avgActivity = activities.isNotEmpty
-          ? activities.reduce((a, b) => a + b) / activities.length
-          : 0.0;
-
-      final timeString = '$hour:00';
-
-      // Determine color based on time of day
-      Color barColor;
-      if (hour >= 6 && hour < 12) {
-        barColor = Colors.amber; // Morning
-      } else if (hour >= 12 && hour < 18) {
-        barColor = Colors.orange; // Afternoon
-      } else {
-        barColor = Colors.indigo; // Evening/Night
-      }
-
-      barGroups.add(
-        BarChartGroupData(
-          x: hour,
-          barRods: [
-            BarChartRodData(
-              toY: avgActivity,
-              color: barColor,
-              width: 12,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(4),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Find max Y for scaling
-    double maxY = 0;
-    for (final group in barGroups) {
-      if (group.barRods.first.toY > maxY) {
-        maxY = group.barRods.first.toY;
-      }
-    }
-    maxY = (maxY * 1.2).ceilToDouble();
-    if (maxY < 10) maxY = 10;
-
-    return SizedBox(
-      height: 300,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 20, right: 20),
-        child: BarChart(
-          BarChartData(
-            alignment: BarChartAlignment.spaceAround,
-            maxY: maxY,
-            barTouchData: BarTouchData(
-              enabled: true,
-              touchTooltipData: BarTouchTooltipData(
-                tooltipBgColor: Colors.blueGrey,
-                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                  final time = '${group.x}:00';
-                  return BarTooltipItem(
-                    'Time: $time\n${rod.toY.toStringAsFixed(1)} bees on average',
-                    const TextStyle(color: Colors.white),
-                  );
-                },
-              ),
-            ),
-            titlesData: FlTitlesData(
-              bottomTitles: AxisTitles(
-                axisNameWidget: const Text(
-                  'Time of Day',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                axisNameSize: 25,
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 30,
-                  getTitlesWidget: (value, meta) {
-                    if (value.toInt() % 4 == 0) {
-                      return Text(
-                        '${value.toInt()}:00',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                      );
-                    }
-                    return const Text('');
-                  },
-                ),
-              ),
-              leftTitles: AxisTitles(
-                axisNameWidget: const Text(
-                  'Average Bee Activity',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                axisNameSize: 25,
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 40,
-                  getTitlesWidget: (value, meta) {
-                    return Text(
-                      value.toInt().toString(),
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles:
-                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            ),
-            gridData: FlGridData(
-              show: true,
-              horizontalInterval: maxY / 5,
-              getDrawingHorizontalLine: (value) {
-                return FlLine(
-                  color: Colors.grey.withOpacity(0.2),
-                  strokeWidth: 1,
-                );
-              },
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(show: false),
-            barGroups: barGroups,
           ),
         ),
       ),
     );
   }
 
-  /// Generate a chart showing bee activity correlated with humidity
-  static Widget buildHumidityCorrelationChart(
-    List<BeeCount> beeCounts,
-    Map<DateTime, WeatherData> weatherData, {
+  /// Build a chart showing bee activity correlation with humidity
+  static Widget buildHumidityCorrelationChart({
+    required List<BeeCount> beeCounts,
+    required Map<DateTime, WeatherData> weatherData,
     required BuildContext context,
-    bool showTrendline = true,
   }) {
     if (beeCounts.isEmpty || weatherData.isEmpty) {
-      return _buildNoDataWidget('No humidity correlation data available');
+      return _buildNoDataWidget('No data available for humidity correlation');
     }
 
-    // Prepare data by matching bee counts with nearest weather data point
-    final List<ScatterSpot> spots = [];
-    final Map<int, List<int>> humidityBasedActivity = {};
+    // Prepare data points
+    final dataPoints = <FlSpot>[];
+    final entries = weatherData.entries.toList();
 
     for (final count in beeCounts) {
-      // Find the closest weather data point
+      // Find closest weather data
       WeatherData? nearestWeather;
       Duration smallestDiff = const Duration(days: 1);
 
-      for (final entry in weatherData.entries) {
+      for (final entry in entries) {
         final diff = (entry.key.difference(count.timestamp)).abs();
         if (diff < smallestDiff) {
           smallestDiff = diff;
@@ -568,120 +429,76 @@ class BeeActivityVisualization {
         }
       }
 
-      // Only use if we found a weather point within a reasonable timeframe (4 hours)
-      if (nearestWeather != null && smallestDiff.inHours < 4) {
-        // Round humidity to nearest 5% for grouping
-        final humidity = (nearestWeather.humidity / 5).round() * 5;
+      if (nearestWeather != null) {
+        final humidity = nearestWeather.humidity;
+        final activity = count.beesEntering + count.beesExiting;
 
-        // Add to spots for scatter chart
-        spots.add(
-          ScatterSpot(
-            humidity.toDouble(),
-            (count.beesEntering + count.beesExiting).toDouble(),
-            dotPainter: FlDotCirclePainter(
-              color: Colors.teal,
-              strokeWidth: 1,
-              strokeColor: Colors.teal.shade800,
-            ),
-          ),
-        );
-
-        // Group by humidity for trend line
-        if (!humidityBasedActivity.containsKey(humidity)) {
-          humidityBasedActivity[humidity] = [];
-        }
-        humidityBasedActivity[humidity]!
-            .add(count.beesEntering + count.beesExiting);
+        dataPoints.add(FlSpot(humidity, activity.toDouble()));
       }
     }
 
-    if (spots.isEmpty) {
-      return _buildNoDataWidget(
-          'No matching humidity and bee activity data found');
-    }
-
-    // Calculate min/max values for chart
-    double minHumidity = double.infinity;
-    double maxHumidity = -double.infinity;
-    double maxActivity = 0;
-
-    for (final spot in spots) {
-      if (spot.x < minHumidity) minHumidity = spot.x;
-      if (spot.x > maxHumidity) maxHumidity = spot.x;
-      if (spot.y > maxActivity) maxActivity = spot.y;
-    }
-
-    // Add some padding
-    minHumidity = (minHumidity - 5).floorToDouble();
-    maxHumidity = (maxHumidity + 5).ceilToDouble();
-    maxActivity = (maxActivity * 1.1).ceilToDouble();
-
-    // Calculate trend line points if enabled
-    List<FlSpot> trendPoints = [];
-    if (showTrendline) {
-      // Sort humidity points
-      final sortedHumidities = humidityBasedActivity.keys.toList()..sort();
-
-      for (final humidity in sortedHumidities) {
-        final activities = humidityBasedActivity[humidity]!;
-        if (activities.isNotEmpty) {
-          final avgActivity =
-              activities.reduce((a, b) => a + b) / activities.length;
-          trendPoints.add(FlSpot(humidity.toDouble(), avgActivity));
-        }
-      }
-
-      // Sort trend points by humidity
-      trendPoints.sort((a, b) => a.x.compareTo(b.x));
-    }
+    // Sort data points by humidity for cleaner visualization
+    dataPoints.sort((a, b) => a.x.compareTo(b.x));
 
     return SizedBox(
-      height: 300,
+      height: 250,
       child: ScatterChart(
         ScatterChartData(
-          scatterSpots: spots,
-          minX: minHumidity,
-          maxX: maxHumidity,
+          scatterSpots: dataPoints
+              .map((spot) => ScatterSpot(
+                    spot.x,
+                    spot.y,
+                  ))
+              .toList(),
+          minX: dataPoints.isEmpty
+              ? 0
+              : dataPoints.map((e) => e.x).reduce(min) - 2,
+          maxX: dataPoints.isEmpty
+              ? 100
+              : dataPoints.map((e) => e.x).reduce(max) + 2,
           minY: 0,
-          maxY: maxActivity,
+          maxY: dataPoints.isEmpty
+              ? 100
+              : dataPoints.map((e) => e.y).reduce(max) * 1.1,
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: const Color(0xff37434d), width: 1),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawHorizontalLine: true,
+            horizontalInterval: 20,
+            drawVerticalLine: true,
+            verticalInterval: 10,
+          ),
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
-              axisNameWidget: const Text(
-                'Humidity (%)',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              axisNameSize: 25,
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
                 getTitlesWidget: (value, meta) {
-                  if (value % 10 == 0) {
-                    return Text(
-                      value.toInt().toString(),
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    );
-                  }
-                  return const Text('');
+                  return Text(
+                    value.toInt().toString() + '%',
+                    style: const TextStyle(
+                      color: Color(0xff68737d),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  );
                 },
+                interval: 10,
               ),
             ),
             leftTitles: AxisTitles(
-              axisNameWidget: const Text(
-                'Bee Activity',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              axisNameSize: 25,
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 40,
                 getTitlesWidget: (value, meta) {
                   return Text(
                     value.toInt().toString(),
-                    style: TextStyle(
-                      color: Colors.grey[600],
+                    style: const TextStyle(
+                      color: Color(0xff68737d),
+                      fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
                   );
@@ -691,161 +508,353 @@ class BeeActivityVisualization {
             topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
-          gridData: FlGridData(
-            show: true,
-            checkToShowHorizontalLine: (value) => true,
-            checkToShowVerticalLine: (value) => true,
-            drawVerticalLine: true,
-            drawHorizontalLine: true,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: Colors.grey.withOpacity(0.2),
-              strokeWidth: 1,
-            ),
-            getDrawingVerticalLine: (value) => FlLine(
-              color: Colors.grey.withOpacity(0.2),
-              strokeWidth: 1,
-            ),
-          ),
           scatterTouchData: ScatterTouchData(
             touchTooltipData: ScatterTouchTooltipData(
               tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
               getTooltipItems: (touchedSpot) {
                 return ScatterTooltipItem(
-                  'Humidity: ${touchedSpot.x.toInt()}%\n'
+                  'Humidity: ${touchedSpot.x.toStringAsFixed(1)}%\n'
                   'Bee Activity: ${touchedSpot.y.toInt()}',
-                  textStyle: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  textStyle: const TextStyle(color: Colors.white),
+                  bottomMargin: 8,
                 );
               },
             ),
           ),
         ),
-        swapAnimationDuration: const Duration(milliseconds: 600),
       ),
     );
   }
 
-  /// Generate a chart showing bee activity correlated with hive weight/honey levels
-  static Widget buildWeightCorrelationChart(
-    List<BeeCount> beeCounts,
-    List<HiveData> hiveData, {
+  /// Build a chart showing time of day activity patterns
+  static Widget buildTimeOfDayActivityChart({
+    required List<BeeCount> beeCounts,
+    required BuildContext context,
+  }) {
+    if (beeCounts.isEmpty) {
+      return _buildNoDataWidget('No data available for time of day analysis');
+    }
+
+    // Group counts by hour of day
+    final Map<int, int> hourlyActivity = {};
+
+    for (int i = 0; i < 24; i++) {
+      hourlyActivity[i] = 0;
+    }
+
+    for (final count in beeCounts) {
+      final hour = count.timestamp.hour;
+      final activity = count.beesEntering + count.beesExiting;
+
+      final currentCount = hourlyActivity[hour] ?? 0;
+      hourlyActivity[hour] = currentCount + activity.toInt();
+    }
+
+    // Convert to bar data
+    final barData = <BarChartGroupData>[];
+
+    for (int hour = 0; hour < 24; hour++) {
+      barData.add(
+        BarChartGroupData(
+          x: hour,
+          barRods: [
+            BarChartRodData(
+              toY: hourlyActivity[hour]!.toDouble(),
+              color: _getColorForHour(hour),
+              width: 12,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 250,
+      child: BarChart(
+        BarChartData(
+          barGroups: barData,
+          borderData: FlBorderData(show: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 20,
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    value.toInt().toString(),
+                    style: const TextStyle(
+                      color: Color(0xff68737d),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  );
+                },
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  // Only show a few hour labels to avoid crowding
+                  final hour = value.toInt();
+                  if (hour % 3 == 0) {
+                    String amPm = hour < 12 ? 'AM' : 'PM';
+                    final displayHour =
+                        hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        '$displayHour $amPm',
+                        style: const TextStyle(
+                          color: Color(0xff68737d),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    );
+                  }
+                  return const Text('');
+                },
+                reservedSize: 30,
+              ),
+            ),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final hour = group.x;
+                final activity = rod.toY.toInt();
+                String amPm = hour < 12 ? 'AM' : 'PM';
+                final displayHour =
+                    hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+
+                return BarTooltipItem(
+                  '$displayHour:00 $amPm\n',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: 'Activity: $activity',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Get a color based on the hour of day
+  static Color _getColorForHour(int hour) {
+    if (hour < 6) {
+      return Colors.indigo.shade300; // Night
+    } else if (hour < 12) {
+      return Colors.amber.shade500; // Morning
+    } else if (hour < 18) {
+      return Colors.orange.shade600; // Afternoon
+    } else {
+      return Colors.deepPurple.shade300; // Evening
+    }
+  }
+
+  /// Build a chart showing correlation between bee activity and hive weight
+  static Widget buildWeightCorrelationChart({
+    required List<BeeCount> beeCounts,
+    required List<HiveData> hiveData,
     required BuildContext context,
   }) {
     if (beeCounts.isEmpty || hiveData.isEmpty) {
-      return _buildNoDataWidget('No hive weight correlation data available');
+      return _buildNoDataWidget('No data available for weight correlation');
     }
 
-    // Process weight data to make it time series
-    final Map<DateTime, double> weightByDay = {};
+    // Prepare data for timeline chart with dual y axes
+    final List<FlSpot> activitySpots = [];
+    final List<FlSpot> weightSpots = [];
 
-    for (final data in hiveData) {
-      try {
-        if (data.weight != null) {
-          final timestamp = data.lastChecked != null
-              ? DateTime.parse(data.lastChecked!)
-              : DateTime.now();
+    // Sort bee counts by date
+    final sortedCounts = List<BeeCount>.from(beeCounts)
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
-          final day = DateTime(timestamp.year, timestamp.month, timestamp.day);
-          weightByDay[day] = data.weight!;
-        }
-      } catch (e) {
-        print('Error parsing date: $e');
-      }
-    }
+    // Sort hive data by date
+    final sortedHiveData = List<HiveData>.from(hiveData)
+      ..sort((a, b) => DateTime.parse(a.lastChecked)
+          .compareTo(DateTime.parse(b.lastChecked)));
 
     // Group bee counts by day
-    final Map<DateTime, int> activityByDay = {};
+    final Map<DateTime, int> dailyActivity = {};
 
-    for (final count in beeCounts) {
+    for (final count in sortedCounts) {
       final day = DateTime(
         count.timestamp.year,
         count.timestamp.month,
         count.timestamp.day,
       );
 
-      if (!activityByDay.containsKey(day)) {
-        activityByDay[day] = 0;
+      dailyActivity[day] = (dailyActivity[day] ?? 0) + count.totalActivity;
+    }
+
+    // Prepare data points for chart
+    final List<DateTime> allDays = [...dailyActivity.keys];
+
+    for (int i = 0; i < allDays.length; i++) {
+      final day = allDays[i];
+      final activity = dailyActivity[day] ?? 0;
+
+      activitySpots.add(FlSpot(i.toDouble(), activity.toDouble()));
+
+      // Find hive data for this day
+      for (final data in sortedHiveData) {
+        final hiveDataDate = DateTime.parse(data.lastChecked);
+        final sameDay = day.year == hiveDataDate.year &&
+            day.month == hiveDataDate.month &&
+            day.day == hiveDataDate.day;
+        if (sameDay && data.weight != null) {
+          weightSpots.add(FlSpot(i.toDouble(), data.weight!));
+          break;
+        }
       }
+    } // Find max values for scales
+    final maxActivity = activitySpots.isEmpty
+        ? 100.0
+        : activitySpots.map((e) => e.y).reduce(max) * 1.1;
 
-      activityByDay[day] =
-          activityByDay[day]! + count.beesEntering + count.beesExiting;
-    }
+    final maxWeight = weightSpots.isEmpty
+        ? 100.0
+        : weightSpots.map((e) => e.y).reduce(max) * 1.1;
 
-    // Align days that have both weight and activity data
-    final List<DateTime> alignedDays = [];
-    final List<double> weights = [];
-    final List<double> activities = [];
-
-    for (final day in activityByDay.keys) {
-      if (weightByDay.containsKey(day)) {
-        alignedDays.add(day);
-        weights.add(weightByDay[day]!);
-        activities.add(activityByDay[day]!.toDouble());
-      }
-    }
-
-    if (alignedDays.isEmpty) {
-      return _buildNoDataWidget(
-          'No matching weight and bee activity data found');
-    }
-
-    // Sort by date
-    final List<int> indices = List.generate(alignedDays.length, (i) => i);
-    indices.sort((a, b) => alignedDays[a].compareTo(alignedDays[b]));
-
-    final List<DateTime> sortedDays =
-        indices.map((i) => alignedDays[i]).toList();
-    final List<double> sortedWeights = indices.map((i) => weights[i]).toList();
-    final List<double> sortedActivities =
-        indices.map((i) => activities[i]).toList();
-
-    // Find min/max for scaling
-    final double maxWeight = sortedWeights.reduce((a, b) => a > b ? a : b);
-    final double maxActivity = sortedActivities.reduce((a, b) => a > b ? a : b);
-
-    // Create spots for the chart
-    final List<FlSpot> weightSpots = [];
-    final List<FlSpot> activitySpots = [];
-
-    for (int i = 0; i < sortedDays.length; i++) {
-      weightSpots.add(FlSpot(i.toDouble(), sortedWeights[i]));
-      activitySpots.add(FlSpot(
-          i.toDouble(), sortedActivities[i] * (maxWeight / maxActivity)));
-    }
+    final weightFactor = maxActivity / (maxWeight == 0.0 ? 1.0 : maxWeight);
 
     return SizedBox(
-      height: 300,
+      height: 250,
       child: LineChart(
         LineChartData(
+          lineBarsData: [
+            LineChartBarData(
+              spots: activitySpots,
+              isCurved: true,
+              color: Colors.amber,
+              barWidth: 3,
+              isStrokeCapRound: true,
+              dotData: FlDotData(show: false),
+            ),
+            LineChartBarData(
+              spots: weightSpots
+                  .map((spot) => FlSpot(spot.x, spot.y * weightFactor))
+                  .toList(),
+              isCurved: true,
+              color: Colors.green,
+              barWidth: 3,
+              isStrokeCapRound: true,
+              dotData: FlDotData(show: false),
+              dashArray: [5, 5], // Make this line dashed
+            ),
+          ],
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: const Color(0xff37434d), width: 1),
+          ),
+          minY: 0,
+          maxY: maxActivity.toDouble(),
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index >= 0 && index < allDays.length && index % 3 == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        DateFormat('MMM d').format(allDays[index]),
+                        style: const TextStyle(
+                          color: Color(0xff68737d),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    );
+                  }
+                  return const Text('');
+                },
+                reservedSize: 30,
+              ),
+            ),
+            leftTitles: AxisTitles(
+              axisNameWidget: const Text('Bee Activity'),
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    value.toInt().toString(),
+                    style: const TextStyle(
+                      color: Color(0xff68737d),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  );
+                },
+                reservedSize: 40,
+              ),
+            ),
+            rightTitles: AxisTitles(
+              axisNameWidget: const Text('Hive Weight (kg)'),
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    (value / weightFactor).toStringAsFixed(1),
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  );
+                },
+                reservedSize: 40,
+              ),
+            ),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawHorizontalLine: true,
+            horizontalInterval: maxActivity / 5,
+          ),
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
               tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
               getTooltipItems: (touchedSpots) {
                 return touchedSpots.map((spot) {
                   final index = spot.x.toInt();
-                  if (index >= 0 && index < sortedDays.length) {
-                    final date = sortedDays[index];
-                    final isWeight = spot.barIndex == 0;
-
-                    if (isWeight) {
+                  if (index >= 0 && index < allDays.length) {
+                    if (spot.barIndex == 0) {
                       return LineTooltipItem(
-                        '${DateFormat('yyyy-MM-dd').format(date)}\n'
-                        'Weight: ${sortedWeights[index].toStringAsFixed(1)} kg',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        '${DateFormat('MMM d').format(allDays[index])}\n'
+                        'Activity: ${spot.y.toInt()}',
+                        const TextStyle(color: Colors.amber),
                       );
                     } else {
                       return LineTooltipItem(
-                        '${DateFormat('yyyy-MM-dd').format(date)}\n'
-                        'Activity: ${sortedActivities[index].toInt()} bees',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        '${DateFormat('MMM d').format(allDays[index])}\n'
+                        'Weight: ${(spot.y / weightFactor).toStringAsFixed(1)} kg',
+                        const TextStyle(color: Colors.green),
                       );
                     }
                   }
@@ -854,131 +863,6 @@ class BeeActivityVisualization {
               },
             ),
           ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: maxWeight / 5,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
-                color: Colors.grey.withOpacity(0.2),
-                strokeWidth: 1,
-              );
-            },
-          ),
-          titlesData: FlTitlesData(
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                getTitlesWidget: (value, meta) {
-                  final index = value.toInt();
-                  if (index >= 0 &&
-                      index < sortedDays.length &&
-                      index % ((sortedDays.length ~/ 5) + 1) == 0) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        DateFormat('MM/dd').format(sortedDays[index]),
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                      ),
-                    );
-                  }
-                  return const Text('');
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              axisNameWidget: const Text(
-                'Weight (kg)',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.indigo),
-              ),
-              axisNameSize: 25,
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toStringAsFixed(0),
-                    style: const TextStyle(
-                      color: Colors.indigo,
-                      fontSize: 12,
-                    ),
-                  );
-                },
-              ),
-            ),
-            rightTitles: AxisTitles(
-              axisNameWidget: const Text(
-                'Bee Activity',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.orange),
-              ),
-              axisNameSize: 25,
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    (value * (maxActivity / maxWeight)).toStringAsFixed(0),
-                    style: const TextStyle(
-                      color: Colors.orange,
-                      fontSize: 12,
-                    ),
-                  );
-                },
-              ),
-            ),
-            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          ),
-          borderData: FlBorderData(show: true),
-          lineBarsData: [
-            LineChartBarData(
-              spots: weightSpots,
-              isCurved: true,
-              barWidth: 3,
-              color: Colors.indigo,
-              isStrokeCapRound: true,
-              dotData: FlDotData(
-                  show: true,
-                  getDotPainter: (spot, percent, bar, index) {
-                    return FlDotCirclePainter(
-                      radius: 4,
-                      color: Colors.indigo,
-                      strokeWidth: 2,
-                      strokeColor: Colors.indigo.shade200,
-                    );
-                  }),
-              belowBarData: BarAreaData(
-                show: true,
-                color: Colors.indigo.withOpacity(0.2),
-              ),
-            ),
-            LineChartBarData(
-              spots: activitySpots,
-              isCurved: true,
-              barWidth: 3,
-              color: Colors.orange,
-              isStrokeCapRound: true,
-              dotData: FlDotData(
-                  show: true,
-                  getDotPainter: (spot, percent, bar, index) {
-                    return FlDotCirclePainter(
-                      radius: 4,
-                      color: Colors.orange,
-                      strokeWidth: 2,
-                      strokeColor: Colors.orange.shade200,
-                    );
-                  }),
-              belowBarData: BarAreaData(
-                show: true,
-                color: Colors.orange.withOpacity(0.1),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -993,7 +877,7 @@ class BeeActivityVisualization {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.bar_chart_off,
+              Icons.bar_chart,
               size: 48,
               color: Colors.grey[400],
             ),
@@ -1035,137 +919,6 @@ class BeeActivityVisualization {
         ),
       ],
     );
-  }
-
-  /// Build a widget showing insights about the correlations
-  static Widget buildCorrelationInsights(
-    Map<String, double> correlations,
-    BuildContext context,
-  ) {
-    final insights = <Widget>[];
-
-    // Helper function to describe correlation strength
-    String describeCorrelation(double value) {
-      final absValue = value.abs();
-      if (absValue < 0.2) return 'very weak';
-      if (absValue < 0.4) return 'weak';
-      if (absValue < 0.6) return 'moderate';
-      if (absValue < 0.8) return 'strong';
-      return 'very strong';
-    }
-
-    // Helper function to describe correlation direction
-    String correlationDirection(double value) {
-      return value > 0 ? 'positive' : 'negative';
-    }
-
-    // Add insights for each correlation
-    correlations.forEach((factor, value) {
-      if (value.abs() >= 0.2) {
-        // Only show meaningful correlations
-        insights.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  value > 0 ? Icons.trending_up : Icons.trending_down,
-                  color: value > 0 ? Colors.green : Colors.red,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '$factor shows a ${describeCorrelation(value)} ${correlationDirection(value)} correlation with bee activity${_getCorrelationExplanation(factor, value)}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-    });
-
-    if (insights.isEmpty) {
-      insights.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Text(
-            'No significant correlations found. This might be due to limited data or complex interactions between factors.',
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Data Insights',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            ...insights,
-            const SizedBox(height: 8),
-            Text(
-              'Note: Correlation does not necessarily imply causation. Other factors may also be involved.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontStyle: FontStyle.italic,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Helper to get specific explanations for different factors
-  static String _getCorrelationExplanation(String factor, double value) {
-    final absValue = value.abs();
-    if (absValue < 0.2) return '.';
-
-    switch (factor.toLowerCase()) {
-      case 'temperature':
-        if (value > 0) {
-          return ', suggesting bees are more active as temperature increases.';
-        } else {
-          return ', suggesting bees reduce activity when temperatures are too high.';
-        }
-      case 'humidity':
-        if (value > 0) {
-          return ', suggesting some humidity may be beneficial for foraging.';
-        } else {
-          return ', suggesting high humidity may hinder bee activity.';
-        }
-      case 'weight':
-      case 'hive weight':
-        if (value > 0) {
-          return ', indicating increased activity may be contributing to honey production.';
-        } else {
-          return ', which could indicate that bees are consuming stored honey during this period.';
-        }
-      case 'wind':
-      case 'wind speed':
-        if (value < 0) {
-          return ', confirming that bees prefer calmer conditions for foraging.';
-        } else {
-          return ', which is unusual as bees typically prefer less windy conditions.';
-        }
-      case 'time of day':
-        return ', showing that bees have specific preferred foraging times.';
-      default:
-        return '.';
-    }
   }
 }
 

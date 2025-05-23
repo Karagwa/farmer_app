@@ -42,12 +42,11 @@ class BeeCounterIntegration {
     }
 
     // Otherwise generate reliable data
-    final generatedCount =
-        _generateReliableBeeCount(videoId, hiveId, timestamp);
-
-    // Save to database if new
+    final generatedCount = _generateReliableBeeCount(
+        videoId, hiveId, timestamp); // Save to database if new
     if (existingCount.id == null) {
-      return await BeeCountDatabase.instance.createBeeCount(generatedCount);
+      final id = await BeeCountDatabase.instance.createBeeCount(generatedCount);
+      return generatedCount.copyWith(id: id);
     } else {
       // Update existing count with new values
       final updatedCount = existingCount.copyWith(
