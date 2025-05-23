@@ -134,7 +134,7 @@ flutter:
   assets:
     - lib/images/log-1.png
     - lib/images/njuki.jpg
-    - assets/models/best_float32.tflite
+    # - assets/models/best_float32.tflite
     - assets/models/bee_counter_model.tflite
     - assets/models/best_float.tflite
     - assets/lottie/

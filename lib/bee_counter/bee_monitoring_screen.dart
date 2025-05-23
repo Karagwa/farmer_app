@@ -1,138 +1,72 @@
+// lib/bee_counter/bee_monitoring_screen.dart
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:HPGM/bee_counter/bee_counter_model.dart';
 import 'package:HPGM/bee_counter/bee_count_database.dart';
 import 'package:HPGM/bee_counter/bee_monitoring_background_service.dart';
-import 'package:HPGM/bee_counter/server_video_service.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:HPGM/bee_counter/process_videos_widget.dart';
 
 class BeeMonitoringScreen extends StatefulWidget {
   final String hiveId;
 
-  const BeeMonitoringScreen({
-    Key? key,
-    required this.hiveId,
-  }) : super(key: key);
+  const BeeMonitoringScreen({Key? key, required this.hiveId}) : super(key: key);
 
   @override
   _BeeMonitoringScreenState createState() => _BeeMonitoringScreenState();
 }
 
 class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
-  final BeeMonitoringService _monitoringService = BeeMonitoringService();
-  final ServerVideoService _serverVideoService = ServerVideoService();
-  
+  final AutomaticBeeMonitoringService _automaticService = AutomaticBeeMonitoringService();
+
   List<BeeCount> _beeCounts = [];
   bool _isLoading = true;
-  String _statusMessage = 'Initializing...';
-  bool _isServiceRunning = false;
-  StreamSubscription? _serviceStatusSubscription;
-  
-  // Selected date for filtering
   DateTime _selectedDate = DateTime.now();
-  
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
-    _initializeBackgroundService();
-    _loadBeeCounts();
-    _setupServiceStatusListener();
-  }
-  
-  // Initialize the background service
-  Future<void> _initializeBackgroundService() async {
-    setState(() {
-      _statusMessage = 'Initializing background service...';
-    });
+    _initializeScreen();
     
-    await _monitoringService.initializeService();
-    final isRunning = await _monitoringService.isServiceRunning();
-    
-    setState(() {
-      _isServiceRunning = isRunning;
-      _statusMessage = isRunning 
-          ? 'Bee monitoring service is running'
-          : 'Bee monitoring service is not running';
+    // Auto-refresh every 30 seconds
+    _refreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
+      _loadBeeCounts();
     });
-  }
-  
-  // Setup listener for service status updates
-  void _setupServiceStatusListener() {
-    // Use the service's built-in messaging system through your BeeMonitoringService instance
-    _monitoringService.getService().on('update').listen((event) {
-      if (event != null && event is Map<String, dynamic>) {
-        setState(() {
-          _statusMessage = event['status'] ?? 'Unknown status';
-          
-          // If it's a result update, refresh bee counts
-          if (event.containsKey('result')) {
-            _loadBeeCounts();
-          }
-        });
-      }
-    });
-  }
-  
-  void _showVideoProcessingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // User must tap button to close dialog
-      builder: (context) => AlertDialog(
-        title: const Text('Process Bee Videos'),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 500, // Adjust height as needed
-          child: ProcessVideosWidget(
-            hiveId: widget.hiveId,
-            date: _selectedDate,
-            force: false,
-            onProcessingComplete: () {
-              // Reload data after processing
-              _loadBeeCounts();
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 
-  
-  // Load bee counts from database
+  Future<void> _initializeScreen() async {
+    // Ensure automatic service is running
+    await _automaticService.initializeAndStart();
+    await _loadBeeCounts();
+  }
+
   Future<void> _loadBeeCounts() async {
-    setState(() {
-      _isLoading = true;
-    });
-    
     try {
-      // Load bee counts for the selected date
       final counts = await BeeCountDatabase.instance.readBeeCountsByDate(_selectedDate);
       
-      setState(() {
-        _beeCounts = counts;
-        _isLoading = false;
-        _statusMessage = counts.isEmpty 
-            ? 'No bee activity data found for ${DateFormat('MMMM d, yyyy').format(_selectedDate)}'
-            : 'Loaded ${counts.length} bee activity records';
-      });
+      // Filter by hive ID
+      final hiveCounts = counts.where((count) => count.hiveId == widget.hiveId).toList();
+      
+      // Sort by timestamp
+      hiveCounts.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+      if (mounted) {
+        setState(() {
+          _beeCounts = hiveCounts;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print('Error loading bee counts: $e');
-      setState(() {
-        _statusMessage = 'Error loading data: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  // Group bee counts by time period (morning, noon, evening)
   Map<String, BeeCount> _groupCountsByTimePeriod() {
     final Map<String, BeeCount> result = {
       'morning': BeeCount(
@@ -154,123 +88,60 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         timestamp: DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 18),
       ),
     };
-    
+
+    // Aggregate counts by time period
     for (final count in _beeCounts) {
       final hour = count.timestamp.hour;
+      String period;
       
-      // Assign to morning, noon, or evening based on time
       if (hour >= 5 && hour < 10) {
-        result['morning'] = count;
+        period = 'morning';
       } else if (hour >= 10 && hour < 15) {
-        result['noon'] = count;
+        period = 'noon';
       } else if (hour >= 15 && hour < 20) {
-        result['evening'] = count;
+        period = 'evening';
+      } else {
+        continue;
       }
+
+      final existing = result[period]!;
+      result[period] = BeeCount(
+        hiveId: widget.hiveId,
+        beesEntering: existing.beesEntering + count.beesEntering,
+        beesExiting: existing.beesExiting + count.beesExiting,
+        timestamp: count.timestamp,
+        confidence: (existing.confidence + count.confidence) / 2,
+      );
     }
-    
+
     return result;
   }
-  
-  // Toggle the background service
-  Future<void> _toggleService() async {
-    if (_isServiceRunning) {
-      await _monitoringService.stopService();
-    } else {
-      await _monitoringService.startService();
-    }
-    
-    final isRunning = await _monitoringService.isServiceRunning();
-    setState(() {
-      _isServiceRunning = isRunning;
-      _statusMessage = isRunning 
-          ? 'Bee monitoring service started'
-          : 'Bee monitoring service stopped';
-    });
-  }
-  
-  // Manually check for videos now
-  Future<void> _checkForVideosNow() async {
-    setState(() {
-      _statusMessage = 'Checking for new videos...';
-      _isLoading = true;
-    });
-    
-    try {
-      // Fetch videos from server
-      final videos = await _serverVideoService.fetchVideosFromServer(
-        widget.hiveId,
-        fetchAllIntervals: true,
-      );
-      
-      if (videos.isEmpty) {
-        setState(() {
-          _statusMessage = 'No videos found on server';
-          _isLoading = false;
-        });
-        return;
-      }
-      
-      // Process each video
-      int processedCount = 0;
-      for (final video in videos) {
-        setState(() {
-          _statusMessage = 'Processing video ${processedCount + 1}/${videos.length}: ${video.id}';
-        });
-        
-        await _serverVideoService.processServerVideo(
-          video,
-          hiveId: widget.hiveId,
-          onStatusUpdate: (status) {
-            setState(() {
-              _statusMessage = status;
-            });
-          },
-        );
-        
-        processedCount++;
-      }
-      
-      // Reload bee counts
-      await _loadBeeCounts();
-      
-      setState(() {
-        _statusMessage = 'Processed $processedCount videos';
-      });
-    } catch (e) {
-      print('Error checking for videos: $e');
-      setState(() {
-        _statusMessage = 'Error: $e';
-        _isLoading = false;
-      });
-    }
-  }
-  
-  // Pick a date to view bee activity
+
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2023),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
+      lastDate: DateTime.now(),
     );
-    
+
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
+        _isLoading = true;
       });
       _loadBeeCounts();
     }
   }
-  
-  // Build a chart of bee activity
+
   Widget _buildActivityChart(Map<String, BeeCount> timeBasedCounts) {
     final List<BarChartGroupData> barGroups = [];
     final periods = ['morning', 'noon', 'evening'];
-    
+
     for (int i = 0; i < periods.length; i++) {
       final period = periods[i];
       final count = timeBasedCounts[period]!;
-      
+
       barGroups.add(
         BarChartGroupData(
           x: i,
@@ -278,8 +149,8 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
             BarChartRodData(
               toY: count.beesEntering.toDouble(),
               color: Colors.green,
-              width: 16,
-              borderRadius: const BorderRadius.only(
+              width: 20,
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(4),
                 topRight: Radius.circular(4),
               ),
@@ -287,8 +158,8 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
             BarChartRodData(
               toY: count.beesExiting.toDouble(),
               color: Colors.orange,
-              width: 16,
-              borderRadius: const BorderRadius.only(
+              width: 20,
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(4),
                 topRight: Radius.circular(4),
               ),
@@ -297,7 +168,7 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         ),
       );
     }
-    
+
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
@@ -305,15 +176,14 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            tooltipBgColor: Colors.blueGrey,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               final period = periods[group.x.toInt()];
               final count = timeBasedCounts[period]!;
-              final String label = rodIndex == 0 ? 'Entering' : 'Exiting';
-              final int value = rodIndex == 0 ? count.beesEntering : count.beesExiting;
+              final label = rodIndex == 0 ? 'Entering' : 'Exiting';
+              final value = rodIndex == 0 ? count.beesEntering : count.beesExiting;
               return BarTooltipItem(
                 '$label: $value',
-                const TextStyle(color: Colors.white),
+                TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               );
             },
           ),
@@ -326,13 +196,10 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
               getTitlesWidget: (value, meta) {
                 final titles = ['Morning', 'Noon', 'Evening'];
                 return Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
+                  padding: EdgeInsets.only(top: 8.0),
                   child: Text(
                     titles[value.toInt()],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 );
               },
@@ -342,36 +209,23 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (value, meta) {
-                if (value == 0) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10,
-                    ),
-                  ),
+                if (value == 0) return SizedBox.shrink();
+                return Text(
+                  value.toInt().toString(),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                 );
               },
-              reservedSize: 28,
+              reservedSize: 35,
             ),
           ),
-          rightTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          topTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         gridData: FlGridData(
           show: true,
           horizontalInterval: 10,
           getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.grey.withOpacity(0.3),
-              strokeWidth: 1,
-            );
+            return FlLine(color: Colors.grey.withOpacity(0.2), strokeWidth: 1);
           },
         ),
         borderData: FlBorderData(show: false),
@@ -379,161 +233,61 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
       ),
     );
   }
-  
-  // Calculate max Y value for chart
+
   double _calculateMaxY(Map<String, BeeCount> timeBasedCounts) {
-    double maxY = 10; // Default minimum height
-    
+    double maxY = 10;
     for (final count in timeBasedCounts.values) {
       if (count.beesEntering > maxY) maxY = count.beesEntering.toDouble();
       if (count.beesExiting > maxY) maxY = count.beesExiting.toDouble();
     }
-    
-    // Add some room at the top
     return (maxY * 1.2).ceilToDouble();
   }
-  
-  // Build time period reports
-  List<Widget> _buildTimePeriodReports(Map<String, BeeCount> timeBasedCounts) {
-    final List<Widget> widgets = [];
-    
-    final periods = [
-      {'key': 'morning', 'name': 'Morning (5AM-10AM)', 'icon': Icons.wb_sunny},
-      {'key': 'noon', 'name': 'Noon (10AM-3PM)', 'icon': Icons.wb_sunny_outlined},
-      {'key': 'evening', 'name': 'Evening (3PM-8PM)', 'icon': Icons.nights_stay},
-    ];
-    
-    for (final period in periods) {
-      final key = period['key'] as String;
-      final name = period['name'] as String;
-      final icon = period['icon'] as IconData;
-      final count = timeBasedCounts[key]!;
-      
-      widgets.add(
-        Card(
-          elevation: 3,
-          margin: const EdgeInsets.only(bottom: 16),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(icon, color: Colors.amber),
-                    const SizedBox(width: 8),
-                    Text(
-                      name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildMetricRow(
-                  'Bees Entering:',
-                  count.beesEntering.toString(),
-                  Icons.arrow_downward,
-                  Colors.green,
-                ),
-                const SizedBox(height: 8),
-                _buildMetricRow(
-                  'Bees Exiting:',
-                  count.beesExiting.toString(),
-                  Icons.arrow_upward,
-                  Colors.orange,
-                ),
-                const SizedBox(height: 8),
-                _buildMetricRow(
-                  'Net Change:',
-                  count.netChange.toString(),
-                  count.netChange >= 0 ? Icons.add : Icons.remove,
-                  count.netChange >= 0 ? Colors.green : Colors.red,
-                ),
-                const SizedBox(height: 8),
-                _buildMetricRow(
-                  'Total Activity:',
-                  count.totalActivity.toString(),
-                  Icons.sync,
-                  Colors.blue,
-                ),
-              ],
+
+  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            SizedBox(height: 8),
+            Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
             ),
-          ),
+          ],
         ),
-      );
-    }
-    
-    return widgets;
-  }
-  
-  // Build a metric row
-  Widget _buildMetricRow(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-  
-  // Build status bar
-  Widget _buildStatusBar() {
-    return Container(
-      color: Colors.black87,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: Row(
-        children: [
-          Icon(
-            _isServiceRunning ? Icons.circle : Icons.circle_outlined,
-            color: _isServiceRunning ? Colors.green : Colors.red,
-            size: 12,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _statusMessage,
-              style: const TextStyle(color: Colors.white),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
       ),
     );
   }
-  
+
   @override
   void dispose() {
-    _serviceStatusSubscription?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
+    final timeBasedCounts = _groupCountsByTimePeriod();
+    
+    // Calculate daily totals
+    int totalEntering = 0;
+    int totalExiting = 0;
+    for (final count in _beeCounts) {
+      totalEntering += count.beesEntering;
+      totalExiting += count.beesExiting;
+    }
+    final netChange = totalEntering - totalExiting;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Bee Activity Monitor - Hive ${widget.hiveId}'),
+        title: Text('Hive ${widget.hiveId} Activity'),
+        centerTitle: true,
         actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadBeeCounts,
-            tooltip: 'Refresh data',
-          ),
           IconButton(
             icon: Icon(Icons.calendar_today),
             onPressed: _selectDate,
@@ -541,111 +295,168 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
           ),
         ],
       ),
-      body: _buildBody(),
-      bottomNavigationBar: _buildStatusBar(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _toggleService,
-        child: Icon(_isServiceRunning ? Icons.pause : Icons.play_arrow),
-        tooltip: _isServiceRunning 
-            ? 'Stop bee monitoring service' 
-            : 'Start bee monitoring service',
-      ),
-    );
-  }
-  
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading bee activity data...')
-          ],
-        ),
-      );
-    }
-    
-    if (_beeCounts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              size: 64,
-              color: Colors.amber,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No bee activity data for ${DateFormat('MMMM d, yyyy').format(_selectedDate)}',
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _checkForVideosNow,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Check for videos now'),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadBeeCounts,
+              child: SingleChildScrollView(
+                physics: AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Date header
+                    Center(
+                      child: Text(
+                        DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate),
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    if (_beeCounts.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Column(
+                            children: [
+                              Icon(Icons.hourglass_empty, size: 64, color: Colors.grey),
+                              SizedBox(height: 16),
+                              Text(
+                                'No data available yet',
+                                style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Videos are processed automatically at 7AM, 12PM, and 6PM',
+                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else ...[
+                      // Summary cards
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSummaryCard(
+                              'Bees In',
+                              totalEntering.toString(),
+                              Icons.arrow_downward,
+                              Colors.green,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: _buildSummaryCard(
+                              'Bees Out',
+                              totalExiting.toString(),
+                              Icons.arrow_upward,
+                              Colors.orange,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: _buildSummaryCard(
+                              'Net Change',
+                              '${netChange >= 0 ? '+' : ''}$netChange',
+                              netChange >= 0 ? Icons.trending_up : Icons.trending_down,
+                              netChange >= 0 ? Colors.blue : Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 24),
+                      
+                      // Activity chart
+                      Container(
+                        height: 250,
+                        padding: EdgeInsets.only(top: 16),
+                        child: _buildActivityChart(timeBasedCounts),
+                      ),
+                      SizedBox(height: 24),
+                      
+                      // Time period details
+                      Text(
+                        'Activity by Time Period',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      SizedBox(height: 16),
+                      
+                      _buildPeriodCard('Morning', '5AM - 10AM', timeBasedCounts['morning']!, Icons.wb_sunny),
+                      SizedBox(height: 8),
+                      _buildPeriodCard('Noon', '10AM - 3PM', timeBasedCounts['noon']!, Icons.wb_sunny_outlined),
+                      SizedBox(height: 8),
+                      _buildPeriodCard('Evening', '3PM - 8PM', timeBasedCounts['evening']!, Icons.nights_stay),
+                      
+                      SizedBox(height: 16),
+                      Center(
+                        child: Text(
+                          'Last updated: ${DateFormat('HH:mm').format(DateTime.now())}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: _showVideoProcessingDialog,
-                  icon: const Icon(Icons.settings),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                  ),
-                  label: const Text('Process Videos'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'There might be videos available on the server for this date. Click "Check for videos now" to verify.',
-                textAlign: TextAlign.center,
               ),
             ),
-          ],
-        ),
-      );
-    }
+    );
+  }
+
+  Widget _buildPeriodCard(String period, String time, BeeCount count, IconData icon) {
+    final hasData = count.beesEntering > 0 || count.beesExiting > 0;
     
-    // Group bee counts by time period
-    final Map<String, BeeCount> timeBasedCounts = _groupCountsByTimePeriod();
-    
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Bee Activity for ${DateFormat('MMMM d, yyyy').format(_selectedDate)}',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 24),
-            
-            // Show bee activity chart
-            Container(
-              height: 220,
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _buildActivityChart(timeBasedCounts),
-            ),
-            
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 16),
-            
-            // Display time period reports
-            ..._buildTimePeriodReports(timeBasedCounts),
-          ],
+    return Card(
+      elevation: 2,
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: hasData ? Colors.amber.withOpacity(0.2) : Colors.grey.withOpacity(0.2),
+          child: Icon(icon, color: hasData ? Colors.amber : Colors.grey),
         ),
+        title: Text(period, style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(time),
+        trailing: hasData
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.arrow_downward, color: Colors.green, size: 16),
+                          SizedBox(width: 4),
+                          Text('${count.beesEntering}', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Icon(Icons.arrow_upward, color: Colors.orange, size: 16),
+                          SizedBox(width: 4),
+                          Text('${count.beesExiting}', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  if (count.confidence > 0) ...[
+                    SizedBox(width: 16),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${count.confidence.toStringAsFixed(0)}%',
+                        style: TextStyle(fontSize: 12, color: Colors.purple),
+                      ),
+                    ),
+                  ],
+                ],
+              )
+            : Text('No data', style: TextStyle(color: Colors.grey)),
       ),
     );
   }

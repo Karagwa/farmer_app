@@ -1,5 +1,6 @@
 import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_screen.dart';
 import 'package:HPGM/bee_counter/bee_monitoring_screen.dart';
+import 'package:HPGM/bee_counter/bee_dashboard_screen.dart';
 import 'package:HPGM/bee_counter/bee_video_analysis_screen.dart';
 import 'package:HPGM/notifications/notification_screen.dart';
 import 'package:HPGM/bee_advisory/bee_advisory_screen.dart';
@@ -211,7 +212,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder:
-                                      (context) => ForagingAnalysisScreen(),
+                                      (context) => BeeDashboardScreen(hiveId: '1'),
                                 ),
                               );
                             },
