@@ -1,10 +1,10 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:farmer_app/bee_counter/bee_counter_model.dart';
 import 'package:farmer_app/Services/bee_analysis_service.dart';
 import 'package:farmer_app/bee_counter/bee_count_database.dart';
-import 'package:farmer_app/bee_counter/bee_counter_integration.dart';
-import 'dart:async';
+import 'package:farmer_app/bee_counter/bee_counter_fix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ServerVideoService {
@@ -25,6 +25,23 @@ class ServerVideoService {
 
   // Predefined video intervals (in hours)
   final List<int> _videoIntervals = [7, 12, 18]; // Morning, Noon, Evening
+
+  // Helper methods to safely access nullable properties
+  int getVideoHour(ServerVideo video) {
+    return video.timestamp?.hour ?? 12; // Default to noon if timestamp is null
+  }
+
+  bool isVideoAfter(ServerVideo video, DateTime? referenceTime) {
+    if (video.timestamp == null) return false;
+    if (referenceTime == null) return true;
+    return video.timestamp!.isAfter(referenceTime);
+  }
+
+  int getTimestampDifference(ServerVideo video, DateTime targetTime) {
+    if (video.timestamp == null)
+      return 9999; // Large default value if timestamp is null
+    return video.timestamp!.difference(targetTime).inMinutes.abs();
+  }
 
   // Fetch videos from server with time interval filtering
   Future<List<ServerVideo>> fetchVideosFromServer(
@@ -106,9 +123,7 @@ class ServerVideoService {
           try {
             final video = ServerVideo.fromJson(
               videoData as Map<String, dynamic>,
-            );
-
-            // Skip videos with no timestamp
+            ); // Skip videos with no timestamp
             if (video.timestamp == null) {
               print('Skipping video ${video.id} - no timestamp');
               continue;
@@ -309,12 +324,9 @@ class ServerVideoService {
       print(
           'Using hive ID: $finalHiveId for video ID: ${video.id}'); // Use our improved bee counter fix for more reliable results
       try {
-        print('Starting enhanced video analysis for path: $videoPath');
-
-        // Import the fix dynamically to avoid circular dependencies
-        final beeCounterFix =
-            await import('package:farmer_app/bee_counter/bee_counter_fix.dart');
-        final countFix = beeCounterFix.BeeCounterFix.instance;
+        print(
+            'Starting enhanced video analysis for path: $videoPath'); // Use the BeeCounterFix instance directly
+        final countFix = BeeCounterFix.instance;
 
         final result = await countFix.processVideo(
             finalHiveId, video.id, videoPath, onStatusUpdate: (status) {
@@ -404,8 +416,8 @@ class ServerVideoService {
           await _client.get(Uri.parse(url)).timeout(Duration(seconds: 15));
 
       if (response.statusCode == 200) {
-        // Check if response body is null or empty
-        if (response.body == null || response.body.isEmpty) {
+        // Check if response body is empty
+        if (response.body.isEmpty) {
           print('Empty response for interval $interval');
           return [];
         }
