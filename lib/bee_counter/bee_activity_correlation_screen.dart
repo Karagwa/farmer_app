@@ -1,6 +1,5 @@
 // File: lib/bee_counter/bee_activity_correlation_screen.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:farmer_app/bee_counter/bee_counter_model.dart';
 import 'package:farmer_app/bee_counter/bee_count_database.dart';
 import 'package:farmer_app/bee_counter/weatherdata.dart';
@@ -44,6 +43,33 @@ class _BeeActivityCorrelationScreenState
     _loadData();
   }
 
+  // Convert weather data from WeatherService to the format needed by our visualization
+  Future<Map<DateTime, WeatherData>> _convertWeatherData(
+      Map<DateTime, dynamic> data) async {
+    final Map<DateTime, WeatherData> result = {};
+
+    data.forEach((date, weatherInfo) {
+      if (weatherInfo is Map<String, dynamic> &&
+          !weatherInfo.containsKey('error')) {
+        try {
+          result[date] = WeatherData(
+            timestamp: date,
+            temperature: weatherInfo['temperature']?.toDouble() ?? 20.0,
+            humidity: weatherInfo['humidity']?.toDouble() ?? 50.0,
+            windSpeed: weatherInfo['windSpeed']?.toDouble() ?? 0.0,
+            rainfall: weatherInfo['precipitation']?.toDouble() ?? 0.0,
+            solarRadiation:
+                0.0, // Default value as this might not be in the weather data
+          );
+        } catch (e) {
+          print('Error converting weather data for $date: $e');
+        }
+      }
+    });
+
+    return result;
+  }
+
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -60,28 +86,25 @@ class _BeeActivityCorrelationScreenState
         widget.hiveId,
         startDate,
         endDate,
-      );
-
-      // Load weather data
-      final weatherService = WeatherService();
-      final weatherData = await weatherService.getWeatherDataForDateRange(
+      ); // Load weather data
+      final rawWeatherData = await WeatherService.getWeatherDataForDateRange(
         startDate,
         endDate,
       );
+      final weatherData = await _convertWeatherData(rawWeatherData);
 
       // Generate sample hive data based on bee counts
       // In a real app, this would come from your hive database
-      final hiveData = _generateSampleHiveData(beeCounts);
-
-      // Calculate correlations between bee activity and other metrics
-      final correlations =
+      final hiveData = _generateSampleHiveData(
+          beeCounts); // Calculate correlations between bee activity and other metrics
+      final calculatedCorrelations =
           _calculateCorrelations(beeCounts, weatherData, hiveData);
 
       setState(() {
         _beeCounts = beeCounts;
         _weatherData = weatherData;
         _hiveData = hiveData;
-        _correlations = correlations;
+        _correlations = calculatedCorrelations;
         _isLoading = false;
       });
     } catch (e) {
@@ -128,16 +151,13 @@ class _BeeActivityCorrelationScreenState
       // Find the closest hive data point
       HiveData? nearestHiveData;
       smallestDiff = const Duration(days: 1);
-
       for (final data in hiveData) {
         try {
-          if (data.lastChecked != null) {
-            final timestamp = DateTime.parse(data.lastChecked!);
-            final diff = (timestamp.difference(count.timestamp)).abs();
-            if (diff < smallestDiff) {
-              smallestDiff = diff;
-              nearestHiveData = data;
-            }
+          final timestamp = DateTime.parse(data.lastChecked);
+          final diff = (timestamp.difference(count.timestamp)).abs();
+          if (diff < smallestDiff) {
+            smallestDiff = diff;
+            nearestHiveData = data;
           }
         } catch (e) {
           print('Error parsing date: $e');
@@ -343,7 +363,7 @@ class _BeeActivityCorrelationScreenState
             title: 'Bee Activity Timeline',
             description: 'Shows the pattern of bee entries and exits over time',
             content: BeeActivityVisualization.buildActivityTimelineChart(
-              _beeCounts,
+              beeCounts: _beeCounts,
               context: context,
             ),
           ),
@@ -353,7 +373,7 @@ class _BeeActivityCorrelationScreenState
             title: 'Time of Day Analysis',
             description: 'Shows how bee activity varies throughout the day',
             content: BeeActivityVisualization.buildTimeOfDayActivityChart(
-              _beeCounts,
+              beeCounts: _beeCounts,
               context: context,
             ),
           ),
@@ -363,8 +383,8 @@ class _BeeActivityCorrelationScreenState
             title: 'Temperature Correlation',
             description: 'Shows how bee activity correlates with temperature',
             content: BeeActivityVisualization.buildTemperatureCorrelationChart(
-              _beeCounts,
-              _weatherData,
+              beeCounts: _beeCounts,
+              weatherData: _weatherData,
               context: context,
             ),
           ),
@@ -375,8 +395,8 @@ class _BeeActivityCorrelationScreenState
             description:
                 'Shows how bee activity correlates with humidity levels',
             content: BeeActivityVisualization.buildHumidityCorrelationChart(
-              _beeCounts,
-              _weatherData,
+              beeCounts: _beeCounts,
+              weatherData: _weatherData,
               context: context,
             ),
           ),
@@ -387,8 +407,8 @@ class _BeeActivityCorrelationScreenState
             description:
                 'Shows the relationship between bee activity and hive weight over time',
             content: BeeActivityVisualization.buildWeightCorrelationChart(
-              _beeCounts,
-              _hiveData,
+              beeCounts: _beeCounts,
+              hiveData: _hiveData,
               context: context,
             ),
           ),
@@ -396,8 +416,8 @@ class _BeeActivityCorrelationScreenState
           // Data insights
           const SizedBox(height: 20),
           BeeActivityVisualization.buildCorrelationInsights(
-            _correlations,
-            context,
+            correlations: _correlations,
+            context: context,
           ),
 
           const SizedBox(height: 30),
