@@ -1,54 +1,87 @@
+// lib/Services/bee_analysis_service.dart (updated)
+
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:HPGM/bee_counter/bee_counter_model.dart';
 import 'package:HPGM/bee_counter/bee_count_database.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:HPGM/bee_counter/bee_video_analyzer.dart';
 import 'dart:async';
+import 'package:HPGM/bee_counter/bee_video_analyzer.dart';
 
 class BeeAnalysisService {
-  // Use your existing BeeVideoAnalyzer
-  BeeVideoAnalyzer? _analyzer;
-  
   static final BeeAnalysisService _instance = BeeAnalysisService._internal();
-   
-   // Factory constructor to return the singleton instance
-   factory BeeAnalysisService() => _instance;
-   
-   // Private constructor for the singleton
-   BeeAnalysisService._internal();
-   
-   // Static getter for the instance
-   static BeeAnalysisService get instance => _instance;
+  factory BeeAnalysisService() => _instance;
+  BeeAnalysisService._internal();
+  static BeeAnalysisService get instance => _instance;
 
-  // Initialize the analyzer
-  Future<void> _ensureAnalyzerInitialized() async {
-    if (_analyzer == null) {
-      print('Initializing BeeVideoAnalyzer');
+  // ML analyzer instance
+  BeeVideoAnalyzer? _analyzer;
+  bool _isInitialized = false;
+  bool _isInitializing = false;
+
+  /// Initialize the ML model
+  Future<bool> initialize() async {
+    if (_isInitialized) return true;
+    if (_isInitializing) {
+      // Wait for initialization to complete
+      int attempts = 0;
+      while (_isInitializing && attempts < 10) {
+        await Future.delayed(Duration(seconds: 1));
+        attempts++;
+      }
+      return _isInitialized;
+    }
+
+    _isInitializing = true;
+
+    try {
+      print('Initializing BeeAnalysisService with ML model...');
+
       _analyzer = BeeVideoAnalyzer(
-        updateState: (callback) {
-          // This is a no-op since we're not directly updating UI state here
-          callback();
+        updateState: (fn) {
+          // Empty function for background processing
+          fn();
         },
       );
-      await _analyzer!.initialize();
-      print('BeeVideoAnalyzer initialized successfully');
+
+      final success = await _analyzer!.initialize();
+      _isInitialized = success;
+
+      print('ML model initialization: ${success ? "SUCCESS" : "FAILED"}');
+      return success;
+    } catch (e, stack) {
+      print('Error initializing ML model: $e');
+      print('Stack trace: $stack');
+      _isInitialized = false;
+      return false;
+    } finally {
+      _isInitializing = false;
     }
   }
 
-  // Process a video using your existing ML model
-  Future<BeeCount?> analyzeVideo(
+  /// Analyze video using REAL ML model
+  Future<BeeCount?> analyzeVideoWithML(
     String hiveId,
     String videoId,
     String videoPath, {
     Function(double)? onProgress,
   }) async {
     try {
-      // Make sure analyzer is initialized
-      await _ensureAnalyzerInitialized();
+      print('=== STARTING ML VIDEO ANALYSIS ===');
+      print('Video ID: $videoId');
+      print('Hive ID: $hiveId');
+      print('Video Path: $videoPath');
 
-      print('Starting video analysis for video: $videoId, hiveId: $hiveId, path: $videoPath');
+      // Initialize ML if not already done
+      if (!_isInitialized) {
+        print('ML model not initialized, initializing now...');
+        final success = await initialize();
+        if (!success) {
+          print('ERROR: Failed to initialize ML model');
+          return null;
+        }
+      }
 
       // Check if file exists
       final videoFile = File(videoPath);
@@ -57,110 +90,181 @@ class BeeAnalysisService {
         return null;
       }
 
-      print('Video file exists and has size: ${await videoFile.length()} bytes');
-      print('Processing video file: $videoPath');
+      final fileSize = await videoFile.length();
+      print(
+        'Video file exists. Size: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB',
+      );
 
-      // Use your existing analyzer to process the video
-      final result = await _analyzer!.processVideoFile(
+      // Progress update
+      onProgress?.call(0.1);
+
+      // Process video with ML model
+      print('Processing video with ML model...');
+      final analysisResult = await _analyzer!.processVideoFile(
         videoFile,
         videoId,
         onStatusUpdate: (status) {
-          print('Analysis status: $status');
-          // Forward progress updates if available in status
-          if (status.contains('%') && onProgress != null) {
-            final percentStr = status.replaceAll(RegExp(r'[^0-9.]'), '');
+          print('ML Status: $status');
+          // Convert status to progress if possible
+          if (status.contains('%')) {
             try {
-              final percent = double.parse(percentStr) / 100;
-              onProgress(percent);
-            } catch (_) {
-              print('Could not parse percentage from status: $status');
+              final match = RegExp(r'(\d+(?:\.\d+)?)%').firstMatch(status);
+              if (match != null) {
+                final progress = double.parse(match.group(1)!) / 100;
+                onProgress?.call(0.1 + progress * 0.8); // Scale to 10-90%
+              }
+            } catch (e) {
+              // Ignore parsing errors
             }
           }
         },
       );
 
-      if (result != null) {
-        print('Analysis result received: $result');
-        // Convert your BeeAnalysisResult to our BeeCount model
-        final beeCount = BeeCount(
-          id: result.id,
-          hiveId: hiveId,
-          videoId: videoId,
-          beesEntering: result.beesIn,
-          beesExiting: result.beesOut,
-          timestamp: result.timestamp,
-          confidence: result.detectionConfidence,
-          notes:
-              'Confidence: ${result.detectionConfidence.toStringAsFixed(1)}%, Processing time: ${result.processingTime.toStringAsFixed(1)}s',
-        );
-
-        // Save to database
-        print('Saving bee count to database');
-        await BeeCountDatabase.instance.createBeeCount(beeCount);
-
-        print(
-          'Analysis complete: ${beeCount.beesEntering} bees entering, ${beeCount.beesExiting} bees exiting',
-        );
-        return beeCount;
-      } else {
-        print('Analysis failed or returned null from BeeVideoAnalyzer');
+      if (analysisResult == null) {
+        print('ERROR: ML analysis returned null');
         return null;
       }
-    } catch (e, stackTrace) {
-      print('Error in ML model processing: $e');
-      print('Stack trace: $stackTrace');
+
+      print('=== ML ANALYSIS COMPLETE ===');
+      print(
+        'Results: ${analysisResult.beesIn} bees in, ${analysisResult.beesOut} bees out',
+      );
+      print(
+        'Confidence: ${analysisResult.detectionConfidence.toStringAsFixed(1)}%',
+      );
+      print(
+        'Processing time: ${analysisResult.processingTime.toStringAsFixed(1)}s',
+      );
+      print('Frames analyzed: ${analysisResult.framesAnalyzed}');
+
+      // Convert to BeeCount and save to database
+      final beeCount = BeeCount(
+        id: analysisResult.id,
+        hiveId: hiveId,
+        videoId: videoId,
+        beesEntering: analysisResult.beesIn,
+        beesExiting: analysisResult.beesOut,
+        timestamp: analysisResult.timestamp,
+        confidence: analysisResult.detectionConfidence,
+        notes:
+            'ML processed. Model: ${analysisResult.modelVersion}, Processing time: ${analysisResult.processingTime.toStringAsFixed(1)}s',
+      );
+
+      try {
+        // Save to database
+        await BeeCountDatabase.instance.createBeeCount(beeCount);
+        print('Bee count saved to database successfully');
+      } catch (e, stack) {
+        print('ERROR saving to database: $e');
+        print('Stack trace: $stack');
+        // Continue anyway - we'll return the result even if DB save fails
+      }
+
+      // Final progress update
+      onProgress?.call(1.0);
+
+      return beeCount;
+    } catch (e, stack) {
+      print('ERROR in ML video analysis: $e');
+      print('Stack trace: $stack');
       return null;
     }
   }
 
-  // Download a video from a URL with timeout and better error handling
+  /// Download video from URL with improved error handling
   Future<String?> downloadVideo(
     String url, {
     Function(double)? onProgress,
   }) async {
     final client = http.Client();
     try {
-      // Check if URL is valid
+      print('=== DOWNLOADING VIDEO ===');
+      print('URL: $url');
+
       if (!url.startsWith('http')) {
         throw Exception('Invalid URL: $url');
       }
 
-      print('Downloading video from: $url');
+      onProgress?.call(0.0);
 
-      // Make the request without timeout
-      final response = await client.get(
-        Uri.parse(url),
-        headers: {'Accept': 'video/mp4'},
-      );
+      // Try different ways to download the video
+      for (int attempt = 1; attempt <= 3; attempt++) {
+        try {
+          print('Download attempt $attempt/3');
 
-      if (response.statusCode != 200) {
-        throw Exception('Failed to download video: ${response.statusCode}');
+          // Make request with streaming
+          final request = http.Request('GET', Uri.parse(url));
+          final response = await client
+              .send(request)
+              .timeout(Duration(seconds: 30));
+
+          if (response.statusCode != 200) {
+            print(
+              'Failed to download: HTTP ${response.statusCode}, trying again...',
+            );
+            continue;
+          }
+
+          // Get content length for progress tracking
+          final contentLength = response.contentLength ?? 0;
+          print(
+            'Content length: ${(contentLength / 1024 / 1024).toStringAsFixed(2)} MB',
+          );
+
+          // Get temporary directory
+          final directory = await getTemporaryDirectory();
+          final fileName = 'video_${DateTime.now().millisecondsSinceEpoch}.mp4';
+          final filePath = '${directory.path}/$fileName';
+
+          // Write file with progress tracking
+          final file = File(filePath);
+          final sink = file.openWrite();
+
+          int downloadedBytes = 0;
+
+          await for (final chunk in response.stream) {
+            sink.add(chunk);
+            downloadedBytes += chunk.length;
+
+            if (contentLength > 0) {
+              final progress = downloadedBytes / contentLength;
+              onProgress?.call(progress * 0.9); // Reserve 10% for final write
+            }
+          }
+
+          await sink.close();
+          onProgress?.call(1.0);
+
+          final fileSize = await file.length();
+          print('Video downloaded successfully');
+          print('File path: $filePath');
+          print('File size: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB');
+
+          return filePath;
+        } catch (e, stack) {
+          print('Error in download attempt $attempt: $e');
+          print('Stack trace: $stack');
+
+          if (attempt == 3) throw e; // Re-throw on last attempt
+          await Future.delayed(Duration(seconds: 2)); // Wait before retrying
+        }
       }
 
-      // Get the app's temporary directory
-      final directory = await getTemporaryDirectory();
-      final filePath =
-          '${directory.path}/temp_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
-
-      // Write the file
-      final file = File(filePath);
-      await file.writeAsBytes(response.bodyBytes);
-
-      print('Video downloaded successfully to: $filePath');
-
-      return filePath;
-    } catch (e) {
-      print('Error downloading video: $e');
+      return null; // Should never reach here, but needed for compilation
+    } catch (e, stack) {
+      print('ERROR downloading video: $e');
+      print('Stack trace: $stack');
       return null;
     } finally {
       client.close();
     }
   }
 
-  // Clean up resources
+  /// Clean up resources
   void dispose() {
     print('Disposing BeeAnalysisService resources');
     _analyzer?.dispose();
     _analyzer = null;
+    _isInitialized = false;
   }
 }
