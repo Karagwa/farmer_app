@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:farmer_app/bee_counter/integrated_hive_monitoring.dart';
 
 class HiveDetails extends StatefulWidget {
   final int hiveId;
@@ -192,8 +193,7 @@ class _HiveDetailsState extends State<HiveDetails> {
                 ],
               ),
               child: Column(
-                children: [
-                  // Device Status Section - IMPROVED
+                children: [                  // Device Status Section - IMPROVED
                   Padding(
                     padding: const EdgeInsets.all(15),
                     child: Row(
@@ -236,9 +236,7 @@ class _HiveDetailsState extends State<HiveDetails> {
                               ),
                             ],
                           ),
-                        ),
-
-                        // Monitor Button
+                        ),                        // Monitor Button
                         ElevatedButton.icon(
                           onPressed: () {
                             Navigator.push(
@@ -257,6 +255,35 @@ class _HiveDetailsState extends State<HiveDetails> {
                           style: ElevatedButton.styleFrom(
                             foregroundColor: Colors.amber[800],
                             backgroundColor: Colors.amber[50],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                          ),
+                        ),
+                        
+                        // Bee Activity Button
+                        const SizedBox(width: 10),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => IntegratedHiveMonitoring(
+                                  hiveId: widget.hiveId.toString(),
+                                  token: widget.token,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.monitor_heart, size: 18),
+                          label: const Text('Bee Activity'),
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.green[800],
+                            backgroundColor: Colors.green[50],
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
