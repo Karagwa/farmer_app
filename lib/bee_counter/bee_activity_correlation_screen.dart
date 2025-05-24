@@ -5,6 +5,7 @@ import 'package:farmer_app/bee_counter/bee_count_database.dart';
 import 'package:farmer_app/bee_counter/weatherdata.dart';
 import 'package:farmer_app/bee_counter/bee_activity_visualization.dart';
 import 'package:farmer_app/Services/weather_service.dart';
+import 'package:farmer_app/bee_counter/integrated_hive_monitoring.dart';
 
 /// Screen to show correlations between bee activity and various metrics
 class BeeActivityCorrelationScreen extends StatefulWidget {
@@ -418,6 +419,40 @@ class _BeeActivityCorrelationScreenState
           BeeActivityVisualization.buildCorrelationInsights(
             correlations: _correlations,
             context: context,
+          ),
+          
+          // Enhanced Analytics Button
+          const SizedBox(height: 20),
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => IntegratedHiveMonitoring(
+                      hiveId: widget.hiveId,
+                      token: '', // Add token if available
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.insights),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[700],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              label: const Text('View Enhanced Hive Monitoring'),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: Text(
+              'The enhanced monitoring dashboard provides a comprehensive view with improved correlation analytics and visualization.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic),
+            ),
           ),
 
           const SizedBox(height: 30),
