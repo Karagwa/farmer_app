@@ -9,6 +9,7 @@ import 'package:farmer_app/bee_counter/server_video_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:farmer_app/bee_counter/process_videos_widget.dart';
 import 'package:farmer_app/bee_counter/bee_activity_correlation_screen.dart';
+import 'package:farmer_app/bee_counter/integrated_hive_monitoring.dart';
 
 class BeeMonitoringScreen extends StatefulWidget {
   final String hiveId;
@@ -688,8 +689,7 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
                       builder: (context) => BeeActivityCorrelationScreen(
                         hiveId: widget.hiveId,
                       ),
-                    ),
-                  );
+                    ),                  );
                 },
                 icon: const Icon(Icons.analytics),
                 style: ElevatedButton.styleFrom(
@@ -698,6 +698,30 @@ class _BeeMonitoringScreenState extends State<BeeMonitoringScreen> {
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
                 label: const Text('View Activity Correlations'),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => IntegratedHiveMonitoring(
+                        hiveId: widget.hiveId,
+                        token: '',
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.insights),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700],
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+                label: const Text('Enhanced Analytics Dashboard'),
               ),
             ),
 
