@@ -1,4 +1,4 @@
-// lib/bee_counter/server_video_service.dart (updated)
+
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -16,15 +16,15 @@ class ServerVideoService {
   final http.Client _client = http.Client();
 
   // Retry configuration
-  final int _maxRetries = 5; // Increased from 3
-  final Duration _retryDelay = Duration(seconds: 3); // Reduced from 5 seconds
+  final int _maxRetries = 5; 
+  final Duration _retryDelay = Duration(seconds: 3); 
 
-  /// Fetch videos from server - REAL DATA ONLY
+  /// Fetch videos from server - 
   Future<List<ServerVideo>> fetchVideosFromServer(
     String hiveId, {
     DateTime? specificDate,
   }) async {
-    print('=== FETCHING VIDEOS FROM SERVER ===');
+    
     print('Hive ID: $hiveId');
     print('Date: ${specificDate?.toString() ?? "today"}');
 
@@ -70,9 +70,8 @@ class ServerVideoService {
     return dateVideos;
   }
 
-  /// Fetch all available videos from server
-  // Update to the _fetchAllVideosFromServer method in ServerVideoService
-
+  // Fetch all available videos from server
+  
   Future<List<ServerVideo>> _fetchAllVideosFromServer(String hiveId) async {
     List<ServerVideo> allVideos = [];
 
@@ -82,9 +81,9 @@ class ServerVideoService {
 
         // Try different API endpoints
         final endpoints = [
-          '$baseUrl/vids/latest', // This is our primary endpoint
+          '$baseUrl/vids/latest', 
           '$baseUrl/vids',
-          '$baseUrl/vids/hive/$hiveId',
+          
         ];
 
         for (final endpoint in endpoints) {
@@ -128,8 +127,7 @@ class ServerVideoService {
                 print('Response is a list of videos');
                 // Process list of videos...
               }
-              // ... [rest of your parsing logic]
-
+              
               if (allVideos.isNotEmpty) {
                 print(
                   'Successfully fetched ${allVideos.length} videos from $endpoint',
@@ -157,6 +155,70 @@ class ServerVideoService {
     print('Total videos fetched: ${allVideos.length}');
     return allVideos;
   }
+  
+// Fetch the latest video from the server
+  Future<ServerVideo?> fetchLatestVideoFromServer(String hiveId) async {
+    print('Hive ID: $hiveId');
+    try {
+      // Use the vids/latest endpoints
+      final String endpoint = '$baseUrl/vids/latest';
+      print('Trying endpoint: $endpoint');
+      
+      final response = await _client
+          .get(
+            Uri.parse(endpoint),
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(Duration(seconds: 15));
+      
+      
+      if (response.statusCode == 200) {
+        print('Success! Response length: ${response.body.length} bytes');
+        
+        try {
+          // Parse response -
+          final responseData = json.decode(response.body);
+          
+          // Check if there's a video object in the response
+          if (responseData is Map && responseData.containsKey('video')) {
+            print('Found "video" object in response');
+            final videoData = responseData['video'];
+            final video = ServerVideo.fromJson(
+              Map<String, dynamic>.from(videoData),
+            );
+            print('Successfully parsed latest video: ${video.id}');
+            return video;
+          } else {
+            print('Response preview: ${response.body.substring(0, response.body.length > 100 ? 100 : response.body.length)}');
+          }
+        } catch (e, stack) {
+        
+          print('Stack trace: $stack');
+        }
+      } else {
+        print('Endpoint returned status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+      
+       // fall back to fetching all videos and sorting
+      print('Falling back to fetching all videos and finding the latest');
+      final allVideos = await fetchVideosFromServer(hiveId);
+      if (allVideos.isNotEmpty) {
+        // Sort by timestamp descending to get the most recent first
+        allVideos.sort((a, b) => 
+          (b.timestamp ?? DateTime(1970)).compareTo(a.timestamp ?? DateTime(1970))
+        );
+        print('Found latest video from all videos: ${allVideos.first.id}');
+        return allVideos.first;
+      }
+      
+      return null;
+    } catch (e, stack) {
+      print('ERROR fetching latest video from server: $e');
+      print('Stack trace: $stack');
+      return null;
+    }
+  }
 
   /// Process server video with ML model
   Future<BeeCount?> processServerVideo(
@@ -165,7 +227,7 @@ class ServerVideoService {
     required Function(String) onStatusUpdate,
   }) async {
     try {
-      print('=== PROCESSING SERVER VIDEO ===');
+    
       print('Video ID: ${video.id}');
       print('Video URL: ${video.url}');
       print('Video Timestamp: ${video.timestamp}');
@@ -210,7 +272,6 @@ class ServerVideoService {
       );
 
       if (videoPath == null) {
-        print('ERROR: Failed to download video');
         onStatusUpdate('Failed to download video');
         return null;
       }

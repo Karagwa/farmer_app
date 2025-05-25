@@ -9,7 +9,6 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:permission_handler/permission_handler.dart';
-// import 'package:HPGM/bee_counter/bee_dashboard_screen.dart';
 import 'package:HPGM/bee_counter/bee_counter_model.dart';
 import 'package:HPGM/bee_counter/bee_count_database.dart';
 import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_engine.dart';
@@ -167,8 +166,6 @@ class ForagingReportGenerator {
               returnFactor * 0.4 +
               activityFactor * 0.3) *
           100;
-
-      
     });
 
     return metrics;
@@ -808,20 +805,23 @@ class ForagingReportGenerator {
                   grid: pw.CartesianGrid(
                     xAxis: pw.FixedAxis(
                       // Use numeric indices for the axis positions
-                      List.generate(metrics.length, (index) => index.toDouble()),
+                      List.generate(
+                        metrics.length,
+                        (index) => index.toDouble(),
+                      ),
                     ),
-                    yAxis: pw.FixedAxis(
-                      [for (int i = 0; i <= maxEfficiency; i += 20) i.toDouble()],
-                      divisions: true
-                    ),
-                    
+                    yAxis: pw.FixedAxis([
+                      for (int i = 0; i <= maxEfficiency; i += 20) i.toDouble(),
+                    ], divisions: true),
                   ),
                   title: pw.ChartLegend(
                     position: pw.Alignment.bottomCenter,
                     decoration: pw.BoxDecoration(
                       color: PdfColors.white,
                       border: pw.Border.all(color: PdfColors.grey300),
-                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                      borderRadius: const pw.BorderRadius.all(
+                        pw.Radius.circular(4),
+                      ),
                     ),
                     direction: pw.Axis.horizontal,
                     padding: const pw.EdgeInsets.only(top: 10, bottom: 4),
@@ -850,7 +850,9 @@ class ForagingReportGenerator {
                         for (int i = 0; i < metrics.length; i++)
                           pw.PointChartValue(
                             i.toDouble(),
-                            metrics[i].returnRate > 100 ? 100 : metrics[i].returnRate,
+                            metrics[i].returnRate > 100
+                                ? 100
+                                : metrics[i].returnRate,
                           ),
                       ],
                     ),

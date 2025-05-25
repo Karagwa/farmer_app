@@ -1,9 +1,10 @@
-import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_screen.dart';
+import 'dart:async';
+import 'package:HPGM/analytics/foraging_advisory_screen.dart';
+import 'package:HPGM/analytics/foraging_advisory_service.dart';
 import 'package:HPGM/bee_counter/bee_monitoring_screen.dart';
 import 'package:HPGM/bee_counter/bee_dashboard_screen.dart';
-import 'package:HPGM/bee_counter/bee_video_analysis_screen.dart';
 import 'package:HPGM/notifications/notification_screen.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_screen.dart';
+import 'package:HPGM/analytics/navigation_helper.dart';
 import 'package:HPGM/navbar.dart';
 import 'package:HPGM/profile.dart';
 import 'package:flutter/material.dart';
@@ -18,65 +19,78 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  StreamSubscription<List<NotificationItem>>? _notificationSubscription;
+  int _notificationCount = 0;
 
-  // Sample notification count - you can replace with actual data
-  final int notificationCount = 5;
+  @override
+  void initState() {
+    super.initState();
+    
+    // Initialize notification count
+    _notificationCount = NotificationService().unreadCount;
+    
+    // Listen to notification updates
+    _notificationSubscription = NotificationService().notificationStream.listen(
+      (notifications) {
+        if (mounted) {
+          setState(() {
+            _notificationCount = NotificationService().unreadCount;
+          });
+        }
+      },
+    );
+    
+    // Load initial notifications from advisory system
+    _loadInitialNotifications();
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadInitialNotifications() async {
+    try {
+      final advisoryService = EnhancedForagingAdvisoryService();
+      final analysis = await advisoryService.getDailyForagingAnalysis('1', DateTime.now());
+      
+      if (analysis != null) {
+        // Add recommendations as notifications
+        for (final recommendation in analysis.recommendations) {
+          NotificationService().addAdvisoryRecommendation(recommendation, analysis.hiveId);
+        }
+      }
+    } catch (e) {
+      print('Error loading initial notifications: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Bee Hive Management',
+          'BeeSight',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.amber[800],
         elevation: 0,
         actions: [
-          // Notifications icon with badge
-          IconButton(
-            icon: Stack(
-              children: [
-                const Icon(Icons.notifications, color: Colors.white),
-                if (notificationCount > 0)
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 15,
-                        minHeight: 15,
-                      ),
-                      child: Text(
-                        notificationCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
+          // Notifications icon with smart badge
+          NotificationBadge(
+            count: _notificationCount,
+            child: IconButton(
+              icon: const Icon(Icons.notifications, color: Colors.white),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => NotificationsScreen()),
+                );
+              },
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) =>
-                          NotificationsScreen(),
-                ),
-              );
-            },
           ),
-          // Profile avatar - now navigates to profile screen
+          // Profile avatar
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: GestureDetector(
@@ -101,24 +115,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Dashboard title and welcome message
+            // Dashboard title and welcome message with notification summary
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Dashboard',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.brown[900],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Welcome',
-                    style: TextStyle(fontSize: 14, color: Colors.brown[600]),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Dashboard',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.brown[900],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                            '',
+                              style: TextStyle(fontSize: 14, color: Colors.brown[600]),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Quick notification summary
+                      if (_notificationCount > 0)
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: NotificationService().criticalCount > 0 
+                                ? Colors.red.shade100 
+                                : Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: NotificationService().criticalCount > 0 
+                                  ? Colors.red.shade300 
+                                  : Colors.orange.shade300,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                NotificationService().criticalCount > 0 
+                                    ? Icons.error 
+                                    : Icons.notifications_active,
+                                size: 16,
+                                color: NotificationService().criticalCount > 0 
+                                    ? Colors.red.shade600 
+                                    : Colors.orange.shade600,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                '$_notificationCount alert${_notificationCount != 1 ? 's' : ''}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: NotificationService().criticalCount > 0 
+                                      ? Colors.red.shade600 
+                                      : Colors.orange.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -141,12 +207,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             color: const Color(0xFFD4A657),
                             notifications: 2,
                             onTap: () {
-                              // Navigate to the Home screen when Apiary Management is tapped
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder:
-                                      (context) => navbar(token: widget.token),
+                                  builder: (context) => navbar(token: widget.token),
                                 ),
                               );
                             },
@@ -160,13 +224,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             icon: Icons.trending_up,
                             color: const Color(0xFFCD853F),
                             onTap: () {
-                              // Handle bee counter tap
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder:
-                                      (context) =>
-                                          BeeMonitoringScreen(hiveId: '1'),
+                                  builder: (context) => BeeMonitoringScreen(hiveId: '1'),
                                 ),
                               );
                             },
@@ -179,24 +240,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     // Second row - two cards side by side
                     Row(
                       children: [
-                        // Notifications Card
+                        // Notifications Card with dynamic count
                         Expanded(
                           child: buildFeatureCard(
-                            title: 'Notifications',
-                            icon: Icons.notifications,
+                            title: 'Advisory Resources',
+                            icon: Icons.book,
                             color: const Color(0xFFB87333),
-                            notifications: notificationCount,
                             onTap: () {
-                              // Handle notifications tap
-                              Navigator.push(
+                              NavigationHelper.navigateToRecommendations(
                                 context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => NotificationsScreen(
-                                        
-                                      ),
-                                ),
-                              );
+                                hiveId: '1',
+                              ); 
                             },
                           ),
                         ),
@@ -211,8 +265,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder:
-                                      (context) => BeeDashboardScreen(hiveId: '1'),
+                                  builder: (context) => EnhancedForagingDashboard(hiveId: '1'),
                                 ),
                               );
                             },
@@ -225,34 +278,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     // Third row - two cards side by side
                     Row(
                       children: [
-                        // Advisory Resources Card
+                        // Advisory Resources Card - FIXED
                         Expanded(
                           child: buildFeatureCard(
-                            title: 'Advisory Resources',
-                            icon: Icons.book,
+                            title: 'Notifications',
+                            icon: Icons.notifications,
                             color: const Color(0xFF8B4513),
+                            notifications: _notificationCount,
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => BeeAdvisoryScreen(),
+                                  builder: (context) => NotificationsScreen(),
                                 ),
                               );
                             },
                           ),
                         ),
                         const SizedBox(width: 12),
-                        // Weather Card (placeholder - you can replace with another feature)
+                        // Hive Data Card
                         Expanded(
                           child: buildFeatureCard(
-                            title: 'Weather',
-                            icon: Icons.cloud,
+                            title: 'Hive Data',
+                            icon: Icons.hive,
                             color: const Color(0xFF4682B4),
                             onTap: () {
-                              // Handle weather tap
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Weather feature coming soon!'),
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => BeeDashboardScreen(hiveId: '1'),
                                 ),
                               );
                             },
@@ -274,13 +328,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _selectedIndex = index;
           });
 
-          // Improved navigation logic
           switch (index) {
             case 0:
-              // Already on Dashboard, do nothing
+              // Already on Dashboard
               break;
             case 1:
-              // Navigate to Hives screen
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
@@ -289,18 +341,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
               break;
             case 2:
-              // Navigate to Alerts/Notifications screen
+              // Navigate to Notifications screen
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder:
-                      (context) =>
-                          NotificationsScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => NotificationsScreen()),
               );
               break;
             case 3:
-              // Navigate to Profile screen
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -314,17 +361,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         selectedItemColor: Colors.amber[800],
         unselectedItemColor: Colors.brown[300],
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.hive), label: 'Hives'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.hive), 
+            label: 'Hives'
+          ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
+            icon: NotificationBadge(
+              count: _notificationCount,
+              child: const Icon(Icons.notifications),
+            ),
             label: 'Alerts',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person), 
+            label: 'Profile'
+          ),
         ],
       ),
     );
@@ -386,8 +442,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 shape: BoxShape.circle,
               ),
               child: Text(
-                notifications.toString(),
-                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                notifications > 99 ? '99+' : notifications.toString(),
+                style: TextStyle(
+                  color: color, 
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// Notification Badge Widget (add this to the same file or create a separate widget file)
+class NotificationBadge extends StatelessWidget {
+  final Widget child;
+  final int count;
+  final Color? badgeColor;
+
+  const NotificationBadge({
+    Key? key,
+    required this.child,
+    required this.count,
+    this.badgeColor,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        child,
+        if (count > 0)
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: badgeColor ?? Colors.red,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 16,
+                minHeight: 16,
+              ),
+              child: Text(
+                count > 99 ? '99+' : count.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
           ),

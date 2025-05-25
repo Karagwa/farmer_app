@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:HPGM/Services/notifi_service.dart';
 import 'package:HPGM/components/pop_up.dart';
+import 'package:HPGM/dashboard_screen.dart'; // Add this import
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
 
@@ -195,6 +196,15 @@ class _HomeState extends State<Home> {
     super.dispose();
   }
 
+  void _navigateToDashboard() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DashboardScreen(token: widget.token),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -236,11 +246,26 @@ class _HomeState extends State<Home> {
                                       Container(
                                         child: Image.asset(
                                           'lib/images/log-1.png',
-                                          height: 80,
-                                          width: 80,
+                                          height: 65,
+                                          width: 65,
                                         ),
                                       ),
                                       const Spacer(),
+                                      // Add dashboard button
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.dashboard,
+                                          color: Color.fromARGB(
+                                            255,
+                                            206,
+                                            109,
+                                            40,
+                                          ),
+                                          size: 30,
+                                        ),
+                                        onPressed: _navigateToDashboard,
+                                      ),
+                                      const SizedBox(width: 10),
                                       const Icon(
                                         Icons.person,
                                         color: Color.fromARGB(
@@ -249,7 +274,7 @@ class _HomeState extends State<Home> {
                                           109,
                                           40,
                                         ),
-                                        size: 65,
+                                        size: 50,
                                       ),
                                     ],
                                   ),

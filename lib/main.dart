@@ -1,8 +1,7 @@
 import 'package:HPGM/splashscreen.dart';
 import 'package:flutter/material.dart';
 import 'package:HPGM/Services/notifi_service.dart';
-import 'package:HPGM/bee_counter/bee_monitoring_background_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:HPGM/bee_counter/main_app_service_bridge.dart';
 
 Future<void> main() async {
   // Ensure Flutter is initialized before doing anything else
@@ -16,14 +15,14 @@ Future<void> main() async {
     print("Warning: Could not initialize notifications: $e");
   }
   
-  // Initialize and AUTO-START the bee monitoring service
+  // Initialize the service bridge (this will handle the background service)
   try {
-    print("Initializing automatic bee monitoring service...");
-    final monitoringService = AutomaticBeeMonitoringService();
-    await monitoringService.initializeAndStart(); // This auto-starts the service
-    print("✓ Bee monitoring service started automatically");
+    print("Initializing service bridge and automatic bee monitoring...");
+    final serviceBridge = MainAppServiceBridge();
+    await serviceBridge.initialize();
+    print("✓ Service bridge and bee monitoring service started automatically");
   } catch (e) {
-    print("Error starting bee monitoring service: $e");
+    print("Error starting service bridge: $e");
     // Continue anyway - the app should still work
   }
   
@@ -31,18 +30,69 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  final MainAppServiceBridge _serviceBridge = MainAppServiceBridge();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _ensureServiceBridge();
+  }
+
+  Future<void> _ensureServiceBridge() async {
+    try {
+      await _serviceBridge.initialize();
+      print('✓ Service bridge ensured in main app widget');
+    } catch (e) {
+      print('Error ensuring service bridge: $e');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        print(' App resumed - enabling full video processing');
+        _serviceBridge.onAppResumed();
+        break;
+      case AppLifecycleState.paused:
+        print('App paused - video processing limited to background service');
+        _serviceBridge.onAppPaused();
+        break;
+      case AppLifecycleState.detached:
+        print(' App detached');
+        break;
+      case AppLifecycleState.inactive:
+        print('App inactive');
+        break;
+      case AppLifecycleState.hidden:
+        print(' App hidden');
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _serviceBridge.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'HPGM',
-      theme: ThemeData(
-        primarySwatch: Colors.amber,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+     
       home: const Splashscreen(),
     );
   }
