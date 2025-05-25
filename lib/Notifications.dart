@@ -52,7 +52,7 @@ class _NotificationsState extends State<Notifications> {
                                     child: const Icon(
                                       Icons.chevron_left_rounded,
                                       color: Color.fromARGB(255, 206, 109, 40),
-                                      size: 65,
+                                      size: 45,
                                     ),
                                   ),
                                   const SizedBox(
@@ -69,7 +69,7 @@ class _NotificationsState extends State<Notifications> {
                                   const Icon(
                                     Icons.person,
                                     color: Color.fromARGB(255, 206, 109, 40),
-                                    size: 65,
+                                    size: 45,
                                   ),
                                 ],
                               ),
