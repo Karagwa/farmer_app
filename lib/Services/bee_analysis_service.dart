@@ -1,4 +1,4 @@
-// lib/Services/bee_analysis_service.dart (updated)
+// lib/Services/bee_analysis_service.dart (updated to use your existing analyzer)
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -7,7 +7,7 @@ import 'package:HPGM/bee_counter/bee_count_database.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
-import 'package:HPGM/bee_counter/bee_video_analyzer.dart';
+import 'package:HPGM/bee_counter/bee_video_analyzer.dart'; // Your existing analyzer
 
 class BeeAnalysisService {
   static final BeeAnalysisService _instance = BeeAnalysisService._internal();
@@ -15,7 +15,7 @@ class BeeAnalysisService {
   BeeAnalysisService._internal();
   static BeeAnalysisService get instance => _instance;
 
-  // ML analyzer instance
+  // ML analyzer instance - using your existing analyzer
   BeeVideoAnalyzer? _analyzer;
   bool _isInitialized = false;
   bool _isInitializing = false;
@@ -36,8 +36,9 @@ class BeeAnalysisService {
     _isInitializing = true;
 
     try {
-      print('Initializing BeeAnalysisService with ML model...');
+      print('Initializing BeeAnalysisService with your existing ML model...');
 
+      // Use your existing BeeVideoAnalyzer
       _analyzer = BeeVideoAnalyzer(
         updateState: (fn) {
           // Empty function for background processing
@@ -60,7 +61,7 @@ class BeeAnalysisService {
     }
   }
 
-  /// Analyze video using REAL ML model
+  /// Analyze video using your REAL ML model
   Future<BeeCount?> analyzeVideoWithML(
     String hiveId,
     String videoId,
@@ -98,8 +99,8 @@ class BeeAnalysisService {
       // Progress update
       onProgress?.call(0.1);
 
-      // Process video with ML model
-      print('Processing video with ML model...');
+      // Process video with your existing ML model
+      print('Processing video with your existing ML model...');
       final analysisResult = await _analyzer!.processVideoFile(
         videoFile,
         videoId,
@@ -111,6 +112,19 @@ class BeeAnalysisService {
               final match = RegExp(r'(\d+(?:\.\d+)?)%').firstMatch(status);
               if (match != null) {
                 final progress = double.parse(match.group(1)!) / 100;
+                onProgress?.call(0.1 + progress * 0.8); // Scale to 10-90%
+              }
+            } catch (e) {
+              // Ignore parsing errors
+            }
+          } else if (status.contains('frame') && status.contains('/')) {
+            // Parse "Analyzing frame X/Y..." format
+            try {
+              final match = RegExp(r'frame (\d+)/(\d+)').firstMatch(status);
+              if (match != null) {
+                final current = double.parse(match.group(1)!);
+                final total = double.parse(match.group(2)!);
+                final progress = current / total;
                 onProgress?.call(0.1 + progress * 0.8); // Scale to 10-90%
               }
             } catch (e) {
@@ -137,17 +151,20 @@ class BeeAnalysisService {
       );
       print('Frames analyzed: ${analysisResult.framesAnalyzed}');
 
-      // Convert to BeeCount and save to database
+      // Convert your BeeAnalysisResult to BeeCount and save to database
+      // IMPORTANT: Use the video's original timestamp, not the processing timestamp
+      final videoTimestamp = _extractTimestampFromVideoId(videoId) ?? analysisResult.timestamp;
+      
       final beeCount = BeeCount(
         id: analysisResult.id,
         hiveId: hiveId,
         videoId: videoId,
         beesEntering: analysisResult.beesIn,
         beesExiting: analysisResult.beesOut,
-        timestamp: analysisResult.timestamp,
+        timestamp: videoTimestamp, // Use video timestamp instead of processing timestamp
         confidence: analysisResult.detectionConfidence,
         notes:
-            'ML processed. Model: ${analysisResult.modelVersion}, Processing time: ${analysisResult.processingTime.toStringAsFixed(1)}s',
+            'ML processed. Model: ${analysisResult.modelVersion}, Processing time: ${analysisResult.processingTime.toStringAsFixed(1)}s, Frames: ${analysisResult.framesAnalyzed}',
       );
 
       try {
@@ -266,5 +283,32 @@ class BeeAnalysisService {
     _analyzer?.dispose();
     _analyzer = null;
     _isInitialized = false;
+  }
+
+  /// Extract timestamp from video ID (e.g., "1_2025-05-24_073136.mp4")
+  DateTime? _extractTimestampFromVideoId(String videoId) {
+    try {
+      // Parse video ID format: "1_2025-05-24_073136.mp4"
+      final parts = videoId.split('_');
+      if (parts.length >= 3) {
+        final datePart = parts[1]; // "2025-05-24"
+        final timePart = parts[2].split('.')[0]; // "073136"
+
+        final year = int.parse(datePart.substring(0, 4));
+        final month = int.parse(datePart.substring(5, 7));
+        final day = int.parse(datePart.substring(8, 10));
+
+        final hour = int.parse(timePart.substring(0, 2));
+        final minute = int.parse(timePart.substring(2, 4));
+        final second = int.parse(timePart.substring(4, 6));
+
+        final timestamp = DateTime(year, month, day, hour, minute, second);
+        print('Extracted timestamp from video ID $videoId: $timestamp');
+        return timestamp;
+      }
+    } catch (e) {
+      print('Error extracting timestamp from video ID $videoId: $e');
+    }
+    return null;
   }
 }
