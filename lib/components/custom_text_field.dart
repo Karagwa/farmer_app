@@ -12,7 +12,6 @@ class CustomTextField extends StatelessWidget {
     Key? key,
     required this.controller,
     required this.hintText,
-
     required this.icon,
     this.obscureText = false,
     this.suffixIcon, // Add this parameter
@@ -46,4 +45,3 @@ class CustomTextField extends StatelessWidget {
     );
   }
 }
-

@@ -82,8 +82,7 @@ class _MediaState extends State<Media> {
       String sendToken = "Bearer ${widget.token}";
       String formattedStartDate =
           "${DateFormat('yyyy-MM-dd').format(startDate)}";
-      String formattedEndDate =
-          "${DateFormat('yyyy-MM-dd').format(endDate)}";
+      String formattedEndDate = "${DateFormat('yyyy-MM-dd').format(endDate)}";
 
       var headers = {
         'Accept': 'application/json',
@@ -101,10 +100,13 @@ class _MediaState extends State<Media> {
         bool hasMore = jsonData['pagination']['next_page_url'] != null;
 
         setState(() {
-          photos.addAll(data.map<Map<String, String>>((item) => {
-            'date': item['date'],
-            'path': 'http://196.43.168.57/${item['path'].replaceAll('public/', '')}' // Remove 'public/' from path
-          }).toList());
+          photos.addAll(data
+              .map<Map<String, String>>((item) => {
+                    'date': item['date'],
+                    'path':
+                        'http://196.43.168.57/${item['path'].replaceAll('public/', '')}' // Remove 'public/' from path
+                  })
+              .toList());
           _isFetching = false;
           _hasMore = hasMore;
           _currentPage++;
@@ -243,7 +245,7 @@ class _MediaState extends State<Media> {
                                 padding: const EdgeInsets.all(1.0),
                                 itemCount: photos.length + (_hasMore ? 1 : 0),
                                 gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 3,
                                   crossAxisSpacing: 1.0,
                                   mainAxisSpacing: 1.0,
@@ -270,20 +272,19 @@ class _MediaState extends State<Media> {
                                               imageUrl: photos[index]['path']!,
                                               fit: BoxFit.cover,
                                               placeholder: (context, url) =>
-                                                  Container(
-                                                      color: Colors.grey),
+                                                  Container(color: Colors.grey),
                                               errorWidget:
                                                   (context, url, error) =>
-                                                  Container(
-                                                    color: Colors.red.shade400,
-                                                  ),
+                                                      Container(
+                                                color: Colors.red.shade400,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
                                             DateFormat('yyyy-MM-dd hh:mm:ss')
                                                 .format(DateTime.parse(
-                                                photos[index]['date']!)),
+                                                    photos[index]['date']!)),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 12,

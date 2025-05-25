@@ -352,6 +352,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

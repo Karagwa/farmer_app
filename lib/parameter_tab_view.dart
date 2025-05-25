@@ -10,7 +10,7 @@ class TabView extends StatefulWidget {
   final String token;
 
   const TabView({Key? key, required this.hiveId, required this.token})
-    : super(key: key);
+      : super(key: key);
 
   @override
   _TabViewState createState() => _TabViewState();
