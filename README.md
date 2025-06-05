@@ -2,20 +2,24 @@
 
 ![Farmer App Logo](lib/images/log-1.png)
 
+![CI/CD Status](https://github.com/yourusername/farmer_app/actions/workflows/flutter_ci_cd.yml/badge.svg)
+
 ## Overview
 
-Farmer App is a comprehensive beekeeping management and monitoring system designed to help beekeepers track hive health, monitor bee activity, and make data-driven decisions based on environmental correlations. The application provides real-time analytics on bee behavior, hive conditions (temperature, humidity, weight), and visualizes correlations between environmental factors and bee activity.
+HPGM (Honey Productivity, Guide and Monitor) is a comprehensive Flutter application designed to help beekeepers track hive productivity, monitor bee activity, and make data-driven decisions based on environmental correlations. The application provides real-time analytics on bee behavior, hive conditions (temperature, humidity, weight), and visualizes correlations between environmental factors and bee activity.
 
 ## 🐝 Key Features
 
-- **Hive Management**: Track multiple hives and apiaries with detailed information
+- **Apiary Management**: Track and manage multiple apiaries and hives
 - **Environmental Monitoring**: Real-time temperature, humidity, and weight data
 - **Bee Activity Tracking**: Advanced bee counting system with entry/exit analytics
 - **Correlation Analysis**: Analyze relationships between bee activity and environmental factors
 - **Media Management**: Capture, store, and analyze photos and videos of hives
 - **Smart Insights**: AI-driven insights and recommendations based on collected data
 - **Background Monitoring**: Continuous data collection even when the app is not in active use
-- **Reporting**: Generate comprehensive reports on hive health and productivity
+- **PDF Reporting**: Generate detailed bee foraging analysis reports
+- **Dashboard**: View key metrics and performance indicators
+- **Multi-platform**: Works on Android, iOS, Web, Windows, Linux, and macOS
 
 ## ✨ What's New
 
@@ -48,8 +52,8 @@ The app features advanced data visualization capabilities to help beekeepers und
 
 ### Prerequisites
 
-- Flutter SDK (3.2.3 or higher)
-- Dart SDK (3.0.0 or higher)
+- Flutter SDK (version 3.7.0 or higher)
+- Dart SDK (version 3.7.0 or higher)
 - Android Studio / VS Code with Flutter extensions
 - Git
 
@@ -77,14 +81,49 @@ flutter run
 2. Configure Android SDK and/or iOS development tools
 3. Install required emulators/simulators
 
+## 🛠️ Building for Different Platforms
+
+### Android
+```bash
+flutter build apk --release
+```
+
+### iOS
+```bash
+flutter build ios --release
+```
+
+### Web
+```bash
+flutter build web --release
+```
+
+### Windows
+```bash
+flutter build windows --release
+```
+
+### Linux
+```bash
+flutter build linux --release
+```
+
+### macOS
+```bash
+flutter build macos --release
+```
+
 ## 🏗️ Architecture
 
-The application follows a layered architecture pattern:
+HPGM follows a modular architecture with separate components for:
 
-- **Presentation Layer**: UI screens and widgets
+- **UI/Presentation Layer**: UI screens and widgets
 - **Business Logic Layer**: Services and repositories
-- **Data Layer**: Local databases and API clients
+- **Data Access Layer**: Local databases and API clients
 - **Domain Layer**: Models and entities
+- **External Services Integration**: Weather APIs, background services
+
+The app uses various Flutter packages for PDF generation, data visualization, and device sensor integration.
 
 ## 🧩 Main Components
 
@@ -96,6 +135,21 @@ The Farmer App consists of several key components working together:
 4. **Background Service**: Continuously monitors and processes data
 5. **Visualization Components**: Renders interactive charts and graphs
 6. **Database Layer**: Stores and manages all collected data efficiently
+
+## 🧪 Testing
+
+Run tests using:
+
+```bash
+# Run unit tests
+flutter test test/unit/
+
+# Run widget tests
+flutter test test/widget/
+
+# Run a specific test file
+flutter test test/unit/app_utils_test.dart
+```
 
 ## 📚 Documentation
 

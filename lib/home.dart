@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:farmer_app/Services/notifi_service.dart';
-import 'package:farmer_app/components/pop_up.dart';
+import 'package:HPGM/Services/notifi_service.dart';
+import 'package:HPGM/components/pop_up.dart';
+import 'package:HPGM/dashboard_screen.dart'; // Add this import
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
 
@@ -195,152 +196,178 @@ class _HomeState extends State<Home> {
     super.dispose();
   }
 
+  void _navigateToDashboard() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DashboardScreen(token: widget.token),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              children: [
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(0),
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: 200,
-                          width: double.infinity,
-                          child: Stack(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.orange.withOpacity(0.8),
-                                      Colors.orange.withOpacity(0.6),
-                                      Colors.orange.withOpacity(0.4),
-                                      Colors.orange.withOpacity(0.2),
-                                      Colors.orange.withOpacity(0.1),
-                                      Colors.transparent,
+      body:
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : ListView(
+                children: [
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(0),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 200,
+                            width: double.infinity,
+                            child: Stack(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.orange.withOpacity(0.8),
+                                        Colors.orange.withOpacity(0.6),
+                                        Colors.orange.withOpacity(0.4),
+                                        Colors.orange.withOpacity(0.2),
+                                        Colors.orange.withOpacity(0.1),
+                                        Colors.transparent,
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 50.0),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        child: Image.asset(
+                                          'lib/images/log-1.png',
+                                          height: 65,
+                                          width: 65,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      // Add dashboard button
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.dashboard,
+                                          color: Color.fromARGB(
+                                            255,
+                                            206,
+                                            109,
+                                            40,
+                                          ),
+                                          size: 30,
+                                        ),
+                                        onPressed: _navigateToDashboard,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      const Icon(
+                                        Icons.person,
+                                        color: Color.fromARGB(
+                                          255,
+                                          206,
+                                          109,
+                                          40,
+                                        ),
+                                        size: 50,
+                                      ),
                                     ],
                                   ),
                                 ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 50.0),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      child: Image.asset(
-                                        'lib/images/log-1.png',
-                                        height: 80,
-                                        width: 80,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    const Icon(
-                                      Icons.person,
-                                      color: Color.fromARGB(
-                                        255,
-                                        206,
-                                        109,
-                                        40,
-                                      ),
-                                      size: 65,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 150.0),
-                                child: Row(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 20.0,
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 8,
-                                          horizontal: 12,
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 150.0),
+                                  child: Row(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 20.0,
                                         ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            20,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                            horizontal: 12,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Text(
+                                                'Apiaries: ${homeData?.farms ?? 0}',
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: "Sans",
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              'Apiaries: ${homeData?.farms ?? 0}',
-                                              style: const TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                fontFamily: "Sans",
-                                              ),
+                                      ),
+                                      const Spacer(),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 20.0,
+                                        ),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                            horizontal: 12,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
                                             ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        right: 20.0,
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 8,
-                                          horizontal: 12,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            20,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Text(
+                                                'Hives: ${homeData?.hives ?? 0}',
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: "Sans",
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              'Hives: ${homeData?.hives ?? 0}',
-                                              style: const TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                fontFamily: "Sans",
-                                              ),
-                                            ),
-                                          ],
-                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Most productive apiary',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            fontFamily: 'Sans',
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Most productive apiary',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              fontFamily: 'Sans',
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        Center(
-                          child: SizedBox(
-                            height: 250,
-                            width: 300,
-                            child: LiquidLinearProgressIndicator(
-                              //value: 0.64,
-                              value: (homeData?.averageHoneyPercentage != null
-                                  ? homeData!.averageHoneyPercentage / 100
-                                  : 0.0),
+                          const SizedBox(height: 20),
+                          Center(
+                            child: SizedBox(
+                              height: 250,
+                              width: 300,
+                              child: LiquidLinearProgressIndicator(
+                                //value: 0.64,
+                                value:
+                                    (homeData?.averageHoneyPercentage != null
+                                        ? homeData!.averageHoneyPercentage / 100
+                                        : 0.0),
 
                               valueColor: const AlwaysStoppedAnimation(
                                 Colors.amber,
@@ -475,4 +502,3 @@ class _HomeState extends State<Home> {
     );
   }
 }
-

@@ -50,7 +50,8 @@ dependencies:
   # image: ^4.1.3
   # google_ml_kit: ^0.16.0
   flutter_video_info: ^1.3.2
-  # ffmpeg_kit_flutter_new: ^1.6.0 
+  ffmpeg_kit_flutter_new: ^1.6.0 
+  # ffmpeg_kit_flutter: ^6.0.3
 
 dev_dependencies:
   flutter_test:
@@ -134,7 +135,7 @@ flutter:
   assets:
     - lib/images/log-1.png
     - lib/images/njuki.jpg
-    - assets/models/best_float32.tflite
+    # - assets/models/best_float32.tflite
     - assets/models/bee_counter_model.tflite
     - assets/models/best_float.tflite
     - assets/lottie/

@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
-import 'package:farmer_app/apiary_overview_cards/build_overview_card.dart';
+import 'package:HPGM/apiary_overview_cards/build_overview_card.dart';
+import 'package:HPGM/dashboard_screen.dart'; // Add this import
 import 'farm_model.dart';
 import 'farm_card.dart';
 
@@ -94,7 +95,6 @@ class _ApiariesState extends State<Apiaries> {
             colonizedHives++;
           }
 
-          // Define conditions for hives needing attention
           // For example: not connected, high temperature, or high honey level ready for harvest
           if (!isConnected ||
               (temperature != null && temperature > 32) ||
@@ -119,6 +119,16 @@ class _ApiariesState extends State<Apiaries> {
   Future<void> _handleRefresh() async {
     await getApiaries();
     return;
+  }
+
+  void _navigateToDashboard() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DashboardScreen(token: widget.token),
+      ),
+      (route) => false, // This removes all previous routes
+    );
   }
 
   @override
@@ -162,6 +172,7 @@ class _ApiariesState extends State<Apiaries> {
                             padding: const EdgeInsets.only(top: 15.0),
                             child: Row(
                               children: [
+                                // Back button
                                 IconButton(
                                   icon: const Icon(
                                     Icons.arrow_back,
@@ -175,8 +186,8 @@ class _ApiariesState extends State<Apiaries> {
                                 Container(
                                   child: Image.asset(
                                     'lib/images/log-1.png',
-                                    height: 80,
-                                    width: 80,
+                                    height: 65,
+                                    width: 65,
                                   ),
                                 ),
                                 const SizedBox(width: 100),
@@ -188,10 +199,22 @@ class _ApiariesState extends State<Apiaries> {
                                   ),
                                 ),
                                 const Spacer(),
+
+                                // Dashboard icon
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.dashboard,
+                                    color: Color.fromARGB(255, 206, 109, 40),
+                                    size: 25,
+                                  ),
+                                  onPressed: _navigateToDashboard,
+                                ),
+
+                                // Profile icon
                                 const Icon(
                                   Icons.person,
                                   color: Color.fromARGB(255, 206, 109, 40),
-                                  size: 65,
+                                  size: 50,
                                 ),
                               ],
                             ),
@@ -218,13 +241,43 @@ class _ApiariesState extends State<Apiaries> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Apiary Overview',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.brown,
-                                  ),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Apiary Overview',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.brown,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    // Small dashboard shortcut button
+                                    TextButton.icon(
+                                      onPressed: _navigateToDashboard,
+                                      icon: const Icon(
+                                        Icons.dashboard,
+                                        size: 16,
+                                        color: Colors.brown,
+                                      ),
+                                      label: const Text(
+                                        'Dashboard',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.brown,
+                                        ),
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8.0,
+                                          vertical: 4.0,
+                                        ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 16),
                                 Row(
@@ -275,12 +328,59 @@ class _ApiariesState extends State<Apiaries> {
                         return buildFarmCard(farm, context, widget.token);
                       },
                     ),
+
+                    // Bottom padding and additional dashboard navigation
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Card(
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: InkWell(
+                          onTap: _navigateToDashboard,
+                          borderRadius: BorderRadius.circular(15),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 16.0,
+                              horizontal: 24.0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.dashboard,
+                                  color: Colors.amber[800],
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Go to Dashboard',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber[800],
+                                    fontFamily: "Sans",
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _navigateToDashboard,
+        backgroundColor: Colors.amber[800],
+        child: const Icon(Icons.dashboard),
+        tooltip: 'Go to Dashboard',
       ),
     );
   }
@@ -323,4 +423,3 @@ class ApiaryStats {
     required this.needsAttentionHives,
   });
 }
-

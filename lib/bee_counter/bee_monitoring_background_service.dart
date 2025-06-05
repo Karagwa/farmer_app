@@ -5,91 +5,216 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:farmer_app/Services/bee_analysis_service.dart';
-import 'package:farmer_app/bee_counter/server_video_service.dart';
-import 'package:farmer_app/utilities/video_processor.dart';
-
-// The port name used for communication with the background service
+import 'package:HPGM/Services/bee_analysis_service.dart';
+import 'package:HPGM/bee_counter/server_video_service.dart';
+import 'package:HPGM/bee_counter/bee_count_database.dart';
+import 'package:HPGM/bee_counter/bee_counter_model.dart';
 const String PORT_NAME = 'bee_monitoring_port';
 
-class BeeMonitoringService {
-  // Singleton pattern
-  static final BeeMonitoringService _instance =
-      BeeMonitoringService._internal();
-  factory BeeMonitoringService() => _instance;
-  BeeMonitoringService._internal();
+@pragma('vm:entry-point')
+class AutomaticBeeMonitoringService {
+  static final AutomaticBeeMonitoringService _instance =
+      AutomaticBeeMonitoringService._internal();
+  factory AutomaticBeeMonitoringService() => _instance;
+  AutomaticBeeMonitoringService._internal();
 
-  // Services
-  final ServerVideoService _serverVideoService = ServerVideoService();
-  final BeeAnalysisService _beeAnalysisService = BeeAnalysisService.instance;
-
-  // Background service instance
   final FlutterBackgroundService _service = FlutterBackgroundService();
-
-  // Notification setup
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  // Track last check time
-  DateTime _lastCheckTime = DateTime.now();
+  static const Duration _checkInterval = Duration(minutes: 3);
 
-  // Initialize the service
-  Future<void> initializeService() async {
-    final service = FlutterBackgroundService();
+  // Communication port for main isolate processing
+  static SendPort? _mainIsolateSendPort;
+  static ReceivePort? _backgroundReceivePort;
 
-    // Import the necessary packages to access the foreground service type
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'bee_monitoring_channel',
-      'Bee Monitoring Service',
-      description: 'Notifications for bee activity monitoring',
-      importance: Importance.high,
-    );
+  /// Initialize and AUTO-START the service
+  Future<void> initializeAndStart() async {
+  
 
-    // Create the channel before using it
-    await FlutterLocalNotificationsPlugin()
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
-    await service.configure(
-      androidConfiguration: AndroidConfiguration(
-        // We'll rely on the foreground service type defined in AndroidManifest.xml
-        onStart: _onStart,
-        autoStart: false,
-        isForegroundMode: true,
-        notificationChannelId: 'bee_monitoring_channel',
-        initialNotificationTitle: 'Bee Monitoring Service',
-        initialNotificationContent: 'Initializing...',
-        foregroundServiceNotificationId: 888,
-      ),
-      iosConfiguration: IosConfiguration(
-        autoStart: false,
-        onForeground: _onStart,
-        onBackground: _onIosBackground,
-      ),
+    try {
+      await _setupNotifications();
+      print('✓ Notifications configured');
+
+      // Setup communication between isolates
+      await _setupIsolateCommunication();
+      print('✓ Isolate communication setup');
+
+      await _configureBackgroundService();
+      print(' Background service configured');
+
+      final isRunning = await _service.isRunning();
+      if (!isRunning) {
+        print('Starting background service...');
+        final started = await _service.startService();
+        print(' Service auto-started: $started');
+      } else {
+        print('Service already running');
+      }
+
+      print(' Bee monitoring service started automatically');
+    } catch (e) {
+      print('ERROR initializing service: $e');
+    }
+  }
+
+  // Setup communication between main and background isolates
+  Future<void> _setupIsolateCommunication() async {
+    // Create receive port for background isolate to send tasks to main isolate
+    _backgroundReceivePort = ReceivePort();
+    
+    // Listen for video processing requests from background isolate
+    _backgroundReceivePort!.listen((message) async {
+      if (message is Map && message['type'] == 'process_video') {
+        try {
+          print('Main isolate received video processing request');
+          
+          final videoUrl = message['videoUrl'] as String;
+          final videoId = message['videoId'] as String;
+          final hiveId = message['hiveId'] as String;
+          final timestamp = message['timestamp'] != null 
+              ? DateTime.parse(message['timestamp']) 
+              : DateTime.now();
+
+          // Process video in main isolate where FFmpeg works
+          final result = await _processVideoInMainIsolate(videoUrl, videoId, hiveId, timestamp);
+          
+          // Send result back to background isolate
+          final backgroundPort = message['responsePort'] as SendPort;
+          backgroundPort.send({
+            'type': 'processing_result',
+            'success': result != null,
+            'data': result?.toJson(),
+            'beeCount': result != null ? {
+              'beesEntering': result.beesEntering,
+              'beesExiting': result.beesExiting,
+              'confidence': result.confidence,
+            } : null,
+          });
+        } catch (e) {
+          print('Error processing video in main isolate: $e');
+          // Send error response
+          final backgroundPort = message['responsePort'] as SendPort;
+          backgroundPort.send({
+            'type': 'processing_result',
+            'success': false,
+            'error': e.toString(),
+          });
+        }
+      }
+    });
+
+    // Register the port for background isolate to find
+    IsolateNameServer.removePortNameMapping('main_isolate_port');
+    IsolateNameServer.registerPortWithName(
+      _backgroundReceivePort!.sendPort, 
+      'main_isolate_port'
     );
   }
 
-  // Setup notification channels
+  /// Process video in main isolate where plugins work
+  Future<BeeCount?> _processVideoInMainIsolate(
+    String videoUrl, 
+    String videoId, 
+    String hiveId,
+    DateTime timestamp,
+  ) async {
+    try {
+      print('Processing video in main isolate: $videoId');
+      
+      // Check if already processed to avoid duplicate work
+      final isProcessed = await BeeCountDatabase.instance.isVideoProcessed(videoId);
+      if (isProcessed) {
+        print('Video already processed: $videoId');
+        // Return existing count
+        final counts = await BeeCountDatabase.instance.getAllBeeCounts();
+        final existingCount = counts.firstWhere(
+          (count) => count.videoId == videoId,
+          orElse: () => BeeCount(
+            hiveId: hiveId,
+            videoId: videoId,
+            beesEntering: 0,
+            beesExiting: 0,
+            timestamp: timestamp,
+          ),
+        );
+        return existingCount;
+      }
+      
+      final beeAnalysisService = BeeAnalysisService.instance;
+      
+      // Initialize ML model if needed
+      await beeAnalysisService.initialize();
+      
+      // Download video
+      print('Downloading video from: $videoUrl');
+      final videoPath = await beeAnalysisService.downloadVideo(
+        videoUrl,
+        onProgress: (progress) {
+          print('Download progress: ${(progress * 100).toStringAsFixed(1)}%');
+        },
+      );
+
+      if (videoPath == null) {
+        print('Failed to download video');
+        return null;
+      }
+
+      print('Video downloaded successfully: $videoPath');
+
+      // Analyze with ML (this will use FFmpeg in main isolate where it works)
+      final result = await beeAnalysisService.analyzeVideoWithML(
+        hiveId,
+        videoId,
+        videoPath,
+        onProgress: (progress) {
+          print('Analysis progress: ${(progress * 100).toStringAsFixed(1)}%');
+        },
+      );
+
+      if (result != null) {
+        // Ensure correct timestamp is used
+        final correctedResult = result.copyWith(timestamp: timestamp);
+        print(' Video processed successfully: ${correctedResult.beesEntering} in, ${correctedResult.beesExiting} out');
+        return correctedResult;
+      } else {
+        print(' Video processing failed');
+        return null;
+      }
+
+    } catch (e, stack) {
+      print('Error in main isolate video processing: $e');
+      print('Stack trace: $stack');
+      return null;
+    }
+  }
+
+  /// Setup notification system
   Future<void> _setupNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+
+    await _notificationsPlugin.initialize(initializationSettings);
+
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'bee_monitoring_channel',
       'Bee Monitoring Service',
-      description: 'Notifications for bee activity monitoring',
+      description: 'Automatic bee activity monitoring',
       importance: Importance.high,
+      showBadge: true,
     );
 
     await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
   }
 
-  FlutterBackgroundService getService() {
-    return _service;
-  }
-
-  // Configure the background service
+  // Configure background service
   Future<void> _configureBackgroundService() async {
     await _service.configure(
       androidConfiguration: AndroidConfiguration(
@@ -97,9 +222,10 @@ class BeeMonitoringService {
         autoStart: true,
         isForegroundMode: true,
         notificationChannelId: 'bee_monitoring_channel',
-        initialNotificationTitle: 'Bee Monitoring Service',
-        initialNotificationContent: 'Monitoring bee activity',
+        initialNotificationTitle: 'Bee Monitor Active',
+        initialNotificationContent: 'Monitoring hive activity',
         foregroundServiceNotificationId: 888,
+        autoStartOnBoot: true,
       ),
       iosConfiguration: IosConfiguration(
         autoStart: true,
@@ -109,167 +235,273 @@ class BeeMonitoringService {
     );
   }
 
-  // iOS background handler
   @pragma('vm:entry-point')
-  static Future<bool> _onIosBackground(ServiceInstance service) async {
-    WidgetsFlutterBinding.ensureInitialized();
-    DartPluginRegistrant.ensureInitialized();
-    return true;
-  }
-
-  // Main background service entry point
-  @pragma('vm:entry-point')
-  static void _onStart(ServiceInstance service) async {
+  static Future<bool> _onStart(ServiceInstance service) async {
     WidgetsFlutterBinding.ensureInitialized();
     DartPluginRegistrant.ensureInitialized();
 
-    // Setup communication port
-    final ReceivePort port = ReceivePort();
-    IsolateNameServer.registerPortWithName(port.sendPort, PORT_NAME);
+    print('=== BACKGROUND SERVICE STARTED ===');
 
-    // Configure Android-specific features
     if (service is AndroidServiceInstance) {
-      service.on('setAsForeground').listen((event) {
-        service.setAsForegroundService();
-      });
-
-      service.on('setAsBackground').listen((event) {
-        service.setAsBackgroundService();
-      });
+      service.setForegroundNotificationInfo(
+        title: 'Bee Monitor Active',
+        content: 'Monitoring hive activity',
+      );
+      service.setAsForegroundService();
     }
 
-    // Listen for stop command
     service.on('stopService').listen((event) {
       service.stopSelf();
     });
 
-    // Using periodic timer that runs every 30 minutes
-    Timer.periodic(
-      const Duration(minutes: 30),
-      (timer) => _checkForNewVideos(service),
-    );
-
-    // For testing, also run immediately
-    _checkForNewVideos(service);
+    await _startAutomaticProcessing(service);
+    return true;
   }
 
-  // Check for new videos logic
-  // In your _checkForNewVideos method in BeeMonitoringService.dart
-  static Future<void> _checkForNewVideos(ServiceInstance service) async {
+  @pragma('vm:entry-point')
+  static Future<bool> _onIosBackground(ServiceInstance service) async {
+    WidgetsFlutterBinding.ensureInitialized();
+    DartPluginRegistrant.ensureInitialized();
+    await _startAutomaticProcessing(service);
+    return true;
+  }
+
+  // Start the main processing loop - simplified to avoid plugin issues
+  static Future<void> _startAutomaticProcessing(ServiceInstance service) async {
+    print('Starting automatic bee video processing loop');
+    final Map<String, DateTime> lastCheckTime = {};
+
+    // Get reference to main isolate port
+    SendPort? mainIsolatePort;
+    
+    Timer.periodic(Duration(seconds: 5), (timer) {
+      // Try to get main isolate port if we don't have it
+      if (mainIsolatePort == null) {
+        mainIsolatePort = IsolateNameServer.lookupPortByName('main_isolate_port');
+        if (mainIsolatePort != null) {
+          print('Connected to main isolate for video processing');
+        }
+      }
+    });
+
+    Timer.periodic(_checkInterval, (timer) async {
+      print('\n PERIODIC CHECK: ${DateTime.now()} ');
+      await _performAutomaticVideoCheck(service, lastCheckTime, mainIsolatePort);
+    });
+  }
+
+  /// Simplified video check - delegate processing to main isolate
+  static Future<void> _performAutomaticVideoCheck(
+    ServiceInstance service,
+    Map<String, DateTime> lastCheckTime,
+    SendPort? mainIsolatePort,
+  ) async {
     try {
-      // Update service notification to show it's active
+      print('Checking for new videos...');
+      
       if (service is AndroidServiceInstance) {
         service.setForegroundNotificationInfo(
-          title: 'Bee Monitoring Active',
+          title: 'Bee Monitor',
           content: 'Checking for new videos...',
         );
       }
-      final prefs = await SharedPreferences.getInstance();
 
-      service.invoke('update', {
-        'status': 'Checking for new videos',
-        'timestamp': DateTime.now().toIso8601String(),
-      });
+      // Simple check without processing - just fetch latest video info
+      final serverVideoService = ServerVideoService();
+      final latestVideo = await serverVideoService.fetchLatestVideoFromServer('1');
 
-      // Create a new instance of VideoProcessor to avoid static method issues
-      final result = await VideoProcessor.processVideos(
-        hiveId: '1', // Default hive ID
-        date: DateTime.now(), // Process today's videos
-        force: false,
-        verbose: true,
-        onStatusUpdate: (status) {
-          // Report status updates to the service
-          service.invoke('update', {
-            'status': status,
-            'timestamp': DateTime.now().toIso8601String(),
-          });
-        },
-      );
-
-      // Update service with results
-      int processedCount = result['processed'] as int;
-      int successfulCount = result['successful'] as int;
-
-      service.invoke('update', {
-        'status': processedCount > 0
-            ? 'Processing complete: $successfulCount videos processed successfully'
-            : 'No new videos to process',
-        'timestamp': DateTime.now().toIso8601String(),
-        'result': {
-          'totalVideos': result['totalVideos'],
-          'processed': result['processed'],
-          'successful': result['successful'],
-          'failed': result['failed'],
-          'skipped': result['skipped'],
-        },
-      });
-
-      // Only show notification if we actually processed videos
-      if (processedCount > 0) {
-        final FlutterLocalNotificationsPlugin notificationsPlugin =
-            FlutterLocalNotificationsPlugin();
-
-        notificationsPlugin.show(
-          DateTime.now().millisecond,
-          'Bee Activity Update',
-          'Processed $processedCount videos: $successfulCount successful',
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              'bee_monitoring_channel',
-              'Bee Monitoring Service',
-              channelDescription: 'Notifications for bee monitoring',
-              importance: Importance.high,
-              priority: Priority.high,
-              icon: '@mipmap/ic_launcher',
-            ),
-          ),
-        );
+      if (latestVideo == null) {
+        print('No videos found on server');
+        if (service is AndroidServiceInstance) {
+          service.setForegroundNotificationInfo(
+            title: 'Bee Monitor Active',
+            content: 'No new videos found',
+          );
+        }
+        return;
       }
 
-      // Update last check time
-      await prefs.setInt(
-        'last_check_time',
-        DateTime.now().millisecondsSinceEpoch,
-      );
-    } catch (e) {
-      print('Error in checking for new videos: $e');
+      print('Found latest video: ${latestVideo.id}');
+      print('Video timestamp: ${latestVideo.timestamp}');
+
+      // Check if already processed
+      final isProcessed = await BeeCountDatabase.instance.isVideoProcessed(latestVideo.id);
+      
+      final lastCheck = lastCheckTime['1'] ?? DateTime.now().subtract(Duration(days: 1));
+      final isNewerThanLastCheck = latestVideo.timestamp != null && 
+          latestVideo.timestamp!.isAfter(lastCheck);
+      
+      if (isProcessed && !isNewerThanLastCheck) {
+        print('Video already processed and not newer than last check, skipping');
+        if (service is AndroidServiceInstance) {
+          service.setForegroundNotificationInfo(
+            title: 'Bee Monitor Active',
+            content: 'Monitoring hive activity (${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')})',
+          );
+        }
+        return;
+      }
+
+      // If main isolate communication is available, delegate processing
+      if (mainIsolatePort != null) {
+        print('Delegating video processing to main isolate');
+        
+        if (service is AndroidServiceInstance) {
+          service.setForegroundNotificationInfo(
+            title: 'Processing Video',
+            content: 'Analyzing ${latestVideo.id}...',
+          );
+        }
+        
+        final responsePort = ReceivePort();
+        mainIsolatePort.send({
+          'type': 'process_video',
+          'videoUrl': latestVideo.url,
+          'videoId': latestVideo.id,
+          'hiveId': '1',
+          'timestamp': latestVideo.timestamp?.toIso8601String(),
+          'responsePort': responsePort.sendPort,
+        });
+
+        // Wait for response with timeout
+        try {
+          final response = await responsePort.first.timeout(
+            Duration(minutes: 10), // Increased timeout for video processing
+            onTimeout: () => {'type': 'timeout'},
+          );
+
+          if (response['type'] == 'processing_result' && response['success'] == true) {
+            final beeCount = response['beeCount'];
+            print('✓ Video processed successfully in main isolate');
+            
+            if (beeCount != null) {
+              print('Results: ${beeCount['beesEntering']} in, ${beeCount['beesExiting']} out');
+              print('Confidence: ${beeCount['confidence'].toStringAsFixed(1)}%');
+            }
+            
+            // Update last check time
+            lastCheckTime['1'] = DateTime.now();
+            
+            if (service is AndroidServiceInstance) {
+              final message = beeCount != null 
+                  ? 'Processed: ${beeCount['beesEntering']} in, ${beeCount['beesExiting']} out'
+                  : 'Latest video processed successfully';
+              
+              service.setForegroundNotificationInfo(
+                title: 'Bee Monitor Active',
+                content: message,
+              );
+            }
+            
+            // Show success notification
+            await _showProcessingNotification(1, 1, beeCount);
+            
+          } else if (response['type'] == 'timeout') {
+            print(' Video processing timed out');
+            if (service is AndroidServiceInstance) {
+              service.setForegroundNotificationInfo(
+                title: 'Bee Monitor Active',
+                content: 'Processing timed out - will retry next cycle',
+              );
+            }
+          } else {
+            print(' Video processing failed: ${response['error'] ?? 'Unknown error'}');
+            if (service is AndroidServiceInstance) {
+              service.setForegroundNotificationInfo(
+                title: 'Bee Monitor Active',
+                content: 'Processing failed - will retry next cycle',
+              );
+            }
+          }
+        } catch (e) {
+          print('Error waiting for processing response: $e');
+        } finally {
+          responsePort.close();
+        }
+        
+      } else {
+        print('Main isolate communication not available');
+        
+        if (service is AndroidServiceInstance) {
+          service.setForegroundNotificationInfo(
+            title: 'Bee Monitor Limited',
+            content: 'Main app needed for video processing',
+          );
+        }
+        
+        // Create a placeholder entry to avoid reprocessing
+        final placeholderCount = BeeCount(
+          hiveId: '1',
+          videoId: latestVideo.id,
+          beesEntering: 0,
+          beesExiting: 0,
+          timestamp: latestVideo.timestamp ?? DateTime.now(),
+          notes: 'Processed in background - main app needed for full analysis',
+          confidence: 0.0,
+        );
+        
+        try {
+          await BeeCountDatabase.instance.createBeeCount(placeholderCount);
+          print('Created placeholder entry for video: ${latestVideo.id}');
+        } catch (e) {
+          print('Error creating placeholder entry: $e');
+        }
+      }
+
+    } catch (e, stack) {
+      print('ERROR in automatic processing: $e');
+      print('Stack trace: $stack');
+      
       if (service is AndroidServiceInstance) {
         service.setForegroundNotificationInfo(
-          title: 'Bee Monitoring Error',
-          content: 'Error: $e',
+          title: 'Bee Monitor Error',
+          content: 'Error checking videos - will retry',
         );
       }
     }
   }
 
-  // Start the service manually
-  Future<bool> startService() async {
-    return await _service.startService();
+  /// Show processing notification with results
+  static Future<void> _showProcessingNotification(
+    int successful,
+    int processed,
+    Map<String, dynamic>? beeCount,
+  ) async {
+    final notificationsPlugin = FlutterLocalNotificationsPlugin();
+
+    String title = 'New Bee Video Processed';
+    String body = 'Successfully analyzed $successful out of $processed videos';
+    
+    if (beeCount != null) {
+      final beesIn = beeCount['beesEntering'] ?? 0;
+      final beesOut = beeCount['beesExiting'] ?? 0;
+      final confidence = beeCount['confidence'] ?? 0.0;
+      
+      body = 'Detected: $beesIn bees in, $beesOut bees out (${confidence.toStringAsFixed(0)}% confidence)';
+    }
+
+    await notificationsPlugin.show(
+      DateTime.now().millisecond,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'bee_monitoring_channel',
+          'Bee Monitoring Service',
+          channelDescription: 'Bee monitoring notifications',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+      ),
+    );
   }
 
-  // Stop the service manually
-  Future<bool> stopService() async {
-    // Send the stop command
-    _service.invoke('stopService');
-
-    // Wait a brief moment for the service to process the stop command
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Return the new service state (should be stopped)
-    return !(await isServiceRunning());
-  }
-
-  // Check if service is running
   Future<bool> isServiceRunning() async {
     return await _service.isRunning();
   }
 
-  // Method to manually trigger an immediate check
-  Future<void> checkNow() async {
-    if (await isServiceRunning()) {
-      _service.invoke('checkNow');
-    } else {
-      await startService();
-    }
+  FlutterBackgroundService getService() {
+    return _service;
   }
 }
