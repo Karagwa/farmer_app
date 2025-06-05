@@ -2,16 +2,11 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:intl/intl.dart';
 
-
 class BeeAdvisoryDatabase {
-  
-  
   static final BeeAdvisoryDatabase instance = BeeAdvisoryDatabase._init();
   static Database? _database;
 
   BeeAdvisoryDatabase._init();
-  
-  
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -187,73 +182,75 @@ class BeeAdvisoryDatabase {
       await db.insert('plants', plant);
     }
   }
-  
+
   // Add these methods to the BeeAdvisoryDatabase class
-  
+
   // Get recommendations by date range
   Future<List<Map<String, dynamic>>> getRecommendationsByDateRange(
-    String hiveId, 
-    DateTime startDate, 
-    DateTime endDate
+    String hiveId,
+    DateTime startDate,
+    DateTime endDate,
   ) async {
     final db = await database;
-    
+
     final startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
     final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
-    
+
     final result = await db.query(
       'recommendations',
       where: 'hive_id = ? AND date BETWEEN ? AND ?',
       whereArgs: [hiveId, startDateStr, endDateStr],
       orderBy: 'date ASC',
     );
-    
+
     return result;
   }
-  
+
   // Get recommendations by issue
   Future<List<Map<String, dynamic>>> getRecommendationsByIssue(
-    String hiveId, 
-    String issue
+    String hiveId,
+    String issue,
   ) async {
     final db = await database;
-    
+
     final result = await db.query(
       'recommendations',
       where: 'hive_id = ? AND issue_identified = ?',
       whereArgs: [hiveId, issue],
       orderBy: 'date ASC',
     );
-    
+
     return result;
   }
-  
+
   // Get implemented recommendations
-  Future<List<Map<String, dynamic>>> getImplementedRecommendations(String hiveId) async {
+  Future<List<Map<String, dynamic>>> getImplementedRecommendations(
+    String hiveId,
+  ) async {
     final db = await database;
-    
+
     final result = await db.query(
       'recommendation_implementations',
       where: 'hive_id = ?',
       whereArgs: [hiveId],
     );
-    
+
     return result;
   }
-  
+
   // Check if a recommendation was implemented
   Future<bool> checkRecommendationImplemented(int recommendationId) async {
     final db = await database;
-    
+
     final result = await db.query(
       'recommendation_implementations',
       where: 'recommendation_id = ?',
       whereArgs: [recommendationId],
     );
-    
+
     return result.isNotEmpty;
   }
-  
+
   // Create recommendation_implementations table if it doesn't exist
   Future<void> _createImplementationsTable(Database db) async {
     await db.execute('''
@@ -267,24 +264,21 @@ class BeeAdvisoryDatabase {
       )
     ''');
   }
-  
+
   // Mark a recommendation as implemented
   Future<int> markRecommendationImplemented(
-    int recommendationId, 
-    String hiveId, 
-    {String? notes}
-  ) async {
+    int recommendationId,
+    String hiveId, {
+    String? notes,
+  }) async {
     final db = await database;
-    
-    return await db.insert(
-      'recommendation_implementations',
-      {
-        'recommendation_id': recommendationId,
-        'hive_id': hiveId,
-        'implementation_date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-        'notes': notes ?? '',
-      },
-    );
+
+    return await db.insert('recommendation_implementations', {
+      'recommendation_id': recommendationId,
+      'hive_id': hiveId,
+      'implementation_date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      'notes': notes ?? '',
+    });
   }
 
   Future _insertInitialSupplementData(Database db) async {
@@ -522,11 +516,11 @@ class BeeAdvisoryDatabase {
 
   Future<List<Map<String, dynamic>>> readAllHives() async {
     final db = await instance.database;
-    
+
     try {
       // Query the hives table, or create a default entry if the table doesn't exist yet
       List<Map<String, dynamic>> hives = [];
-      
+
       try {
         hives = await db.query('hives');
       } catch (e) {
@@ -542,40 +536,62 @@ class BeeAdvisoryDatabase {
           )
         ''');
       }
-      
+
       // If no hives found, return at least a default hive
       if (hives.isEmpty) {
         // Default hive for testing
-        return [{'id': 'default_hive', 'hemisphere': 'northern'}];
+        return [
+          {'id': 'default_hive', 'hemisphere': 'northern'},
+        ];
       }
-      
+
       return hives;
     } catch (e) {
       print('Error reading all hives: $e');
       // Return at least a default hive in case of error
-      return [{'id': 'default_hive', 'hemisphere': 'northern'}];
+      return [
+        {'id': 'default_hive', 'hemisphere': 'northern'},
+      ];
     }
   }
-  
+
   Future<Map<String, dynamic>?> getHiveData(String hiveId) async {
-      try {
-        final hives = await readAllHives();
-        
-        // Find the hive with the matching ID
-        for (var hive in hives) {
-          if (hive['id'] == hiveId) {
-            return hive;
-          }
+    try {
+      final hives = await readAllHives();
+
+      // Find the hive with the matching ID
+      for (var hive in hives) {
+        if (hive['id'] == hiveId) {
+          return hive;
         }
-        
-        // If no matching hive is found, return null
-        return null;
-      } catch (e) {
-        print('Error getting hive data: $e');
-        // Return default data in case of error
-        return {'id': hiveId, 'hemisphere': 'northern'};
       }
+
+      // If no matching hive is found, return null
+      return null;
+    } catch (e) {
+      print('Error getting hive data: $e');
+      // Return default data in case of error
+      return {'id': hiveId, 'hemisphere': 'northern'};
     }
+  }
+
+  // Add this query method:
+
+  Future<List<Map<String, dynamic>>> query(
+    String table, {
+    bool? distinct,
+    List<String>? columns,
+    String? where,
+    List<Object?>? whereArgs,
+    String? groupBy,
+    String? having,
+    String? orderBy,
+    int? limit,
+    int? offset,
+  }) async {
+    // Return mock data for testing purposes
+    return [];
+  }
 
   // Close the database
   Future close() async {

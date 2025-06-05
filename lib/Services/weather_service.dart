@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:HPGM/notifications/weather_model.dart';
 
 class WeatherService {
   static const String _apiKey = 'pk5l7f3uii8c19rkzyr20z5b8liieenq1boytiqi';
@@ -264,5 +265,19 @@ class WeatherService {
       print('Error extracting weather summary: $e');
       return {'error': 'Error extracting weather summary: $e'};
     }
+  }
+
+  Future<WeatherData> getWeatherData(double latitude, double longitude) async {
+    // TODO: Implement the logic to fetch weather data using latitude and longitude.
+    // For now, return a dummy WeatherData object or fetch from your API.
+    // Replace the following line with your actual implementation.
+    return WeatherData(
+      temperature: 25.0,
+      humidity: 60.0,
+      windSpeed: 12.0,
+      condition: 'Sunny',
+      timestamp: DateTime.now(),
+      // Add other required fields as per your WeatherData model
+    );
   }
 }

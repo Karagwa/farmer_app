@@ -24,10 +24,9 @@ class Hive {
       id: json['id'] is String ? int.parse(json['id']) : json['id'],
       longitude: json['longitude'] ?? '',
       latitude: json['latitude'] ?? '',
-      farmId:
-          json['farm_id'] is String
-              ? int.parse(json['farm_id'])
-              : json['farm_id'],
+      farmId: json['farm_id'] is String
+          ? int.parse(json['farm_id'])
+          : json['farm_id'],
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
       state: json['state'] != null ? HiveState.fromJson(json['state']) : null,
@@ -87,26 +86,21 @@ class HiveState {
     return HiveState(
       weight:
           json['weight'] != null ? WeightData.fromJson(json['weight']) : null,
-      temperature:
-          json['temperature'] != null
-              ? TemperatureData.fromJson(json['temperature'])
-              : null,
-      humidity:
-          json['humidity'] != null
-              ? HumidityData.fromJson(json['humidity'])
-              : null,
-      carbonDioxide:
-          json['carbon_dioxide'] != null
-              ? CarbonDioxideData.fromJson(json['carbon_dioxide'])
-              : null,
-      connectionStatus:
-          json['connection_status'] != null
-              ? ConnectionStatus.fromJson(json['connection_status'])
-              : null,
-      colonizationStatus:
-          json['colonization_status'] != null
-              ? ColonizationStatus.fromJson(json['colonization_status'])
-              : null,
+      temperature: json['temperature'] != null
+          ? TemperatureData.fromJson(json['temperature'])
+          : null,
+      humidity: json['humidity'] != null
+          ? HumidityData.fromJson(json['humidity'])
+          : null,
+      carbonDioxide: json['carbon_dioxide'] != null
+          ? CarbonDioxideData.fromJson(json['carbon_dioxide'])
+          : null,
+      connectionStatus: json['connection_status'] != null
+          ? ConnectionStatus.fromJson(json['connection_status'])
+          : null,
+      colonizationStatus: json['colonization_status'] != null
+          ? ColonizationStatus.fromJson(json['colonization_status'])
+          : null,
     );
   }
 
@@ -135,14 +129,12 @@ class WeightData {
 
   factory WeightData.fromJson(Map<String, dynamic> json) {
     return WeightData(
-      record:
-          json['record'] is int
-              ? (json['record'] as int).toDouble()
-              : json['record'] ?? 0.0,
-      honeyPercentage:
-          json['honey_percentage'] is int
-              ? (json['honey_percentage'] as int).toDouble()
-              : json['honey_percentage'] ?? 0.0,
+      record: json['record'] is int
+          ? (json['record'] as int).toDouble()
+          : json['record'] ?? 0.0,
+      honeyPercentage: json['honey_percentage'] is int
+          ? (json['honey_percentage'] as int).toDouble()
+          : json['honey_percentage'] ?? 0.0,
       dateCollected: json['date_collected'] ?? DateTime.now().toString(),
     );
   }
@@ -169,18 +161,16 @@ class TemperatureData {
 
   factory TemperatureData.fromJson(Map<String, dynamic> json) {
     return TemperatureData(
-      interiorTemperature:
-          json['interior_temperature'] != null
-              ? (json['interior_temperature'] is int
-                  ? (json['interior_temperature'] as int).toDouble()
-                  : json['interior_temperature'])
-              : null,
-      exteriorTemperature:
-          json['exterior_temperature'] != null
-              ? (json['exterior_temperature'] is int
-                  ? (json['exterior_temperature'] as int).toDouble()
-                  : json['exterior_temperature'])
-              : null,
+      interiorTemperature: json['interior_temperature'] != null
+          ? (json['interior_temperature'] is int
+              ? (json['interior_temperature'] as int).toDouble()
+              : json['interior_temperature'])
+          : null,
+      exteriorTemperature: json['exterior_temperature'] != null
+          ? (json['exterior_temperature'] is int
+              ? (json['exterior_temperature'] as int).toDouble()
+              : json['exterior_temperature'])
+          : null,
       dateCollected: json['date_collected'] ?? DateTime.now().toString(),
     );
   }
@@ -207,18 +197,16 @@ class HumidityData {
 
   factory HumidityData.fromJson(Map<String, dynamic> json) {
     return HumidityData(
-      interiorHumidity:
-          json['interior_humidity'] != null
-              ? (json['interior_humidity'] is int
-                  ? (json['interior_humidity'] as int).toDouble()
-                  : json['interior_humidity'])
-              : null,
-      exteriorHumidity:
-          json['exterior_humidity'] != null
-              ? (json['exterior_humidity'] is int
-                  ? (json['exterior_humidity'] as int).toDouble()
-                  : json['exterior_humidity'])
-              : null,
+      interiorHumidity: json['interior_humidity'] != null
+          ? (json['interior_humidity'] is int
+              ? (json['interior_humidity'] as int).toDouble()
+              : json['interior_humidity'])
+          : null,
+      exteriorHumidity: json['exterior_humidity'] != null
+          ? (json['exterior_humidity'] is int
+              ? (json['exterior_humidity'] as int).toDouble()
+              : json['exterior_humidity'])
+          : null,
       dateCollected: json['date_collected'] ?? DateTime.now().toString(),
     );
   }

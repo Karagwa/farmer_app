@@ -76,14 +76,13 @@ class _BeeCountResultsScreenState extends State<BeeCountResultsScreen> {
         elevation: 0,
       ),
       backgroundColor: _backgroundColor,
-      body:
-          _isLoading
-              ? _buildLoadingIndicator()
-              : _errorMessage.isNotEmpty
+      body: _isLoading
+          ? _buildLoadingIndicator()
+          : _errorMessage.isNotEmpty
               ? _buildErrorMessage()
               : _beeCounts.isEmpty
-              ? _buildNoDataMessage()
-              : _buildResultsContent(),
+                  ? _buildNoDataMessage()
+                  : _buildResultsContent(),
     );
   }
 
@@ -218,9 +217,8 @@ class _BeeCountResultsScreenState extends State<BeeCountResultsScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder:
-              (context) =>
-                  BeeCountResultsScreen(hiveId: widget.hiveId, date: picked),
+          builder: (context) =>
+              BeeCountResultsScreen(hiveId: widget.hiveId, date: picked),
         ),
       );
     }
@@ -542,8 +540,7 @@ class _BeeCountResultsScreenState extends State<BeeCountResultsScreen> {
                   minX: 0,
                   maxX: (sortedCounts.length - 1).toDouble(),
                   minY: 0,
-                  maxY:
-                      sortedCounts
+                  maxY: sortedCounts
                           .map((e) => max(e.beesEntering, e.beesExiting))
                           .reduce(max)
                           .toDouble() +

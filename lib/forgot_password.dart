@@ -59,14 +59,13 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed:
-                          _isSubmitting
-                              ? null
-                              : () async {
-                                setState(() => _isSubmitting = true);
-                                await _handlePasswordReset();
-                                setState(() => _isSubmitting = false);
-                              },
+                      onPressed: _isSubmitting
+                          ? null
+                          : () async {
+                              setState(() => _isSubmitting = true);
+                              await _handlePasswordReset();
+                              setState(() => _isSubmitting = false);
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color.fromARGB(
                           255,

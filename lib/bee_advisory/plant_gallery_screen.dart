@@ -52,26 +52,24 @@ class _PlantGalleryScreenState extends State<PlantGalleryScreen> {
 
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
-      filteredPlants =
-          filteredPlants.where((plant) {
-            return plant['name'].toString().toLowerCase().contains(
+      filteredPlants = filteredPlants.where((plant) {
+        return plant['name'].toString().toLowerCase().contains(
                   _searchQuery.toLowerCase(),
                 ) ||
-                plant['scientific_name'].toString().toLowerCase().contains(
+            plant['scientific_name'].toString().toLowerCase().contains(
                   _searchQuery.toLowerCase(),
                 );
-          }).toList();
+      }).toList();
     }
 
     // Apply climate filter
     if (_selectedClimate != 'All') {
-      filteredPlants =
-          filteredPlants.where((plant) {
-            return plant['climate_preference']
-                .toString()
-                .toLowerCase()
-                .contains(_selectedClimate.toLowerCase());
-          }).toList();
+      filteredPlants = filteredPlants.where((plant) {
+        return plant['climate_preference']
+            .toString()
+            .toLowerCase()
+            .contains(_selectedClimate.toLowerCase());
+      }).toList();
     }
 
     setState(() {
@@ -90,31 +88,30 @@ class _PlantGalleryScreenState extends State<PlantGalleryScreen> {
         children: [
           _buildSearchAndFilterBar(),
           Expanded(
-            child:
-                _isLoading
-                    ? Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFF4CAF50),
-                        ),
+            child: _isLoading
+                ? Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF4CAF50),
                       ),
-                    )
-                    : _plants.isEmpty
+                    ),
+                  )
+                : _plants.isEmpty
                     ? Center(child: Text('No plants found'))
                     : GridView.builder(
-                      padding: EdgeInsets.all(16),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.75,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
+                        padding: EdgeInsets.all(16),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.75,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
+                        itemCount: _plants.length,
+                        itemBuilder: (context, index) {
+                          final plant = _plants[index];
+                          return _buildPlantCard(plant);
+                        },
                       ),
-                      itemCount: _plants.length,
-                      itemBuilder: (context, index) {
-                        final plant = _plants[index];
-                        return _buildPlantCard(plant);
-                      },
-                    ),
           ),
         ],
       ),
@@ -177,44 +174,38 @@ class _PlantGalleryScreenState extends State<PlantGalleryScreen> {
                   height: 40,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    children:
-                        _climateOptions.map((climate) {
-                          bool isSelected = _selectedClimate == climate;
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedClimate = climate;
-                              });
-                              _filterPlants();
-                            },
-                            child: Container(
-                              margin: EdgeInsets.only(right: 8),
-                              padding: EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color:
-                                    isSelected
-                                        ? Color(0xFF4CAF50)
-                                        : Colors.grey[200],
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  climate,
-                                  style: TextStyle(
-                                    color:
-                                        isSelected
-                                            ? Colors.white
-                                            : Colors.black,
-                                    fontWeight:
-                                        isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                  ),
-                                ),
+                    children: _climateOptions.map((climate) {
+                      bool isSelected = _selectedClimate == climate;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedClimate = climate;
+                          });
+                          _filterPlants();
+                        },
+                        child: Container(
+                          margin: EdgeInsets.only(right: 8),
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Color(0xFF4CAF50)
+                                : Colors.grey[200],
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Center(
+                            child: Text(
+                              climate,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.black,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
-                          );
-                        }).toList(),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ),
@@ -330,10 +321,9 @@ class _PlantGalleryScreenState extends State<PlantGalleryScreen> {
             return Icon(
               index < value ? Icons.star : Icons.star_border,
               size: 8,
-              color:
-                  index < value
-                      ? (label == 'N' ? Colors.blue : Colors.amber)
-                      : Colors.grey[400],
+              color: index < value
+                  ? (label == 'N' ? Colors.blue : Colors.amber)
+                  : Colors.grey[400],
             );
           }),
         ),

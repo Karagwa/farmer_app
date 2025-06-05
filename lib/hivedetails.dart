@@ -64,13 +64,12 @@ class _HiveDetailsState extends State<HiveDetails> {
         List<dynamic> imagePaths = jsonData['data'];
 
         setState(() {
-          photos =
-              imagePaths
-                  .map<String>(
-                    (item) =>
-                        'http://196.43.168.57/${item['path'].replaceFirst("public/", "")}',
-                  )
-                  .toList();
+          photos = imagePaths
+              .map<String>(
+                (item) =>
+                    'http://196.43.168.57/${item['path'].replaceFirst("public/", "")}',
+              )
+              .toList();
         });
       } else {
         throw Exception('Failed to load photos');
@@ -242,11 +241,10 @@ class _HiveDetailsState extends State<HiveDetails> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder:
-                                    (context) => TabView(
-                                      hiveId: widget.hiveId,
-                                      token: widget.token,
-                                    ),
+                                builder: (context) => TabView(
+                                  hiveId: widget.hiveId,
+                                  token: widget.token,
+                                ),
                               ),
                             );
                           },
@@ -363,12 +361,12 @@ class _HiveDetailsState extends State<HiveDetails> {
                             widget.honeyLevel != null && widget.honeyLevel! > 75
                                 ? "Hive is almost full!"
                                 : widget.honeyLevel != null &&
-                                    widget.honeyLevel! > 50
-                                ? "Good honey production"
-                                : widget.honeyLevel != null &&
-                                    widget.honeyLevel! > 25
-                                ? "Moderate honey levels"
-                                : "Low honey levels",
+                                        widget.honeyLevel! > 50
+                                    ? "Good honey production"
+                                    : widget.honeyLevel != null &&
+                                            widget.honeyLevel! > 25
+                                        ? "Moderate honey levels"
+                                        : "Low honey levels",
                             style: TextStyle(
                               color: Colors.amber[800],
                               fontStyle: FontStyle.italic,

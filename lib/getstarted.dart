@@ -30,8 +30,7 @@ class _GetStartedState extends State<GetStarted> {
   void _startTypingEffect() {
     const text =
         'Welcome to the Honey Productivity, Guide and Monitor app (HPGM), the all in one app that will help you track your hive productivity on the go!';
-    const typingInterval =
-        Duration(milliseconds: 100); 
+    const typingInterval = Duration(milliseconds: 100);
 
     _typingTimer = Timer.periodic(typingInterval, (timer) {
       if (_currentIndex < text.length) {

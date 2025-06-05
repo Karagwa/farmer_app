@@ -10,7 +10,7 @@ class Temperature extends StatefulWidget {
   final String token;
 
   const Temperature({Key? key, required this.hiveId, required this.token})
-    : super(key: key);
+      : super(key: key);
 
   @override
   State<Temperature> createState() => _TemperatureState();
@@ -96,14 +96,12 @@ class _TemperatureState extends State<Temperature> {
         for (final dataPoint in jsonData['data']) {
           newDates.add(DateTime.parse(dataPoint['date']));
 
-          final interiorTemp =
-              dataPoint['interiorTemperature'] != null
-                  ? double.tryParse(dataPoint['interiorTemperature'].toString())
-                  : null;
-          final exteriorTemp =
-              dataPoint['exteriorTemperature'] != null
-                  ? double.tryParse(dataPoint['exteriorTemperature'].toString())
-                  : null;
+          final interiorTemp = dataPoint['interiorTemperature'] != null
+              ? double.tryParse(dataPoint['interiorTemperature'].toString())
+              : null;
+          final exteriorTemp = dataPoint['exteriorTemperature'] != null
+              ? double.tryParse(dataPoint['exteriorTemperature'].toString())
+              : null;
 
           newInteriorTemps.add(interiorTemp == 0 ? null : interiorTemp);
           newExteriorTemps.add(exteriorTemp == 0 ? null : exteriorTemp);
@@ -363,10 +361,9 @@ class _TemperatureState extends State<Temperature> {
                             child: Text(
                               'No temperature data available',
                               style: TextStyle(
-                                color:
-                                    isDarkMode
-                                        ? Colors.grey[400]
-                                        : Colors.grey[600],
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
                           ),
@@ -680,12 +677,11 @@ class _TemperatureState extends State<Temperature> {
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color:
-                temperature != null
-                    ? (temperature > 36 || temperature < 15
-                        ? Colors.red
-                        : (temperature >= 32 ? Colors.green : color))
-                    : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+            color: temperature != null
+                ? (temperature > 36 || temperature < 15
+                    ? Colors.red
+                    : (temperature >= 32 ? Colors.green : color))
+                : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
           ),
         ),
       ],
@@ -756,10 +752,9 @@ class _TemperatureState extends State<Temperature> {
                 value: current,
                 unit: '°C',
                 icon: Icons.thermostat,
-                color:
-                    current > 36 || current < 15
-                        ? Colors.red
-                        : (current >= 32 ? Colors.green : color),
+                color: current > 36 || current < 15
+                    ? Colors.red
+                    : (current >= 32 ? Colors.green : color),
               ),
             _buildStatItem(
               context,

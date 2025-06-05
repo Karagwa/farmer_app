@@ -10,7 +10,7 @@ class Humidity extends StatefulWidget {
   final String token;
 
   const Humidity({Key? key, required this.hiveId, required this.token})
-    : super(key: key);
+      : super(key: key);
 
   @override
   State<Humidity> createState() => _HumidityState();
@@ -94,14 +94,12 @@ class _HumidityState extends State<Humidity> {
         for (final dataPoint in jsonData['data']) {
           newDates.add(DateTime.parse(dataPoint['date']));
 
-          final interiorHum =
-              dataPoint['interiorHumidity'] != null
-                  ? double.tryParse(dataPoint['interiorHumidity'].toString())
-                  : null;
-          final exteriorHum =
-              dataPoint['exteriorHumidity'] != null
-                  ? double.tryParse(dataPoint['exteriorHumidity'].toString())
-                  : null;
+          final interiorHum = dataPoint['interiorHumidity'] != null
+              ? double.tryParse(dataPoint['interiorHumidity'].toString())
+              : null;
+          final exteriorHum = dataPoint['exteriorHumidity'] != null
+              ? double.tryParse(dataPoint['exteriorHumidity'].toString())
+              : null;
 
           newInteriorHumidity.add(interiorHum == 0 ? null : interiorHum);
           newExteriorHumidity.add(exteriorHum == 0 ? null : exteriorHum);
@@ -361,10 +359,9 @@ class _HumidityState extends State<Humidity> {
                             child: Text(
                               'No humidity data available',
                               style: TextStyle(
-                                color:
-                                    isDarkMode
-                                        ? Colors.grey[400]
-                                        : Colors.grey[600],
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
                           ),
@@ -678,14 +675,11 @@ class _HumidityState extends State<Humidity> {
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color:
-                humidity != null
-                    ? (humidity < 30 || humidity > 80
-                        ? Colors.red
-                        : (humidity >= 40 && humidity <= 60
-                            ? Colors.green
-                            : color))
-                    : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+            color: humidity != null
+                ? (humidity < 30 || humidity > 80
+                    ? Colors.red
+                    : (humidity >= 40 && humidity <= 60 ? Colors.green : color))
+                : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
           ),
         ),
       ],
@@ -756,12 +750,9 @@ class _HumidityState extends State<Humidity> {
                 value: current,
                 unit: '%',
                 icon: Icons.water_drop,
-                color:
-                    current < 30 || current > 80
-                        ? Colors.red
-                        : (current >= 40 && current <= 60
-                            ? Colors.green
-                            : color),
+                color: current < 30 || current > 80
+                    ? Colors.red
+                    : (current >= 40 && current <= 60 ? Colors.green : color),
               ),
             _buildStatItem(
               context,

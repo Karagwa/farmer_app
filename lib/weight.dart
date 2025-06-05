@@ -10,7 +10,7 @@ class Weight extends StatefulWidget {
   final String token;
 
   const Weight({Key? key, required this.hiveId, required this.token})
-    : super(key: key);
+      : super(key: key);
 
   @override
   State<Weight> createState() => _WeightState();
@@ -43,9 +43,10 @@ class _WeightState extends State<Weight> {
       setState(() {
         _isLoading = true;
       });
-      
-      final url = 'http://196.43.168.57/api/v1/hives/${widget.hiveId}/latest-weight';
-      
+
+      final url =
+          'http://196.43.168.57/api/v1/hives/${widget.hiveId}/latest-weight';
+
       final response = await http.get(
         Uri.parse(url),
         headers: {
@@ -53,43 +54,45 @@ class _WeightState extends State<Weight> {
           'Authorization': 'Bearer ${widget.token}',
         },
       );
-  
+
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        
+
         // Debug - print the response structure
         print('Latest Weight API Response: ${response.body}');
-        
+
         if (jsonData is Map) {
           // Parse the date
           if (jsonData['date_collected'] != null) {
             _latestDate = DateTime.parse(jsonData['date_collected'].toString());
           }
-          
+
           // Parse the weight
           if (jsonData['record'] != null) {
             _latestWeight = jsonData['record'] is num
                 ? (jsonData['record'] as num).toDouble()
                 : double.tryParse(jsonData['record'].toString());
           }
-          
+
           // Parse the honey percentage
           if (jsonData['honey_percentage'] != null) {
             _latestHoneyPercentage = jsonData['honey_percentage'] is num
                 ? (jsonData['honey_percentage'] as num).toDouble()
                 : double.tryParse(jsonData['honey_percentage'].toString());
           }
-          
+
           setState(() {
             _isLoading = false;
             _errorMessage = null;
           });
         } else {
-          throw FormatException('Unexpected API response format for latest weight');
+          throw FormatException(
+              'Unexpected API response format for latest weight');
         }
       } else {
         setState(() {
-          _errorMessage = 'Failed to load latest weight: ${response.statusCode} - ${response.reasonPhrase}';
+          _errorMessage =
+              'Failed to load latest weight: ${response.statusCode} - ${response.reasonPhrase}';
           _isLoading = false;
         });
       }
@@ -141,13 +144,14 @@ class _WeightState extends State<Weight> {
       setState(() {
         _isLoading = true;
       });
-  
+
       // Format dates properly for the API request
       final formattedStartDate = DateFormat('yyyy-MM-dd').format(_startDate);
       final formattedEndDate = DateFormat('yyyy-MM-dd').format(_endDate);
-      
-      final url = 'http://196.43.168.57/api/v1/hives/${widget.hiveId}/weight/$formattedStartDate/$formattedEndDate';
-      
+
+      final url =
+          'http://196.43.168.57/api/v1/hives/${widget.hiveId}/weight/$formattedStartDate/$formattedEndDate';
+
       final response = await http.get(
         Uri.parse(url),
         headers: {
@@ -155,33 +159,36 @@ class _WeightState extends State<Weight> {
           'Authorization': 'Bearer ${widget.token}',
         },
       );
-  
+
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        
+
         // Debug - print the response structure
         print('Historical API Response: ${response.body}');
-        
+
         final newDates = <DateTime>[];
         final newWeights = <double?>[];
         final newHoneyPercentages = <double?>[];
-  
+
         // Check if the response is an object with direct values or has a data array
-        if (jsonData is Map && jsonData.containsKey('data') && jsonData['data'] is List) {
+        if (jsonData is Map &&
+            jsonData.containsKey('data') &&
+            jsonData['data'] is List) {
           // Structure with a data array
           final dataList = jsonData['data'];
           for (final dataPoint in dataList) {
             if (dataPoint['date_collected'] != null) {
-              newDates.add(DateTime.parse(dataPoint['date_collected'].toString()));
-              
+              newDates
+                  .add(DateTime.parse(dataPoint['date_collected'].toString()));
+
               double? weight;
               if (dataPoint['record'] != null) {
-                weight = dataPoint['record'] is num 
+                weight = dataPoint['record'] is num
                     ? (dataPoint['record'] as num).toDouble()
                     : double.tryParse(dataPoint['record'].toString());
               }
               newWeights.add(weight);
-              
+
               double? honeyPercentage;
               if (dataPoint['honey_percentage'] != null) {
                 honeyPercentage = dataPoint['honey_percentage'] is num
@@ -192,9 +199,10 @@ class _WeightState extends State<Weight> {
             }
           }
         } else {
-          throw FormatException('Unexpected API response format for historical data');
+          throw FormatException(
+              'Unexpected API response format for historical data');
         }
-  
+
         setState(() {
           dates = newDates;
           weights = newWeights;
@@ -204,7 +212,8 @@ class _WeightState extends State<Weight> {
         });
       } else {
         setState(() {
-          _errorMessage = 'Failed to load historical data: ${response.statusCode} - ${response.reasonPhrase}';
+          _errorMessage =
+              'Failed to load historical data: ${response.statusCode} - ${response.reasonPhrase}';
           _isLoading = false;
         });
       }
@@ -431,10 +440,9 @@ class _WeightState extends State<Weight> {
                               child: Text(
                                 'No weight data available',
                                 style: TextStyle(
-                                  color:
-                                      isDarkMode
-                                          ? Colors.grey[400]
-                                          : Colors.grey[600],
+                                  color: isDarkMode
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                 ),
                               ),
                             ),
@@ -720,12 +728,11 @@ class _WeightState extends State<Weight> {
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color:
-                value != null
-                    ? (title == 'Weight'
-                        ? (value < 20 ? Colors.red : Colors.orange)
-                        : (value < 10 ? Colors.red : Colors.amber))
-                    : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+            color: value != null
+                ? (title == 'Weight'
+                    ? (value < 20 ? Colors.red : Colors.orange)
+                    : (value < 10 ? Colors.red : Colors.amber))
+                : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
           ),
         ),
       ],

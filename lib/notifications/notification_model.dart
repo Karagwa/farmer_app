@@ -98,7 +98,7 @@ class HiveNotification {
   // Helper method to get a human-readable time
   String get timeAgo {
     final difference = DateTime.now().difference(timestamp);
-    
+
     if (difference.inSeconds < 60) {
       return 'Just now';
     } else if (difference.inMinutes < 60) {

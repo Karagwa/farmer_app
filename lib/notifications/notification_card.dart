@@ -19,7 +19,9 @@ class NotificationCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: notification.isRead ? Colors.transparent : notification.color.withOpacity(0.5),
+          color: notification.isRead
+              ? Colors.transparent
+              : notification.color.withOpacity(0.5),
           width: 1,
         ),
       ),
@@ -47,7 +49,9 @@ class NotificationCard extends StatelessWidget {
                               child: Text(
                                 notification.title,
                                 style: TextStyle(
-                                  fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
+                                  fontWeight: notification.isRead
+                                      ? FontWeight.normal
+                                      : FontWeight.bold,
                                   fontSize: 16,
                                 ),
                               ),
@@ -86,7 +90,7 @@ class NotificationCard extends StatelessWidget {
   Widget _buildSeverityIndicator() {
     IconData iconData;
     String severityText;
-    
+
     switch (notification.severity) {
       case NotificationSeverity.high:
         severityText = 'High';
@@ -98,7 +102,7 @@ class NotificationCard extends StatelessWidget {
         severityText = 'Low';
         break;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
