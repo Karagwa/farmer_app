@@ -1,10 +1,11 @@
-import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_screen.dart';
-import 'package:HPGM/bee_counter/bee_monitoring_screen.dart';
-import 'package:HPGM/bee_counter/bee_video_analysis_screen.dart';
-import 'package:HPGM/notifications/notification_screen.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_screen.dart';
-import 'package:HPGM/navbar.dart';
-import 'package:HPGM/profile.dart';
+import 'package:farmer_app/analytics/foraging_analysis/foraging_analysis_screen.dart';
+import 'package:farmer_app/bee_counter/bee_monitoring_screen.dart';
+import 'package:farmer_app/bee_counter/bee_video_analysis_screen.dart';
+import 'package:farmer_app/bee_counter/bee_activity_correlation_screen.dart';
+import 'package:farmer_app/notifications/notification_screen.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_screen.dart';
+import 'package:farmer_app/navbar.dart';
+import 'package:farmer_app/profile.dart';
 import 'package:flutter/material.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -162,7 +163,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      BeeVideoAnalysisScreen(hiveId: '1'),
+                                      BeeMonitoringScreen(hiveId: '1'),
                                 ),
                               );
                             },
@@ -212,6 +213,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                       ],
+                    ),
+
+                    const SizedBox(height: 12),
+                    // Bee Activity Correlation Card - wide card
+                    buildFeatureCard(
+                      title: 'Bee Activity Correlations',
+                      description:
+                          'Analyze bee behavior patterns with environmental factors',
+                      icon: Icons.analytics,
+                      color: const Color(0xFFB8860B),
+                      isWide: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                BeeActivityCorrelationScreen(hiveId: '1'),
+                          ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 12),
@@ -327,11 +348,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required Color color,
     int? notifications,
     required VoidCallback onTap,
+    String? description,
+    bool isWide = false,
   }) {
     return Stack(
       children: [
         AspectRatio(
-          aspectRatio: 1,
+          aspectRatio: isWide ? 2 : 1,
           child: Card(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16.0),
@@ -360,6 +383,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if (description != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

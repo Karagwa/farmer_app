@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_engine.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_database.dart';
-import 'package:HPGM/bee_advisory/plant_detail_screen.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_engine.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_database.dart';
+import 'package:farmer_app/bee_advisory/plant_detail_screen.dart';
 
 class FarmerFormScreen extends StatefulWidget {
   const FarmerFormScreen({Key? key}) : super(key: key);
@@ -768,3 +768,4 @@ class _FarmerFormScreenState extends State<FarmerFormScreen> {
     );
   }
 }
+

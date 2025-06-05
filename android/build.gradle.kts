@@ -1,3 +1,11 @@
+// Removing explicit plugin versions as they conflict with Flutter's versions
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
 allprojects {
     repositories {
         google()

@@ -1,143 +1,100 @@
-import 'package:sqflite/sqflite.dart';
+import 'dart:async';
 import 'package:path/path.dart';
-import 'package:HPGM/bee_counter/bee_counter_model.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:farmer_app/bee_counter/bee_counter_model.dart';
 
 class BeeCountDatabase {
   static final BeeCountDatabase instance = BeeCountDatabase._init();
   static Database? _database;
-
   BeeCountDatabase._init();
-
+  
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('bee_counts.db');
     return _database!;
   }
-
+  
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: _createDB,
+    );
   }
-
-  Future _createDB(Database db, int version) async {
-    const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
-    const textType = 'TEXT NOT NULL';
-    const intType = 'INTEGER NOT NULL';
-
+  
+  Future<void> _createDB(Database db, int version) async {
     await db.execute('''
-    CREATE TABLE bee_counts (
-      id $idType,
-      video_id $textType,
-      hive_id $textType,
-      timestamp $textType,
-      bees_entering $intType,
-      bees_exiting $intType,
-      net_change $intType,
-      total_activity $intType,
-      notes TEXT
+    CREATE TABLE bee_counts(
+      id TEXT PRIMARY KEY,
+      hive_id TEXT NOT NULL,
+      video_id TEXT,
+      bees_entering INTEGER NOT NULL,
+      bees_exiting INTEGER NOT NULL,
+      timestamp TEXT NOT NULL,
+      notes TEXT,
+      confidence REAL
     )
     ''');
   }
-
-  // Create a new bee count record
-  Future<BeeCount> createBeeCount(BeeCount beeCount) async {
+  
+  Future<String> createBeeCount(BeeCount beeCount) async {
     final db = await instance.database;
-
-    // No need to calculate derived fields as they are now computed properties
-    final id = await db.insert('bee_counts', beeCount.toJson());
-    return beeCount.copyWith(id: id.toString());
+    
+    // Generate a unique ID if not provided
+    final id = beeCount.id ?? DateTime.now().millisecondsSinceEpoch.toString();
+    
+    final beeCountWithId = beeCount.copyWith(id: id);
+    
+    await db.insert(
+      'bee_counts',
+      beeCountWithId.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    
+    return id;
   }
-
-  // Read a single bee count by ID
-  Future<BeeCount> readBeeCount(int id) async {
+  
+  Future<BeeCount?> getBeeCount(String id) async {
     final db = await instance.database;
+    
     final maps = await db.query(
       'bee_counts',
-      columns: [
-        'id',
-        'video_id',
-        'hive_id',
-        'timestamp',
-        'bees_entering',
-        'bees_exiting',
-        'notes',
-      ],
       where: 'id = ?',
       whereArgs: [id],
     );
-
     if (maps.isNotEmpty) {
       return BeeCount.fromJson(maps.first);
     } else {
-      throw Exception('ID $id not found');
+      return null;
     }
   }
-
-  // Read all bee counts
-  Future<List<BeeCount>> readAllBeeCounts() async {
+  
+  Future<List<BeeCount>> getAllBeeCounts() async {
     final db = await instance.database;
-    final result = await db.query('bee_counts');
-    return result.map((map) => BeeCount.fromJson(map)).toList();
+    
+    final result = await db.query(
+      'bee_counts',
+      orderBy: 'timestamp DESC',
+    );
+    return result.map((json) => BeeCount.fromJson(json)).toList();
   }
-
-  // Read bee counts by hive ID
-  Future<List<BeeCount>> readBeeCountsByHiveId(String hiveId) async {
+  
+  Future<List<BeeCount>> getBeeCountsForHive(String hiveId) async {
     final db = await instance.database;
+    
     final result = await db.query(
       'bee_counts',
       where: 'hive_id = ?',
       whereArgs: [hiveId],
+      orderBy: 'timestamp DESC',
     );
-    return result.map((map) => BeeCount.fromJson(map)).toList();
+    return result.map((json) => BeeCount.fromJson(json)).toList();
   }
-
-  // Read bee counts by video ID
-  Future<List<BeeCount>> readBeeCountsByVideoId(String videoId) async {
-    final db = await instance.database;
-    final result = await db.query(
-      'bee_counts',
-      where: 'video_id = ?',
-      whereArgs: [videoId],
-    );
-    return result.map((map) => BeeCount.fromJson(map)).toList();
-  }
-
-  // Read bee counts for a specific date
-  Future<List<BeeCount>> readBeeCountsByDate(DateTime date) async {
-    final db = await instance.database;
-    final dateStr = date.toIso8601String().substring(0, 10);
-
-    final result = await db.query(
-      'bee_counts',
-      where: 'timestamp LIKE ?',
-      whereArgs: ['$dateStr%'],
-    );
-    return result.map((map) => BeeCount.fromJson(map)).toList();
-  }
-
-  // Read bee counts within a date range
-  Future<List<BeeCount>> readBeeCountsByDateRange(
-    DateTime startDate,
-    DateTime endDate,
-  ) async {
-    final db = await instance.database;
-    final startDateStr = startDate.toIso8601String().substring(0, 10);
-    final endDateStr = endDate.toIso8601String().substring(0, 10);
-
-    final result = await db.query(
-      'bee_counts',
-      where: 'timestamp BETWEEN ? AND ?',
-      whereArgs: ['$startDateStr 00:00:00', '$endDateStr 23:59:59'],
-    );
-    return result.map((map) => BeeCount.fromJson(map)).toList();
-  }
-
-  // Update a bee count record
+  
   Future<int> updateBeeCount(BeeCount beeCount) async {
     final db = await instance.database;
-
     return db.update(
       'bee_counts',
       beeCount.toJson(),
@@ -145,55 +102,190 @@ class BeeCountDatabase {
       whereArgs: [beeCount.id],
     );
   }
-
-  // Delete a bee count record
-  Future<int> deleteBeeCount(int id) async {
+  
+  Future<List<BeeCount>> readBeeCountsByDate(DateTime date) async {
     final db = await instance.database;
-    return await db.delete('bee_counts', where: 'id = ?', whereArgs: [id]);
+    
+    // Convert date to start and end of day in ISO format
+    final startOfDay = DateTime(date.year, date.month, date.day).toIso8601String();
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59, 999).toIso8601String();
+    
+    final result = await db.query(
+      'bee_counts',
+      where: 'timestamp BETWEEN ? AND ?',
+      whereArgs: [startOfDay, endOfDay],
+      orderBy: 'timestamp DESC',
+    );
+  
+    return result.map((json) => BeeCount.fromJson(json)).toList();
   }
-
-  // Delete all bee counts for a specific hive
-  Future<int> deleteBeeCountsByHiveId(String hiveId) async {
+  
+  // NEW METHOD: Get bee counts for a date range
+  Future<List<BeeCount>> getBeeCountsForDateRange(
+    String hiveId,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    final db = await instance.database;
+    
+    // Convert dates to ISO format for SQLite query
+    final startDateString = DateTime(
+      startDate.year, 
+      startDate.month, 
+      startDate.day,
+    ).toIso8601String();
+    
+    final endDateString = DateTime(
+      endDate.year, 
+      endDate.month, 
+      endDate.day, 
+      23, 59, 59, 999,
+    ).toIso8601String();
+    
+    final result = await db.query(
+      'bee_counts',
+      where: 'hive_id = ? AND timestamp BETWEEN ? AND ?',
+      whereArgs: [hiveId, startDateString, endDateString],
+      orderBy: 'timestamp ASC',
+    );
+  
+    return result.map((json) => BeeCount.fromJson(json)).toList();
+  }
+  
+  // NEW METHOD: Get counts grouped by day
+  Future<Map<DateTime, List<BeeCount>>> getBeeCountsGroupedByDay(
+    String hiveId,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    final counts = await getBeeCountsForDateRange(hiveId, startDate, endDate);
+    final Map<DateTime, List<BeeCount>> groupedCounts = {};
+    
+    for (final count in counts) {
+      final day = DateTime(
+        count.timestamp.year,
+        count.timestamp.month,
+        count.timestamp.day,
+      );
+      
+      if (!groupedCounts.containsKey(day)) {
+        groupedCounts[day] = [];
+      }
+      
+      groupedCounts[day]!.add(count);
+    }
+    
+    return groupedCounts;
+  }
+  
+  Future<int> deleteBeeCountByVideoId(String videoId) async {
+    final db = await database;
+    
+    return await db.delete(
+      'bee_counts',  
+      where: 'video_id = ?',  
+      whereArgs: [videoId],
+    );
+  }
+  
+  // NEW METHOD: Get average counts by time period
+  Future<Map<String, Map<String, double>>> getAverageCountsByTimePeriod(
+    String hiveId,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    final counts = await getBeeCountsForDateRange(hiveId, startDate, endDate);
+    
+    // Group counts by time period (morning, noon, evening)
+    final periodCounts = <String, List<BeeCount>>{
+      'morning': [], // 5-10 AM
+      'noon': [],    // 10-3 PM
+      'evening': [], // 3-8 PM
+    };
+    
+    for (final count in counts) {
+      final hour = count.timestamp.hour;
+      
+      if (hour >= 5 && hour < 10) {
+        periodCounts['morning']!.add(count);
+      } else if (hour >= 10 && hour < 15) {
+        periodCounts['noon']!.add(count);
+      } else if (hour >= 15 && hour < 20) {
+        periodCounts['evening']!.add(count);
+      }
+    }
+    
+    // Calculate averages by period
+    final periodAverages = <String, Map<String, double>>{};
+    for (final period in periodCounts.keys) {
+      final periodData = periodCounts[period]!;
+      if (periodData.isEmpty) {
+        periodAverages[period] = {
+          'averageIn': 0.0,
+          'averageOut': 0.0,
+          'netChange': 0.0,
+          'totalActivity': 0.0,
+        };
+        continue;
+      }
+      
+      int totalIn = 0;
+      int totalOut = 0;
+      for (final count in periodData) {
+        totalIn += count.beesEntering;
+        totalOut += count.beesExiting;
+      }
+      
+      periodAverages[period] = {
+        'averageIn': totalIn / periodData.length,
+        'averageOut': totalOut / periodData.length,
+        'netChange': (totalIn - totalOut) / periodData.length,
+        'totalActivity': (totalIn + totalOut) / periodData.length,
+      };
+    }
+    
+    return periodAverages;
+  }
+  
+  // NEW METHOD: Get daily average counts
+  Future<Map<DateTime, Map<String, double>>> getDailyAverageCounts(
+    String hiveId,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    final groupedCounts = await getBeeCountsGroupedByDay(hiveId, startDate, endDate);
+    final Map<DateTime, Map<String, double>> dailyAverages = {};
+    
+    groupedCounts.forEach((day, counts) {
+      int totalIn = 0;
+      int totalOut = 0;
+      
+      for (final count in counts) {
+        totalIn += count.beesEntering;
+        totalOut += count.beesExiting;
+      }
+      
+      dailyAverages[day] = {
+        'averageIn': totalIn / counts.length,
+        'averageOut': totalOut / counts.length,
+        'netChange': (totalIn - totalOut) / counts.length,
+        'totalActivity': (totalIn + totalOut) / counts.length,
+      };
+    });
+    
+    return dailyAverages;
+  }
+  
+  Future<int> deleteBeeCount(String id) async {
     final db = await instance.database;
     return await db.delete(
       'bee_counts',
-      where: 'hive_id = ?',
-      whereArgs: [hiveId],
+      where: 'id = ?',
+      whereArgs: [id],
     );
   }
-
-  Future<List<DateTime>> getAvailableDates() async {
-    final db = await instance.database;
-
-    // Get distinct dates from the timestamp column
-    final result = await db.rawQuery('''
-        SELECT DISTINCT substr(timestamp, 1, 10) as date
-        FROM bee_counts
-        ORDER BY date DESC
-      ''');
-
-    return result.map((map) => DateTime.parse(map['date'] as String)).toList();
-  }
-
-  Future<DateTime?> getMostRecentDate() async {
-    final db = await instance.database;
-
-    final result = await db.rawQuery('''
-        SELECT timestamp FROM bee_counts
-        ORDER BY timestamp DESC
-        LIMIT 1
-      ''');
-
-    if (result.isNotEmpty) {
-      String timestamp = result.first['timestamp'] as String;
-      return DateTime.parse(timestamp);
-    }
-
-    return null;
-  }
-
-  // Close the database
-  Future close() async {
+  
+  Future<void> close() async {
     final db = await instance.database;
     db.close();
   }

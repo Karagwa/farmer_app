@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
-import 'package:HPGM/apiary_overview_cards/build_overview_card.dart';
+import 'package:farmer_app/apiary_overview_cards/build_overview_card.dart';
 import 'farm_model.dart';
 import 'farm_card.dart';
 
@@ -323,3 +323,4 @@ class ApiaryStats {
     required this.needsAttentionHives,
   });
 }
+

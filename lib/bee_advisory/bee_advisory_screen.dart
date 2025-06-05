@@ -1,13 +1,13 @@
-import 'package:HPGM/bee_advisory/plant_gallery_screen.dart';
+import 'package:farmer_app/bee_advisory/plant_gallery_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_engine.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_database.dart';
-import 'package:HPGM/bee_advisory/plant_detail_screen.dart';
-import 'package:HPGM/bee_advisory/supplements_screen.dart';
-import 'package:HPGM/bee_advisory/farmer_form_screen.dart';
-import 'package:HPGM/bee_advisory/bee_advisory_visualizations.dart';
-import 'package:HPGM/analytics/foraging_analysis/foraging_analysis_engine.dart';
-// import 'package:HPGM/Services/bee_analysis_service.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_engine.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_database.dart';
+import 'package:farmer_app/bee_advisory/plant_detail_screen.dart';
+import 'package:farmer_app/bee_advisory/supplements_screen.dart';
+import 'package:farmer_app/bee_advisory/farmer_form_screen.dart';
+import 'package:farmer_app/bee_advisory/bee_advisory_visualizations.dart';
+import 'package:farmer_app/analytics/foraging_analysis/foraging_analysis_engine.dart';
+// import 'package:farmer_app/Services/bee_analysis_service.dart';
 
 class BeeAdvisoryScreen extends StatefulWidget {
   final String? hiveId;
@@ -55,12 +55,12 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
             final DateTime now = DateTime.now();
             final DateTime thirtyDaysAgo = now.subtract(Duration(days: 30));
 
-            _recommendations =
-                await BeeAdvisoryEngine.instance.generateRecommendations(
-              hiveId: widget.hiveId!,
-              startDate: thirtyDaysAgo,
-              endDate: now,
-            );
+            _recommendations = await BeeAdvisoryEngine.instance
+                .generateRecommendations(
+                  hiveId: widget.hiveId!,
+                  startDate: thirtyDaysAgo,
+                  endDate: now,
+                );
           }
         }
 
@@ -85,8 +85,9 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
       if (recommendation.containsKey('recommended_plants') &&
           recommendation['recommended_plants'] != null &&
           recommendation['recommended_plants'].toString().isNotEmpty) {
-        List<String> plantIds =
-            recommendation['recommended_plants'].toString().split(',');
+        List<String> plantIds = recommendation['recommended_plants']
+            .toString()
+            .split(',');
 
         for (var plantId in plantIds) {
           var plant = await BeeAdvisoryDatabase.instance.readPlant(plantId);
@@ -100,8 +101,9 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
       if (recommendation.containsKey('recommended_supplements') &&
           recommendation['recommended_supplements'] != null &&
           recommendation['recommended_supplements'].toString().isNotEmpty) {
-        List<String> suppIds =
-            recommendation['recommended_supplements'].toString().split(',');
+        List<String> suppIds = recommendation['recommended_supplements']
+            .toString()
+            .split(',');
 
         for (var suppId in suppIds) {
           var supplement = await BeeAdvisoryDatabase.instance.readSupplement(
@@ -135,7 +137,7 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
 
         // Generate predictive recommendations
         final predictions = await BeeAdvisoryEngine.instance
-            .generatePredictiveRecommendations(hiveId);
+            .generatePredictiveRecommendations( hiveId);
 
         allPredictions.addAll(predictions);
       }
@@ -205,9 +207,9 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
         // Get foraging data for visualization
         final foragingData =
             await ForagingAnalysisEngine.analyzeForagingActivity(
-          hiveId: hiveId,
-          includeWeatherData: true,
-        );
+              hiveId: hiveId,
+              includeWeatherData: true,
+            );
 
         if (foragingData.containsKey('hasData') && foragingData['hasData']) {
           _foragingDataMap[hiveId] = foragingData;
@@ -272,27 +274,28 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                ),
+              )
+              : SingleChildScrollView(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildRecommendationsSection(),
+                    SizedBox(height: 24),
+                    _buildRecommendedPlantsSection(),
+                    SizedBox(height: 24),
+                    _buildRecommendedSupplementsSection(),
+                    SizedBox(height: 24),
+                    _buildActionButtonsSection(),
+                  ],
+                ),
               ),
-            )
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildRecommendationsSection(),
-                  SizedBox(height: 24),
-                  _buildRecommendedPlantsSection(),
-                  SizedBox(height: 24),
-                  _buildRecommendedSupplementsSection(),
-                  SizedBox(height: 24),
-                  _buildActionButtonsSection(),
-                ],
-              ),
-            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -335,7 +338,7 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
       physics: NeverScrollableScrollPhysics(),
       itemBuilder: (context, index) {
         final recommendation = _recommendations[index];
-
+        
         // Determine card color based on severity
         Color cardColor;
         switch (recommendation['severity']) {
@@ -348,7 +351,7 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
           default:
             cardColor = Colors.green[50]!;
         }
-
+        
         // Handle display of historical comparison if available
         Widget historyWidget = SizedBox.shrink();
         if (recommendation.containsKey('historicalComparison')) {
@@ -366,7 +369,7 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
             );
           }
         }
-
+        
         return Card(
           color: cardColor,
           margin: EdgeInsets.only(bottom: 16),
@@ -391,11 +394,8 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
                   'Severity: ${recommendation['severity']}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: recommendation['severity'] == 'High'
-                        ? Colors.red
-                        : recommendation['severity'] == 'Medium'
-                            ? Colors.orange
-                            : Colors.green,
+                    color: recommendation['severity'] == 'High' ? Colors.red : 
+                           recommendation['severity'] == 'Medium' ? Colors.orange : Colors.green,
                   ),
                 ),
                 SizedBox(height: 8),
@@ -571,9 +571,9 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
                           onPressed: () async {
                             await BeeAdvisoryDatabase.instance
                                 .updateRecommendationImplementation(
-                              recommendation['id'],
-                              true,
-                            );
+                                  recommendation['id'],
+                                  true,
+                                );
                             await _loadRecommendations();
                             setState(() {});
                           },
@@ -646,8 +646,9 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            PlantDetailScreen(plantId: plant['id']),
+                        builder:
+                            (context) =>
+                                PlantDetailScreen(plantId: plant['id']),
                       ),
                     );
                   },
@@ -967,9 +968,10 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
             return Icon(
               index < value ? Icons.star : Icons.star_border,
               size: 12,
-              color: index < value
-                  ? (label == 'N' ? Colors.blue : Colors.amber)
-                  : Colors.grey[400],
+              color:
+                  index < value
+                      ? (label == 'N' ? Colors.blue : Colors.amber)
+                      : Colors.grey[400],
             );
           }),
         ),
@@ -1006,8 +1008,7 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
     );
   }
 
-  Widget _buildRecommendationCard(
-      BuildContext context, Map<String, dynamic> recommendation) {
+  Widget _buildRecommendationCard(BuildContext context, Map<String, dynamic> recommendation) {
     return Card(
       elevation: 3,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
@@ -1030,14 +1031,13 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
                   child: Text(
                     recommendation['issue_identified'],
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 // Priority indicator
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: _getPriorityColor(recommendation['priority']),
                     borderRadius: BorderRadius.circular(12),
@@ -1054,29 +1054,29 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
               ],
             ),
             const SizedBox(height: 16),
-
+            
             // Description
             Text(
               recommendation['description'],
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
-
+            
             // Recommended action
             Text(
               'Recommended Action',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               recommendation['recommended_action'],
               style: Theme.of(context).textTheme.bodyMedium,
             ),
-
+            
             const SizedBox(height: 16),
-
+            
             // Action buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -1106,8 +1106,7 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
 
   // Helper methods for the recommendation card
   IconData _getRecommendationIcon(String issue) {
-    if (issue.contains('Return Rate') ||
-        issue.contains('Foraging Performance')) {
+    if (issue.contains('Return Rate') || issue.contains('Foraging Performance')) {
       return Icons.loop;
     } else if (issue.contains('Duration') || issue.contains('Trip')) {
       return Icons.timer;
@@ -1136,12 +1135,187 @@ class _BeeAdvisoryScreenState extends State<BeeAdvisoryScreen> {
   }
 
   void _viewRecommendationDetails(Map<String, dynamic> recommendation) {
-    // Implement the logic to view recommendation details
-    // This could open a detailed view or dialog
+    // Show a dialog with detailed information about the recommendation
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(recommendation['issue_identified']),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Display severity with appropriate styling
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getPriorityColor(recommendation['severity'] ?? recommendation['priority']),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'Severity: ${recommendation['severity'] ?? recommendation['priority']}',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                
+                // Description section
+                Text(
+                  'Issue Details:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text(recommendation['description'] ?? recommendation['issue_identified']),
+                SizedBox(height: 16),
+                
+                // Management actions section
+                Text(
+                  'Management Actions:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text(recommendation['management_actions'] ?? recommendation['recommended_action']),
+                SizedBox(height: 16),
+                
+                // Expected outcome section
+                if (recommendation.containsKey('expected_outcome'))
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Expected Outcome:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      SizedBox(height: 8),
+                      Text(recommendation['expected_outcome']),
+                      SizedBox(height: 16),
+                    ],
+                  ),
+                
+                // Historical data if available
+                if (recommendation.containsKey('historicalComparison'))
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Historical Data:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        recommendation['historicalComparison']['isRecurring'] 
+                            ? 'This issue has occurred ${recommendation['historicalComparison']['occurrences']} times in the past.'
+                            : 'This is a new issue.',
+                      ),
+                      if (recommendation['historicalComparison']['isRecurring'])
+                        Text(
+                          'Last occurrence: ${recommendation['historicalComparison']['lastOccurrence'] ?? 'Unknown'}',
+                        ),
+                      SizedBox(height: 16),
+                    ],
+                  ),
+                
+                // Notes section if available
+                if (recommendation.containsKey('notes') && recommendation['notes'] != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Additional Notes:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      SizedBox(height: 8),
+                      Text(recommendation['notes']),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Close dialog and implement recommendation
+                Navigator.of(context).pop();
+                _implementRecommendation(recommendation);
+              },
+              child: Text('Implement'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF4CAF50),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
-
-  void _implementRecommendation(Map<String, dynamic> recommendation) {
-    // Implement the logic to mark a recommendation as implemented
-    // This could update a database or state
+  
+  void _implementRecommendation(Map<String, dynamic> recommendation) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                ),
+                SizedBox(width: 16),
+                Text("Updating recommendation status..."),
+              ],
+            ),
+          );
+        },
+      );
+  
+      // Update the recommendation in the database
+      await BeeAdvisoryDatabase.instance.updateRecommendationImplementation(
+        recommendation['id'],
+        true,
+      );
+      
+      // Close loading dialog
+      Navigator.of(context).pop();
+  
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recommendation implemented successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+  
+      // Refresh recommendations to update UI
+      await _loadRecommendations();
+      
+    } catch (e) {
+      // Close loading dialog if it's open
+      Navigator.of(context).pop();
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error implementing recommendation: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      print('Error implementing recommendation: $e');
+    }
   }
 }

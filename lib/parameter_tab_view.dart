@@ -1,10 +1,11 @@
-import 'package:HPGM/mediamenu.dart';
+import 'package:farmer_app/mediamenu.dart';
 import 'package:flutter/material.dart';
-import 'package:HPGM/humidity.dart';
-import 'package:HPGM/media.dart';
-import 'package:HPGM/temperature.dart';
+import 'package:farmer_app/humidity.dart';
+import 'package:farmer_app/media.dart';
+import 'package:farmer_app/temperature.dart';
 import 'hive_humidity_monitoring.dart';
-import 'package:HPGM/weight.dart';
+import 'package:farmer_app/weight.dart';
+import 'package:farmer_app/bee_counter/integrated_hive_monitoring.dart';
 
 class TabView extends StatefulWidget {
   final int hiveId;
@@ -99,9 +100,8 @@ class _TabViewState extends State<TabView> {
                           offset: const Offset(0, 3),
                         ),
                       ],
-                    ),
-                    child: DefaultTabController(
-                      length: 4, // Number of tabs
+                    ),                    child: DefaultTabController(
+                      length: 5, // Updated number of tabs
                       child: Column(
                         children: [
                           Container(
@@ -129,6 +129,7 @@ class _TabViewState extends State<TabView> {
                                 Tab(text: 'Humidity'),
                                 Tab(text: 'Weight'),
                                 Tab(text: 'Media'),
+                                Tab(text: 'Bee Activity'),
                               ],
                             ),
                           ),
@@ -152,10 +153,15 @@ class _TabViewState extends State<TabView> {
                                     hiveId: widget.hiveId,
                                     token: widget.token,
                                   ),
-                                ),
-                                Center(
+                                ),                                Center(
                                   child: Mediamenu(
                                     hiveId: widget.hiveId,
+                                    token: widget.token,
+                                  ),
+                                ),
+                                Center(
+                                  child: IntegratedHiveMonitoring(
+                                    hiveId: widget.hiveId.toString(),
                                     token: widget.token,
                                   ),
                                 ),
@@ -175,3 +181,4 @@ class _TabViewState extends State<TabView> {
     );
   }
 }
+

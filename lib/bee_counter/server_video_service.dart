@@ -1,9 +1,11 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:HPGM/bee_counter/bee_counter_model.dart';
-import 'package:HPGM/Services/bee_analysis_service.dart';
-import 'package:HPGM/bee_counter/bee_count_database.dart';
 import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'package:farmer_app/bee_counter/bee_counter_model.dart';
+import 'package:farmer_app/Services/bee_analysis_service.dart';
+import 'package:farmer_app/bee_counter/bee_count_database.dart';
+import 'package:farmer_app/bee_counter/bee_counter_fix.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ServerVideoService {
   // API base URL
@@ -21,25 +23,152 @@ class ServerVideoService {
   final int _maxRetries = 3;
   final Duration _retryDelay = Duration(seconds: 2);
 
-  // Fetch only the latest video from server
-  Future<List<ServerVideo>> fetchVideosFromServer(String hiveId) async {
-    try {
-      // Get only the latest video
-      final latestVideo = await fetchLatestVideoFromServer(hiveId);
+  // Predefined video intervals (in hours)
+  final List<int> _videoIntervals = [7, 12, 18]; // Morning, Noon, Evening
 
-      // Return as a list containing only the latest video
-      if (latestVideo != null) {
-        return [latestVideo];
+  // Helper methods to safely access nullable properties
+  int getVideoHour(ServerVideo video) {
+    return video.timestamp?.hour ?? 12; // Default to noon if timestamp is null
+  }
+
+  bool isVideoAfter(ServerVideo video, DateTime? referenceTime) {
+    if (video.timestamp == null) return false;
+    if (referenceTime == null) return true;
+    return video.timestamp!.isAfter(referenceTime);
+  }
+
+  int getTimestampDifference(ServerVideo video, DateTime targetTime) {
+    if (video.timestamp == null)
+      return 9999; // Large default value if timestamp is null
+    return video.timestamp!.difference(targetTime).inMinutes.abs();
+  }
+
+  // Fetch videos from server with time interval filtering
+  Future<List<ServerVideo>> fetchVideosFromServer(
+    String hiveId, {
+    bool fetchAllIntervals = false,
+  }) async {
+    try {
+      List<ServerVideo> videos = [];
+
+      if (fetchAllIntervals) {
+        // Fetch videos for all intervals
+        for (final interval in _videoIntervals) {
+          final video = await fetchVideoForInterval(hiveId, interval);
+          if (video != null) {
+            videos.add(video);
+          }
+        }
       } else {
-        print('No latest video available from server');
-        return [];
+        // Get only the latest video
+        final latestVideo = await fetchLatestVideoFromServer(hiveId);
+        if (latestVideo != null) {
+          videos.add(latestVideo);
+        }
       }
+
+      return videos;
     } catch (e) {
       print('Error fetching videos: $e');
       return [];
     }
   }
 
+  // Fetch a video for a specific time interval with proper error handling
+  Future<ServerVideo?> fetchVideoForInterval(
+    String hiveId,
+    int hourOfDay,
+  ) async {
+    try {
+      // Build URL to fetch videos - using the same endpoint as latest
+      String url = '$baseUrl/vids/latest';
+
+      print('Fetching videos for interval $hourOfDay from: $url');
+
+      final response = await _client.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        print('Response body for interval $hourOfDay: ${response.body}');
+
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        // Handle different response structures
+        List<dynamic> videos = [];
+
+        if (responseData.containsKey('videos') &&
+            responseData['videos'] != null) {
+          // Multiple videos response
+          videos = responseData['videos'] as List<dynamic>;
+          print('Found ${videos.length} videos in response');
+        } else if (responseData.containsKey('video') &&
+            responseData['video'] != null) {
+          // Single video response - convert to list
+          videos = [responseData['video']];
+          print('Found single video in response, converted to list');
+        } else {
+          print('No videos found in response for interval $hourOfDay');
+          return null;
+        }
+
+        if (videos.isEmpty) {
+          print('No videos available for interval $hourOfDay');
+          return null;
+        }
+
+        // Find the most recent video that matches the time interval
+        ServerVideo? matchingVideo;
+        DateTime? mostRecentTime;
+
+        for (final videoData in videos) {
+          try {
+            final video = ServerVideo.fromJson(
+              videoData as Map<String, dynamic>,
+            ); // Skip videos with no timestamp
+            if (video.timestamp == null) {
+              print('Skipping video ${video.id} - no timestamp');
+              continue;
+            }
+
+            // Check if this video is from the requested time interval (±1 hour)
+            final videoHour = video.timestamp!.hour;
+            if ((videoHour >= hourOfDay - 1) && (videoHour <= hourOfDay + 1)) {
+              // Check if this is the most recent video for this interval
+              if (mostRecentTime == null ||
+                  video.timestamp!.isAfter(mostRecentTime)) {
+                matchingVideo = video;
+                mostRecentTime = video.timestamp;
+                print(
+                  'Found matching video for interval $hourOfDay: ${video.id} at ${video.timestamp}',
+                );
+              }
+            }
+          } catch (e) {
+            print('Error parsing video data: $e');
+            continue;
+          }
+        }
+
+        if (matchingVideo != null) {
+          print('Returning video ${matchingVideo.id} for interval $hourOfDay');
+          return matchingVideo;
+        } else {
+          print('No matching video found for interval $hourOfDay');
+        }
+      } else {
+        print(
+          'Server returned status ${response.statusCode} for interval $hourOfDay',
+        );
+        print('Response: ${response.body}');
+      }
+
+      return null;
+    } catch (e) {
+      print('Error fetching video for interval $hourOfDay: $e');
+      return null;
+    }
+  }
+
+  // Improved error handling for latest video fetch
   Future<ServerVideo?> fetchLatestVideoFromServer(String hiveId) async {
     try {
       // Build the URL for latest video only
@@ -54,36 +183,56 @@ class ServerVideoService {
 
           if (response.statusCode == 200) {
             print('Response body: ${response.body}');
-            final Map<String, dynamic> responseData =
-                json.decode(response.body);
 
-            // Handle the actual response structure
-            if (responseData.containsKey('video')) {
-              final videoData = responseData['video'];
+            try {
+              final Map<String, dynamic> responseData = json.decode(
+                response.body,
+              );
 
-              // Use ServerVideo.fromJson constructor to create object
-              final serverVideo = ServerVideo.fromJson(videoData);
+              // Handle both single video and videos array responses
+              ServerVideo? serverVideo;
 
-              print(
-                  'Successfully parsed video: ${serverVideo.id} - ${serverVideo.url}');
+              if (responseData.containsKey('video') &&
+                  responseData['video'] != null) {
+                // Single video response
+                final videoData = responseData['video'] as Map<String, dynamic>;
+                serverVideo = ServerVideo.fromJson(videoData);
+                print(
+                  'Successfully parsed single video: ${serverVideo.id} - ${serverVideo.url}',
+                );
+              } else if (responseData.containsKey('videos') &&
+                  responseData['videos'] != null) {
+                // Multiple videos response - get the latest one
+                final videos = responseData['videos'] as List<dynamic>;
+                if (videos.isNotEmpty) {
+                  // Assume the first video is the latest
+                  final videoData = videos.first as Map<String, dynamic>;
+                  serverVideo = ServerVideo.fromJson(videoData);
+                  print(
+                    'Successfully parsed latest from videos array: ${serverVideo.id} - ${serverVideo.url}',
+                  );
+                }
+              } else {
+                print('Response does not contain video data: $responseData');
+                continue; // Try next attempt
+              }
 
-              // Update cache
-              _cachedVideo = serverVideo;
-              _lastCacheTime = DateTime.now();
-
-              // Check if this is a new video
-              _checkAndAnalyzeNewVideo(hiveId, serverVideo);
-
-              return serverVideo;
-            } else {
-              print('Response does not contain video data: $responseData');
+              if (serverVideo != null) {
+                // Update cache
+                _cachedVideo = serverVideo;
+                _lastCacheTime = DateTime.now();
+                return serverVideo;
+              }
+            } catch (jsonError) {
+              print('Error parsing JSON response: $jsonError');
+              print('Raw response: ${response.body}');
             }
           } else {
             print('Server returned status code: ${response.statusCode}');
             print('Response body: ${response.body}');
           }
 
-          // If response was not 200 or no videos, try again
+          // If response was not 200 or parsing failed, try again
           if (attempt < _maxRetries - 1) {
             print('Retrying in ${_retryDelay.inSeconds} seconds...');
             await Future.delayed(_retryDelay);
@@ -103,9 +252,7 @@ class ServerVideoService {
         return _cachedVideo;
       }
 
-      // If online fetch fails and no valid cache, return null
-      print(
-          'Could not retrieve video from server and no valid cache available');
+      print('No videos available from server');
       return null;
     } catch (e) {
       print('Error fetching latest video: $e');
@@ -116,10 +263,37 @@ class ServerVideoService {
   // Process a server video and analyze it
   Future<BeeCount?> processServerVideo(
     ServerVideo video, {
+    required String hiveId,
     required Function(String) onStatusUpdate,
   }) async {
     try {
       onStatusUpdate('Downloading video...');
+
+      // Check if we've already processed this video
+      final beeCounts = await BeeCountDatabase.instance.getAllBeeCounts();
+      final alreadyProcessed = beeCounts.any(
+        (count) => count.videoId == video.id,
+      );
+
+      if (alreadyProcessed) {
+        onStatusUpdate('Video already processed: ${video.id}');
+        // Return the existing count
+        final existingCount = beeCounts.firstWhere(
+          (count) => count.videoId == video.id,
+          orElse: () => BeeCount(
+            hiveId: hiveId,
+            beesEntering: 0,
+            beesExiting: 0,
+            timestamp: DateTime.now(),
+          ),
+        );
+
+        // If the existing count has actual bee counts, return it
+        if (existingCount.beesEntering > 0 || existingCount.beesExiting > 0) {
+          return existingCount;
+        }
+        // Otherwise, continue processing to get better counts
+      }
 
       // Download the video
       final videoPath = await _beeAnalysisService.downloadVideo(
@@ -133,39 +307,42 @@ class ServerVideoService {
 
       if (videoPath == null) {
         onStatusUpdate(
-            'Failed to download video: Could not save video to storage');
+          'Failed to download video: Could not save video to storage',
+        );
         return null;
       }
 
-      print('Video successfully downloaded to: $videoPath');
+      print('Video successfully available at: $videoPath');
       onStatusUpdate('Processing video with ML model...');
 
       // Extract hive ID from video name (assuming format like "1_date_time.mp4")
-      final hiveId = video.id.split('_').first;
-      print('Extracted hive ID: $hiveId from video ID: ${video.id}');
+      final extractedHiveId = video.id.split('_').first;
 
-      // Analyze the video using the ML model - NOTE: Parameter order fixed here!
+      // Use provided hiveId unless it's empty, then fall back to extracted one
+      final finalHiveId = hiveId.isNotEmpty ? hiveId : extractedHiveId;
+
+      print(
+          'Using hive ID: $finalHiveId for video ID: ${video.id}'); // Use our improved bee counter fix for more reliable results
       try {
-        print('Starting video analysis for path: $videoPath');
-        final result = await _beeAnalysisService.analyzeVideo(
-          hiveId, // First parameter should be hiveId
-          video.id, // Second parameter should be videoId
-          videoPath, // Third parameter should be videoPath
-        );
+        print(
+            'Starting enhanced video analysis for path: $videoPath'); // Use the BeeCounterFix instance directly
+        final countFix = BeeCounterFix.instance;
 
-        if (result != null) {
-          print('Analysis completed successfully: ${result.toString()}');
-          onStatusUpdate('Analysis complete');
-          return result;
-        } else {
-          print('ERROR: BeeAnalysisService.analyzeVideo returned null');
-          onStatusUpdate(
-              'Analysis failed: ML model could not process the video. Please check format and quality.');
-          return null;
-        }
+        final result = await countFix.processVideo(
+            finalHiveId, video.id, videoPath, onStatusUpdate: (status) {
+          onStatusUpdate('Analysis: $status');
+        });
+
+        print('Enhanced analysis completed successfully: ${result.toString()}');
+        onStatusUpdate('Analysis complete');
+
+        // Save the analysis timestamp in shared preferences
+        await _saveVideoProcessTime(video.id);
+
+        return result;
       } catch (analysisError) {
         print('ERROR in analyzeVideo: $analysisError');
-        onStatusUpdate('Analysis failed: ${analysisError.toString()}');
+        onStatusUpdate('Analysis failed: $analysisError');
         return null;
       }
     } catch (e) {
@@ -175,32 +352,35 @@ class ServerVideoService {
     }
   }
 
-  // Check if a video is new and analyze it automatically
-  Future<void> _checkAndAnalyzeNewVideo(
-    String hiveId,
-    ServerVideo video,
-  ) async {
+  // Save last processed time for a video
+  Future<void> _saveVideoProcessTime(String videoId) async {
     try {
-      // Check if we've already analyzed this video
-      final beeCounts = await BeeCountDatabase.instance.readAllBeeCounts();
-      final alreadyAnalyzed = beeCounts.any(
-        (count) => count.videoId == video.id,
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'video_${videoId}_processed_at',
+        DateTime.now().toIso8601String(),
       );
-
-      if (!alreadyAnalyzed) {
-        print(
-            'New video detected: ${video.id}. Starting automatic analysis...');
-
-        // Process the video automatically
-        await processServerVideo(
-          video,
-          onStatusUpdate: (status) {
-            print('Auto-analysis status: $status');
-          },
-        );
-      }
     } catch (e) {
-      print('Error in automatic video analysis: $e');
+      print('Error saving video process time: $e');
+    }
+  }
+
+  // Check if a video has been processed within the last day
+  Future<bool> hasVideoBeenProcessedRecently(String videoId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final processedTimeStr = prefs.getString('video_${videoId}_processed_at');
+
+      if (processedTimeStr == null) return false;
+
+      final processedTime = DateTime.parse(processedTimeStr);
+      final now = DateTime.now();
+
+      // Check if processed within the last 24 hours
+      return now.difference(processedTime).inHours < 24;
+    } catch (e) {
+      print('Error checking video process time: $e');
+      return false;
     }
   }
 
@@ -214,12 +394,60 @@ class ServerVideoService {
 
   // Get all bee counts for a hive
   Future<List<BeeCount>> getAllBeeCountsForHive(String hiveId) async {
-    return await BeeCountDatabase.instance.readBeeCountsByHiveId(hiveId);
+    return await BeeCountDatabase.instance.getBeeCountsForHive(hiveId);
   }
 
   // Clean up resources
   void dispose() {
     _beeAnalysisService.dispose();
     _client.close();
+  }
+
+  // Fetch videos for a specific interval
+  Future<List<ServerVideo>> _fetchVideosForInterval(
+    String hiveId,
+    int interval,
+  ) async {
+    try {
+      final url = '$baseUrl/videos/$hiveId/interval/$interval';
+      print('Fetching videos from: $url');
+
+      final response =
+          await _client.get(Uri.parse(url)).timeout(Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        // Check if response body is empty
+        if (response.body.isEmpty) {
+          print('Empty response for interval $interval');
+          return [];
+        }
+
+        final jsonData = jsonDecode(response.body);
+
+        // Handle case where API returns null instead of a list
+        if (jsonData == null) {
+          print('Null JSON response for interval $interval');
+          return [];
+        }
+
+        // Handle case where API returns an object instead of a list
+        if (jsonData is! List) {
+          print('JSON response is not a list for interval $interval');
+          return [];
+        }
+
+        return jsonData
+            .map((videoJson) => ServerVideo.fromJson(videoJson))
+            .toList();
+      } else {
+        print(
+          'Error status code ${response.statusCode} for interval $interval',
+        );
+        return [];
+      }
+    } catch (e) {
+      print('Error fetching video for interval $interval: $e');
+      return []; // Return empty list instead of propagating error
+    }
   }
 }

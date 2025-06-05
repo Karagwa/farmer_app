@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:HPGM/bee_counter/bee_counter_model.dart';
-import 'package:HPGM/bee_counter/server_video_service.dart';
+import 'package:farmer_app/bee_counter/bee_counter_model.dart';
+import 'package:farmer_app/bee_counter/server_video_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
@@ -745,3 +745,4 @@ class _BeeCountResultsScreenState extends State<BeeCountResultsScreen> {
     );
   }
 }
+

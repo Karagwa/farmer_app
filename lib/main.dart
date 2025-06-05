@@ -1,21 +1,13 @@
-import 'package:HPGM/splashscreen.dart';
+import 'package:farmer_app/splashscreen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:HPGM/Services/notifi_service.dart';
-// import 'package:HPGM/bee_counter/background_video_processing_service.dart';
-import 'package:provider/provider.dart';
-// import 'package:HPGM/notifications/notification_provider.dart';
+import 'package:farmer_app/Services/notifi_service.dart';
+import 'package:farmer_app/bee_counter/bee_monitoring_background_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   // Ensure Flutter is initialized before doing anything else
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Try to load .env file but don't crash if it doesn't exist
-  try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    print("Warning: .env file not found. Continuing without it.");
-  }
 
   // Initialize notifications
   try {
@@ -24,18 +16,53 @@ Future<void> main() async {
     print("Warning: Could not initialize notifications: $e");
   }
 
-  // await BackgroundVideoProcessingService().initialize();
+  // Initialize the notification plugin
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  // Initialize the monitoring service at application startup
+  final monitoringService = BeeMonitoringService();
+  await monitoringService.initializeService();
 
   // Run the app with proper provider setup
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final BeeMonitoringService _monitoringService = BeeMonitoringService();
+  String _activeHiveId = '1';
+  bool _serviceRunning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+    _checkServiceStatus();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _activeHiveId = prefs.getString('active_hive_id') ?? '1';
+    });
+  }
+
+  Future<void> _checkServiceStatus() async {
+    final isRunning = await _monitoringService.isServiceRunning();
+    setState(() {
+      _serviceRunning = isRunning;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // This MaterialApp provides the Directionality widget that was missing
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: const Splashscreen(),

@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:HPGM/bee_counter/bee_counter_model.dart';
-import 'package:HPGM/bee_counter/bee_count_database.dart';
+import 'package:farmer_app/bee_counter/bee_counter_model.dart';
+import 'package:farmer_app/bee_counter/bee_count_database.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:HPGM/bee_counter/bee_video_analyzer.dart';
+import 'package:farmer_app/bee_counter/bee_video_analyzer.dart';
 import 'dart:async';
 
 class BeeAnalysisService {

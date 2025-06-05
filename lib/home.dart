@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:HPGM/Services/notifi_service.dart';
-import 'package:HPGM/components/pop_up.dart';
+import 'package:farmer_app/Services/notifi_service.dart';
+import 'package:farmer_app/components/pop_up.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
 
@@ -475,3 +475,4 @@ class _HomeState extends State<Home> {
     );
   }
 }
+
