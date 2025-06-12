@@ -1,3 +1,4 @@
+import 'package:HPGM/add_hive_form.dart';
 import 'package:HPGM/records_form.dart';
 import 'package:flutter/material.dart';
 import 'package:HPGM/hivedetails.dart';
@@ -117,44 +118,57 @@ class _HivesState extends State<Hives> {
         },
         child: CustomScrollView(
           slivers: [
-            SliverAppBar(
-              expandedHeight: 120,
-              backgroundColor: Colors.orange,
-              flexibleSpace: FlexibleSpaceBar(
-                title: Text(
-                  '${widget.farmName} Hives',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontFamily: "Sans",
-                    fontSize: 20,
-                    color: Colors.white,
-                  ),
-                ),
-                centerTitle: true,
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.orange.withOpacity(0.8),
-                        Colors.orange.withOpacity(0.6),
-                        Colors.orange.withOpacity(0.4),
-                        Colors.orange.withOpacity(0.2),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              leading: IconButton(
-                icon: const Icon(
-                  Icons.chevron_left_rounded,
-                  color: Colors.white,
-                  size: 32,
-                ),
-                onPressed: () => Navigator.pop(context),
-              ),
+SliverAppBar(
+  // Remove expandedHeight and flexibleSpace to make it a standard app bar
+  backgroundColor: Colors.orange,
+  title: Text(
+    '${widget.farmName} Hives List',
+    style: const TextStyle(
+      fontWeight: FontWeight.bold,
+      fontFamily: "Sans",
+      fontSize: 20,
+      color: Colors.white,
+    ),
+  ),
+  centerTitle: false, // Align title to the left
+  leading: IconButton(
+    icon: const Icon(
+      Icons.chevron_left_rounded,
+      color: Colors.white,
+      size: 32,
+    ),
+    onPressed: () => Navigator.pop(context),
+  ),
+  // Add actions here
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.add, color: Colors.white, size: 28),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddHiveForm(
+              farmId: widget.farmId,
+              token: widget.token,
+              apiaryLocation: widget.apiaryLocation,
+              farmName: widget.farmName,
+              onHiveAdded: () async {
+                await getHives(widget.farmId);
+              },
             ),
+          ),
+        );
+      },
+    ),
+    IconButton(
+      icon: const Icon(Icons.grid_view, color: Colors.white, size: 28), // Changed icon to grid_view
+      onPressed: () {
+        // Implement change view functionality here
+        print('Change View button pressed');
+      },
+    ),
+  ],
+),
             SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
