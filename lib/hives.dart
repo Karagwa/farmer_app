@@ -40,6 +40,7 @@ class Hive {
   final bool isConnected;
   final bool isColonized;
 
+
   Hive({
     required this.id,
     required this.longitude,
@@ -196,7 +197,7 @@ SliverAppBar(
       elevation: 4,
       color: Colors.brown[300],
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(18.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -211,9 +212,9 @@ SliverAppBar(
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Hive ${hive.id}',
+                    'Name: Hive ${hive.id}',
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 30,
                       fontWeight: FontWeight.bold,
                       fontFamily: "Sans",
                       color: Colors.white,
@@ -229,44 +230,23 @@ SliverAppBar(
             ),
             const SizedBox(height: 16),
 
-            // Status Indicators
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatusIndicator(
-                    icon: Icons.thermostat,
-                    label: 'Temperature',
-                    value: hive.temperature ?? 0,
-                    maxValue: 50,
-                    unit: '°C',
-                    onTap: () => showModalBottomSheet(
-                      context: context,
-                      builder: (context) => buildTempSheet(
-                        "Temperature Details",
-                        hive.temperature ?? 0,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatusIndicator(
-                    icon: Icons.scale,
-                    label: 'Honey Level',
-                    value: hive.honeyLevel ?? 0,
-                    maxValue: 100,
-                    unit: '%',
-                    onTap: () => showModalBottomSheet(
-                      context: context,
-                      builder: (context) => buildHoneySheet(
-                        "Honey Levels",
-                        hive.honeyLevel ?? 0,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            
+
+            _buildInfoRow(
+              icon: Icons.link,
+              label: 'Status' ,
+              value: hive.isConnected ? 'ON' : 'OFF',
+              valueColor: hive.isConnected ? Colors.green : Colors.red,
             ),
+
+            const SizedBox(height: 16),
+            _buildInfoRow(
+              icon: Icons.star,
+              label: 'Performance',
+              value: 'Good',//Enum value for performance{Good, Average, Poor}
+              valueColor: Colors.green,
+            ),
+
             const SizedBox(height: 16),
 
             // Colonization Status
@@ -364,7 +344,7 @@ SliverAppBar(
         Icon(
           icon,
           color: Colors.orange[700],
-          size: 20,
+          size: 25,
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -374,9 +354,9 @@ SliverAppBar(
               Text(
                 label,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 19,
                   color: Colors.white70,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w700,
                   fontFamily: "Sans",
                 ),
               ),
@@ -384,7 +364,7 @@ SliverAppBar(
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 17,
                   fontWeight: FontWeight.w600,
                   color: valueColor ?? Colors.white,
                   fontFamily: "Sans",

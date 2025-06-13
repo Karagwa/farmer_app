@@ -1,4 +1,6 @@
+import 'package:HPGM/components/honey_sheet.dart';
 import 'package:HPGM/components/imageslider.dart';
+import 'package:HPGM/components/temperature_sheet.dart';
 import 'package:HPGM/parameter_tab_view.dart';
 import 'package:HPGM/components/notificationbar.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
@@ -23,10 +25,57 @@ class HiveDetails extends StatefulWidget {
   State<HiveDetails> createState() => _HiveDetailsState();
 }
 
+class Hive {
+  final int id;
+  final String longitude;
+  final String latitude;
+  final int farmId;
+  final String? createdAt;
+  final String? updatedAt;
+  final double? weight;
+  final double? honeyLevel;
+  final double? temperature;
+  final bool isConnected;
+  final bool isColonized;
+
+  Hive({
+    required this.id,
+    required this.longitude,
+    required this.latitude,
+    required this.farmId,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.weight,
+    required this.temperature,
+    required this.honeyLevel,
+    required this.isConnected,
+    required this.isColonized,
+  });
+
+  factory Hive.fromJson(Map<String, dynamic> json) {
+    return Hive(
+      id: json['id'],
+      longitude: json['longitude'],
+      latitude: json['latitude'],
+      farmId: json['farm_id'],
+      createdAt: json['created_at'],
+      updatedAt: json['updated_at'],
+      weight: json['state']['weight']['record']?.toDouble(),
+      temperature:
+          json['state']['temperature']['interior_temperature']?.toDouble(),
+      honeyLevel: json['state']['weight']['honey_percentage']?.toDouble(),
+      isConnected: json['state']['connection_status']['Connected'],
+      isColonized: json['state']['colonization_status']['Colonized'],
+    );
+  }
+}
+
 class _HiveDetailsState extends State<HiveDetails> {
   List<String> photos = [];
   late DateTime _startDate;
   late DateTime _endDate;
+  Hive? hive;
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -35,6 +84,32 @@ class _HiveDetailsState extends State<HiveDetails> {
     DateTime startDate = DateTime(2024, 5, 21);
     DateTime endDate = DateTime(2024, 6, 5);
     fetchPhotos(widget.hiveId, startDate, endDate);
+    fetchHiveDetails();
+  }
+
+  Future<void> fetchHiveDetails() async {
+    try {
+      String sendToken = "Bearer ${widget.token}";
+      var headers = {'Accept': 'application/json', 'Authorization': sendToken};
+      var response = await http.get(
+        Uri.parse('http://196.43.168.57/api/v1/hives/${widget.hiveId}'),
+        headers: headers,
+      );
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        setState(() {
+          hive = Hive.fromJson(jsonData['data']);
+          isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load hive details');
+      }
+    } catch (error) {
+      print('Error fetching hive details: $error');
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   Future<void> fetchPhotos(
@@ -195,72 +270,112 @@ class _HiveDetailsState extends State<HiveDetails> {
                   // Device Status Section - IMPROVED
                   Padding(
                     padding: const EdgeInsets.all(15),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column( // Changed to Column to stack the rows
                       children: [
-                        // Device Status Section
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.developer_board,
-                                color: Colors.amber[800],
-                                size: 22,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Device Status:',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green[100],
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text(
-                                  'Connected',
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Status Indicators
+                            Expanded(
+                              child: _buildStatusIndicator(
+                                icon: Icons.thermostat,
+                                label: 'Temperature',
+                                value: hive?.temperature ?? 0,
+                                maxValue: 50,
+                                unit: '°C',
+                                onTap: () => showModalBottomSheet(
+                                  context: context,
+                                  builder: (context) => buildTempSheet(
+                                    "Temperature Details",
+                                    hive?.temperature ?? 0,
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-
-                        // Monitor Button
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => TabView(
-                                  hiveId: widget.hiveId,
-                                  token: widget.token,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildStatusIndicator(
+                                icon: Icons.scale,
+                                label: 'Honey Level',
+                                value: hive?.honeyLevel ?? 0,
+                                maxValue: 100,
+                                unit: '%',
+                                onTap: () => showModalBottomSheet(
+                                  context: context,
+                                  builder: (context) => buildHoneySheet(
+                                    "Honey Levels",
+                                    hive?.honeyLevel ?? 0,
+                                  ),
                                 ),
                               ),
-                            );
-                          },
-                          icon: const Icon(Icons.monitor, size: 18),
-                          label: const Text('Monitor'),
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.amber[800],
-                            backgroundColor: Colors.amber[50],
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
+                          ],
+                        ),
+                        const SizedBox(height: 15), // Added space between rows
+                   
+                  const SizedBox(height: 15),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.developer_board,
+                              color: Colors.amber[800],
+                              size: 22,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Device Status:',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: (hive?.isConnected ?? false) ? Colors.green[100] : Colors.red[100],
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                (hive?.isConnected ?? false) ? 'Connected' : 'Disconnected',
+                                style: TextStyle(
+                                  color: (hive?.isConnected ?? false) ? Colors.green : Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 15), // Added space for the Monitor button
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => TabView(
+                                    hiveId: widget.hiveId,
+                                    token: widget.token,
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.monitor, size: 18),
+                            label: const Text('Monitor'),
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Colors.amber[800],
+                              backgroundColor: Colors.amber[50],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
                             ),
                           ),
                         ),
@@ -405,4 +520,80 @@ class _HiveDetailsState extends State<HiveDetails> {
       ),
     );
   }
+}
+
+Widget _buildStatusIndicator({
+  required IconData icon,
+  required String label,
+  required double value,
+  required double maxValue,
+  required String unit,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.brown[400]?.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.brown[500]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: Colors.orange[700],
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                  fontFamily: "Sans",
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${value.toStringAsFixed(1)}$unit',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontFamily: "Sans",
+                ),
+              ),
+              SizedBox(
+                width: 50,
+                height: 12,
+                child: LiquidLinearProgressIndicator(
+                  value: value / maxValue,
+                  valueColor: AlwaysStoppedAnimation(
+                    label == 'Honey Level' ? Colors.amber : Colors.orange,
+                  ),
+                  backgroundColor: Colors.amber[100]!,
+                  borderColor: Colors.transparent,
+                  borderWidth: 0,
+                  borderRadius: 6,
+                  direction: Axis.horizontal,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
 }
