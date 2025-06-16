@@ -1,9 +1,11 @@
-// import 'package:HPGM/components/custom_progress_bar.dart';
-import 'package:HPGM/components/pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
+
+import 'components/pop_up.dart';
+import 'editApiaryForm.dart';
 import 'farm_model.dart';
 import 'hives.dart';
+import 'ApiaryDetailsScreen.dart';
 
 Widget buildFarmCard(Farm farm, BuildContext context, String token) {
   return Center(
@@ -19,28 +21,39 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row
+              // Header Row with clickable name
               Row(
                 children: [
                   Icon(Icons.hive, color: Colors.orange[700], size: 28),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      farm.name,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: "Sans",
-                        color: Colors.white,
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ApiaryDetailPage(farm: farm),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        farm.name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: "Sans",
+                          color: Colors.white,
+                          
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
 
-              // Location Row
+              // Location
               _buildInfoRow(
                 icon: Icons.location_on,
                 label: 'Location',
@@ -88,40 +101,66 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
               ),
               const SizedBox(height: 20),
 
-              // Action Button
-              SizedBox(
-                width: double.infinity, // Fixed typo here
-                child: ElevatedButton(
-                  // Fixed typo here
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange[700],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => Hives(
-                          farmId: farm.id,
-                          token: token,
-                          apiaryLocation: '${farm.district}, ${farm.address}',
-                          farmName: farm.name,
+              // Action Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildActionButton(
+                    icon: Icons.settings,
+                    label: 'Manage',
+                    color: Colors.orange[700]!,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => Hives(
+                            farmId: farm.id,
+                            token: token,
+                            apiaryLocation: '${farm.district}, ${farm.address}',
+                            farmName: farm.name,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'View Hives',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                      );
+                    },
                   ),
-                ),
+                  _buildActionButton(
+                    icon: Icons.edit,
+                    label: 'Edit',
+                    color: Colors.blue[700]!,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditApiaryForm(
+                            apiaryId: farm.id,
+                            name: farm.name,
+                            district: farm.district,
+                            address: farm.address,
+                            token: token,
+                            onApiaryUpdated: () {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Apiary updated successfully"),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildActionButton(
+                    icon: Icons.delete,
+                    label: 'Delete',
+                    color: Colors.red[700]!,
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Delete pressed")),
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -239,6 +278,31 @@ Widget _buildStatusIndicator({
           ),
         ],
       ),
+    ),
+  );
+}
+
+Widget _buildActionButton({
+  required IconData icon,
+  required String label,
+  required Color color,
+  required VoidCallback onTap,
+}) {
+  return ElevatedButton.icon(
+    onPressed: onTap,
+    icon: Icon(icon, size: 18, color: Colors.white),
+    label: Text(
+      label,
+      style: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+        fontFamily: "Sans",
+      ),
+    ),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: color,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
   );
 }
