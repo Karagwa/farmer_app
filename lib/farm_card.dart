@@ -123,33 +123,34 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                       );
                     },
                   ),
-                  _buildActionButton(
-                    icon: Icons.edit,
-                    label: 'Edit',
-                    color: Colors.blue[700]!,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EditApiaryForm(
-                            apiaryId: farm.id,
-                            name: farm.name,
-                            district: farm.district,
-                            address: farm.address,
-                            token: token,
-                            onApiaryUpdated: () {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Apiary updated successfully"),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+        _buildActionButton(
+          icon: Icons.edit,
+          label: 'Edit',
+          color: Colors.blue[700]!,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EditForm(
+                  apiary: {
+                    'name': farm.name,
+                    'address': farm.address,
+                  },
+                  index: farm.id, // Assuming `farm.id` is an integer
+                  onSave: (index, updatedApiary) {
+                    // Handle the save logic here
+                    print('Updated Apiary: $updatedApiary');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Apiary updated successfully"),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        ),
                   _buildActionButton(
                     icon: Icons.delete,
                     label: 'Delete',
