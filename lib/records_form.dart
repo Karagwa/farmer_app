@@ -18,6 +18,7 @@ class RecordsForm extends StatefulWidget {
 
 class _RecordsFormState extends State<RecordsForm> {
   final _formKey = GlobalKey<FormState>();
+  int _currentStep = 0; // Added to manage current step
   final DateTime _inspectionDate = DateTime.now();
 
   // Controllers (same as before)
@@ -67,7 +68,59 @@ class _RecordsFormState extends State<RecordsForm> {
   @override
   void dispose() {
     // Dispose all controllers (same as before)
+    _beekeeperNameController.dispose();
+    _weatherConditionsController.dispose();
+    _apiaryLocationController.dispose();
+    _hiveIdController.dispose();
+    _hiveTypeController.dispose();
+    _hiveConditionController.dispose();
+    _queenPresenceController.dispose();
+    _queenCellsController.dispose();
+    _broodPatternController.dispose();
+    _eggsLarvaeController.dispose();
+    _honeyStoresController.dispose();
+    _pollenStoresController.dispose();
+    _beePopulationController.dispose();
+    _aggressivenessController.dispose();
+    _diseasesObservedController.dispose();
+    _diseasesSpecifyController.dispose();
+    _pestsPresentController.dispose();
+    _framesCheckedController.dispose();
+    _framesReplacedController.dispose();
+    _hiveCleanedController.dispose();
+    _supersChangedController.dispose();
+    _otherActionsController.dispose();
+    _commentsController.dispose();
     super.dispose();
+  }
+
+  // List of section headers for the stepper
+  final List<String> _sectionTitles = [
+    'General Information',
+    'Hive Information',
+    'Colony Health',
+    'Maintenance Actions',
+    'Comments & Recommendations',
+  ];
+
+  void _nextStep() {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        if (_currentStep < _sectionTitles.length - 1) {
+          _currentStep++;
+        } else {
+          _submitForm(); // This is the last step, so submit
+        }
+      });
+    }
+  }
+
+  void _previousStep() {
+    setState(() {
+      if (_currentStep > 0) {
+        _currentStep--;
+      }
+    });
   }
 
   @override
@@ -145,95 +198,219 @@ class _RecordsFormState extends State<RecordsForm> {
                 ),
                 const SizedBox(height: 20),
 
-                // Form Sections
-                _buildSectionHeader('1. General Information'),
-                _buildReadOnlyField(
-                    'Inspection Date', _formatDate(_inspectionDate)),
-                _buildTextField('Beekeeper Name', _beekeeperNameController),
-                _buildTextField(
-                    'Weather Conditions', _weatherConditionsController),
-                _buildReadOnlyField(
-                    'Apiary Location', _apiaryLocationController.text),
-                _buildReadOnlyField('Hive ID', _hiveIdController.text),
-                const SizedBox(height: 24),
+                // Stepper (visual indicator of progress)
+                _buildStepper(),
+                const SizedBox(height: 20),
 
-                _buildSectionHeader('2. Hive Information'),
-                _buildTextField('Type of Hive', _hiveTypeController,
-                    hint: 'e.g., Langstroth, Top Bar'),
-                _buildDropdownField('Hive Condition', _hiveConditionController,
-                    ['Good', 'Fair', 'Poor']),
-                _buildYesNoField(
-                    'Presence of Queen?', _queenPresenceController),
-                _buildYesNoField('Queen Cells Present?', _queenCellsController),
-                _buildDropdownField('Brood Pattern', _broodPatternController,
-                    ['Good', 'Irregular', 'Spotty', 'None']),
-                _buildYesNoField(
-                    'Eggs & Larvae Present?', _eggsLarvaeController),
-                _buildDropdownField('Honey Stores', _honeyStoresController,
-                    ['Low', 'Medium', 'Full']),
-                _buildDropdownField('Pollen Stores', _pollenStoresController,
-                    ['Low', 'Medium', 'Full']),
-                const SizedBox(height: 24),
+                // Form Sections based on _currentStep
+                _buildCurrentFormSection(),
 
-                _buildSectionHeader('3. Colony Health'),
-                _buildDropdownField('Bee Population', _beePopulationController,
-                    ['Strong', 'Moderate', 'Weak']),
-                _buildDropdownField('Aggressiveness', _aggressivenessController,
-                    ['Calm', 'Moderate', 'Aggressive']),
-                _buildYesNoField(
-                    'Diseases or Pests Observed?', _diseasesObservedController),
-                if (_diseasesObservedController.text == 'Yes')
-                  _buildTextField(
-                      'Specify Diseases/Pests', _diseasesSpecifyController),
-                _buildTextField('Other Pests Present', _pestsPresentController,
-                    hint: 'e.g., Varroa mites, Small Hive Beetles'),
-                const SizedBox(height: 24),
-
-                _buildSectionHeader('4. Maintenance Actions'),
-                _buildNumberField('Frames Checked', _framesCheckedController),
-                _buildYesNoField('Frames Replaced?', _framesReplacedController),
-                _buildYesNoField('Hive Cleaned?', _hiveCleanedController),
-                _buildYesNoField(
-                    'Supers Added/Removed?', _supersChangedController),
-                _buildTextField('Other Actions Taken', _otherActionsController),
-                const SizedBox(height: 24),
-
-                _buildSectionHeader('5. Comments & Recommendations'),
-                _buildLargeTextField('General Comments', _commentsController),
                 const SizedBox(height: 32),
 
-                // Submit Button
-                Center(
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange[700],
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 4,
-                      ),
-                      onPressed: _submitForm,
-                      child: const Text(
-                        'SUBMIT INSPECTION',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          fontFamily: "Sans",
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                // Navigation Buttons
+                _buildNavigationButtons(),
+
                 const SizedBox(height: 20),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStepper() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(_sectionTitles.length, (index) {
+            bool isActive = index == _currentStep;
+            return Expanded(
+              child: Column(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: isActive ? Colors.orange[700] : Colors.brown[200],
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isActive ? Colors.orange[900]! : Colors.brown[300]!,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          color: isActive ? Colors.white : Colors.brown[800],
+                          fontWeight: FontWeight.bold,
+                          fontFamily: "Sans",
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _sectionTitles[index].split(' ').first, // Show only first word
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isActive ? Colors.orange[700] : Colors.brown[600],
+                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                      fontFamily: "Sans",
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 10),
+        LinearProgressIndicator(
+          value: (_currentStep + 1) / _sectionTitles.length,
+          backgroundColor: Colors.brown[100],
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange[700]!),
+        ),
+      ],
+    );
+  }
+
+
+  Widget _buildCurrentFormSection() {
+    switch (_currentStep) {
+      case 0:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('1. General Information'),
+            _buildReadOnlyField(
+                'Inspection Date', _formatDate(_inspectionDate)),
+            _buildTextField('Beekeeper Name', _beekeeperNameController),
+            _buildTextField(
+                'Weather Conditions', _weatherConditionsController),
+            _buildReadOnlyField(
+                'Apiary Location', _apiaryLocationController.text),
+            _buildReadOnlyField('Hive ID', _hiveIdController.text),
+          ],
+        );
+      case 1:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('2. Hive Information'),
+            _buildTextField('Type of Hive', _hiveTypeController,
+                hint: 'e.g., Langstroth, Top Bar'),
+            _buildDropdownField('Hive Condition', _hiveConditionController,
+                ['Good', 'Fair', 'Poor']),
+            _buildYesNoField(
+                'Presence of Queen?', _queenPresenceController),
+            _buildYesNoField('Queen Cells Present?', _queenCellsController),
+            _buildDropdownField('Brood Pattern', _broodPatternController,
+                ['Good', 'Irregular', 'Spotty', 'None']),
+            _buildYesNoField(
+                'Eggs & Larvae Present?', _eggsLarvaeController),
+            _buildDropdownField('Honey Stores', _honeyStoresController,
+                ['Low', 'Medium', 'Full']),
+            _buildDropdownField('Pollen Stores', _pollenStoresController,
+                ['Low', 'Medium', 'Full']),
+          ],
+        );
+      case 2:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('3. Colony Health'),
+            _buildDropdownField('Bee Population', _beePopulationController,
+                ['Strong', 'Moderate', 'Weak']),
+            _buildDropdownField('Aggressiveness', _aggressivenessController,
+                ['Calm', 'Moderate', 'Aggressive']),
+            _buildYesNoField(
+                'Diseases or Pests Observed?', _diseasesObservedController),
+            if (_diseasesObservedController.text == 'Yes')
+              _buildTextField(
+                  'Specify Diseases/Pests', _diseasesSpecifyController),
+            _buildTextField('Other Pests Present', _pestsPresentController,
+                hint: 'e.g., Varroa mites, Small Hive Beetles'),
+          ],
+        );
+      case 3:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('4. Maintenance Actions'),
+            _buildNumberField('Frames Checked', _framesCheckedController),
+            _buildYesNoField('Frames Replaced?', _framesReplacedController),
+            _buildYesNoField('Hive Cleaned?', _hiveCleanedController),
+            _buildYesNoField(
+                'Supers Added/Removed?', _supersChangedController),
+            _buildTextField('Other Actions Taken', _otherActionsController),
+          ],
+        );
+      case 4:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('5. Comments & Recommendations'),
+            _buildLargeTextField('General Comments', _commentsController),
+          ],
+        );
+      default:
+        return Container(); // Should not happen
+    }
+  }
+
+  Widget _buildNavigationButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        if (_currentStep > 0)
+          Expanded(
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                side: BorderSide(color: Colors.orange[700]!),
+              ),
+              onPressed: _previousStep,
+              child: Text(
+                'PREVIOUS',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange[700],
+                  fontFamily: "Sans",
+                ),
+              ),
+            ),
+          ),
+        if (_currentStep > 0) const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange[700],
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 4,
+            ),
+            onPressed: _nextStep,
+            child: Text(
+              _currentStep < _sectionTitles.length - 1 ? 'NEXT' : 'SUBMIT INSPECTION',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontFamily: "Sans",
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -326,10 +503,10 @@ class _RecordsFormState extends State<RecordsForm> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: DropdownButtonFormField<String>(
-        style: const TextStyle(
+        value: controller.text.isNotEmpty ? controller.text : null, // Set initial value if present
+        style: TextStyle(
           fontFamily: "Sans",
-
-          // color: Colors.brown[800]
+          color: Colors.brown[800], // Set dropdown item text color
         ),
         decoration: InputDecoration(
           labelText: label,
@@ -485,7 +662,7 @@ class _RecordsFormState extends State<RecordsForm> {
               ),
             ),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(context); // Close the dialog
               _saveInspectionData();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -500,7 +677,9 @@ class _RecordsFormState extends State<RecordsForm> {
                   ),
                 ),
               );
-              Navigator.pop(context);
+              // You might want to navigate back or clear the form here
+              // For now, let's just pop the current screen
+              // Navigator.pop(context);
             },
             child: const Text(
               'SUBMIT',
@@ -516,14 +695,33 @@ class _RecordsFormState extends State<RecordsForm> {
   }
 
   void _saveInspectionData() {
-    // Save implementation (same as before)
     final inspectionData = {
       'date': _formatDate(_inspectionDate),
       'beekeeper': _beekeeperNameController.text,
       'location': _apiaryLocationController.text,
       'hiveId': _hiveIdController.text,
-      // Add all other fields...
+      'weatherConditions': _weatherConditionsController.text,
+      'hiveType': _hiveTypeController.text,
+      'hiveCondition': _hiveConditionController.text,
+      'queenPresence': _queenPresenceController.text,
+      'queenCells': _queenCellsController.text,
+      'broodPattern': _broodPatternController.text,
+      'eggsLarvae': _eggsLarvaeController.text,
+      'honeyStores': _honeyStoresController.text,
+      'pollenStores': _pollenStoresController.text,
+      'beePopulation': _beePopulationController.text,
+      'aggressiveness': _aggressivenessController.text,
+      'diseasesObserved': _diseasesObservedController.text,
+      'diseasesSpecify': _diseasesSpecifyController.text,
+      'pestsPresent': _pestsPresentController.text,
+      'framesChecked': _framesCheckedController.text,
+      'framesReplaced': _framesReplacedController.text,
+      'hiveCleaned': _hiveCleanedController.text,
+      'supersChanged': _supersChangedController.text,
+      'otherActions': _otherActionsController.text,
+      'comments': _commentsController.text,
     };
     print('Inspection Data: $inspectionData');
+    // In a real application, you would send this data to a backend or save it locally.
   }
 }

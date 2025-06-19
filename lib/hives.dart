@@ -197,7 +197,7 @@ SliverAppBar(
       elevation: 4,
       color: Colors.brown[300],
       child: Padding(
-        padding: const EdgeInsets.all(18.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -209,7 +209,7 @@ SliverAppBar(
                   color: Colors.orange[700],
                   size: 28,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 11),
                 Expanded(
                   child: Text(
                     'Name: Hive ${hive.id}',
@@ -228,7 +228,7 @@ SliverAppBar(
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             
 
@@ -239,7 +239,7 @@ SliverAppBar(
               valueColor: hive.isConnected ? Colors.green : Colors.red,
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _buildInfoRow(
               icon: Icons.star,
               label: 'Performance',
@@ -247,7 +247,7 @@ SliverAppBar(
               valueColor: Colors.green,
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             // Colonization Status
             _buildInfoRow(
@@ -256,7 +256,7 @@ SliverAppBar(
               value: hive.isColonized ? 'Colonized' : 'Not Colonized',
               valueColor: hive.isColonized ? Colors.green : Colors.red,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Action Buttons
             Row(
