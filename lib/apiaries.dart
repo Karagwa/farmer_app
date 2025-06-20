@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:HPGM/AddApiaryForm.dart';
+import 'editApiaryForm.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
@@ -114,6 +115,31 @@ class _ApiariesState extends State<Apiaries> {
     }
   }
 
+  Future<bool> updateApiary(
+    int farmId,
+    Map<String, dynamic> updatedData,
+  ) async {
+    try {
+      String sendToken = "Bearer ${widget.token}";
+
+      var headers = {
+        'Accept': 'application/json',
+        'Authorization': sendToken,
+        'Content-Type': 'application/json',
+      };
+      var response = await http.put(
+        Uri.parse('http://196.43.168.57/api/v1/farms/$farmId'),
+        headers: headers,
+        body: jsonEncode(updatedData),
+      );
+
+      return response.statusCode == 200;
+    } catch (error) {
+      print('Error updating apiary: $error');
+      return false;
+    }
+  }
+
   Future<void> _handleRefresh() async {
     await getApiaries();
     return;
@@ -199,7 +225,9 @@ class _ApiariesState extends State<Apiaries> {
                                 // Toggle Button for View Mode
                                 IconButton(
                                   icon: Icon(
-                                    isTabularView ? Icons.view_module : Icons.table_chart,
+                                    isTabularView
+                                        ? Icons.view_module
+                                        : Icons.table_chart,
                                     color: Colors.brown,
                                     size: 30,
                                   ),
@@ -285,51 +313,79 @@ class _ApiariesState extends State<Apiaries> {
                     if (!isLoading)
                       isTabularView
                           ? DataTable(
-                              columns: const [
-                                DataColumn(label: Text("Farm Name")),
-                                DataColumn(label: Text("District")),
-                                DataColumn(label: Text("Address")),
-                                DataColumn(label: Text("Actions")),
-                              ],
-                              rows: farms.map((farm) {
-                                return DataRow(cells: [
-                                  DataCell(Text(farm.name)),
-                                  DataCell(Text(farm.district)),
-                                  DataCell(Text(farm.address)),
-                                  DataCell(Row(
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.settings, color: Colors.orange),
-                                        onPressed: () {
-                                          // Navigate to Manage screen
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.edit, color: Colors.blue),
-                                        onPressed: () {
-                                          // Navigate to Edit screen
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete, color: Colors.red),
-                                        onPressed: () {
-                                          // Handle delete action
-                                        },
+                            columns: const [
+                              DataColumn(label: Text("Farm Name")),
+                              DataColumn(label: Text("District")),
+                              DataColumn(label: Text("Address")),
+                              DataColumn(label: Text("Actions")),
+                            ],
+                            rows:
+                                farms.map((farm) {
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(Text(farm.name)),
+                                      DataCell(Text(farm.district)),
+                                      DataCell(Text(farm.address)),
+                                      DataCell(
+                                        Row(
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.settings,
+                                                color: Colors.orange,
+                                              ),
+                                              onPressed: () {
+                                                // Navigate to Manage screen
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.edit,
+                                                color: Colors.blue,
+                                              ),
+                                              onPressed: () async {
+                                                final result =
+                                                    await Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => EditApiaryForm(
+                                                          token: widget.token,
+                                                          farmId: farm.id,
+                                                          initialData: farm.toJson(),
+                                                        ),
+                                                      ),
+                                                    );
+
+                                                if (result == true) {
+                                                  await getApiaries();
+                                                }
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.delete,
+                                                color: Colors.red,
+                                              ),
+                                              onPressed: () {
+                                                // Handle delete action
+                                              },
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
-                                  )),
-                                ]);
-                              }).toList(),
-                            )
+                                  );
+                                }).toList(),
+                          )
                           : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: farms.length,
-                              itemBuilder: (context, index) {
-                                final farm = farms[index];
-                                return buildFarmCard(farm, context, widget.token);
-                              },
-                            ),
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: farms.length,
+                            itemBuilder: (context, index) {
+                              final farm = farms[index];
+                              return buildFarmCard(farm, context, widget.token);
+                            },
+                          ),
                   ],
                 ),
               ),
@@ -342,8 +398,9 @@ class _ApiariesState extends State<Apiaries> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  AddApiaryForm(token: widget.token, onApiaryAdded: () {}),
+              builder:
+                  (context) =>
+                      AddApiaryForm(token: widget.token, onApiaryAdded: () {}),
             ),
           );
 

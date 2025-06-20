@@ -131,20 +131,12 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => EditForm(
-                  apiary: {
+                builder: (context) => EditApiaryForm(
+                  token: token,
+                  farmId: farm.id,
+                  initialData: {
                     'name': farm.name,
                     'address': farm.address,
-                  },
-                  index: farm.id, // Assuming `farm.id` is an integer
-                  onSave: (index, updatedApiary) {
-                    // Handle the save logic here
-                    print('Updated Apiary: $updatedApiary');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Apiary updated successfully"),
-                      ),
-                    );
                   },
                 ),
               ),
