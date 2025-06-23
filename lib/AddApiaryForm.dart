@@ -19,6 +19,7 @@ class AddApiaryForm extends StatefulWidget {
 
 class _AddApiaryFormState extends State<AddApiaryForm> {
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _ownerIdController = TextEditingController(); 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _districtController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
@@ -54,6 +55,7 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildSectionHeader('Apiary Information'),
+              _buildTextField('Owner ID', _ownerIdController, hint: 'Enter owner ID'),
               _buildTextField('Name', _nameController, hint: 'Apiary name'),
               _buildTextField('District', _districtController, hint: 'District'),
               _buildTextField('Address', _addressController, hint: 'Detailed address'),
@@ -147,60 +149,50 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
     );
   }
 
-  Future<void> _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        final apiaryData = {
-          'name': _nameController.text,
-          'district': _districtController.text,
-          'address': _addressController.text,
-        };
+ 
 
-        final response = await http.post(
-          Uri.parse('http://196.43.168.57/api/v1/farms'),
-          headers: {
-            'Authorization': 'Bearer ${widget.token}',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(apiaryData),
-        );
+Future<void> _submitForm() async {
+  if (_formKey.currentState!.validate()) {
+    try {
+      final apiaryData = {
+        'ownerId': int.tryParse(_ownerIdController.text.trim()) ?? 0,
+        'name': _nameController.text.trim(),
+        'district': _districtController.text.trim(),
+        'address': _addressController.text.trim(),
+      };
 
-        if (response.statusCode == 201) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Apiary added successfully!',
-                  style: TextStyle(fontFamily: "Sans")),
-              backgroundColor: Colors.green[700],
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
-          widget.onApiaryAdded();
-          Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Failed to add apiary: ${response.statusCode}',
-                style: const TextStyle(fontFamily: "Sans"),
-              ),
-              backgroundColor: Colors.red[700],
-            ),
-          );
-        }
-      } catch (error) {
+      // Add debug prints
+      print('Sending data: $apiaryData');
+      print('Endpoint: http://196.43.168.57/api/v1/farms');
+
+      final response = await http.post(
+        Uri.parse('http://196.43.168.57/api/v1/farms'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json', // Add this line
+        },
+        body: jsonEncode(apiaryData),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        // Success handling
+      } else {
+        // Better error handling
+        final errorBody = jsonDecode(response.body);
+        final errorMsg = errorBody['message'] ?? 'Failed with status ${response.statusCode}';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error: $error',
-              style: const TextStyle(fontFamily: "Sans"),
-            ),
-            backgroundColor: Colors.red[700],
-          ),
+          SnackBar(content: Text('Error: $errorMsg')),
         );
       }
+    } catch (e) {
+      print('Error: $e');
+      // Error handling
     }
   }
+}
+
 }

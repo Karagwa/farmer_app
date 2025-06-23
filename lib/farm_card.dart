@@ -135,8 +135,11 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                   token: token,
                   farmId: farm.id,
                   initialData: {
+                    'OwnerId':farm.ownerId.toString(),
                     'name': farm.name,
                     'address': farm.address,
+                    'district': farm.district,
+                    
                   },
                 ),
               ),

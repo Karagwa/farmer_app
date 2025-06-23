@@ -20,6 +20,7 @@ class EditApiaryForm extends StatefulWidget {
 
 class _EditApiaryFormState extends State<EditApiaryForm> {
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _ownerIdController;
   late final TextEditingController _nameController;
   late final TextEditingController _addressController;
   late final TextEditingController _districtController;
@@ -30,6 +31,7 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
   @override
   void initState() {
     super.initState();
+    _ownerIdController = TextEditingController(text: widget.initialData['OwnerId']);
     _nameController = TextEditingController(text: widget.initialData['name']);
     _addressController = TextEditingController(text: widget.initialData['address']);
     _districtController = TextEditingController(text: widget.initialData['district']);
@@ -45,14 +47,14 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
   });
 
   try {
-    final response = await http.post(
-      Uri.parse('http://196.43.168.57/api/v1/farms/${widget.farmId}'),
+    final response = await http.put(
+      Uri.parse('http://196.43.168.57/api/v1/farms/'),
       headers: {
         'Authorization': 'Bearer ${widget.token}',
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        '_method': 'PUT', // Laravel will interpret this as a PUT request
+        'OwnerId': _ownerIdController.text,
         'name': _nameController.text,
         'address': _addressController.text,
         'district': _districtController.text,
@@ -121,6 +123,13 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
                 key: _formKey,
                 child: Column(
                   children: [
+                    TextFormField(
+                      controller: _ownerIdController,
+                      decoration: const InputDecoration(labelText: 'OwnerId*'),
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Required field' : null,
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(labelText: 'Name*'),
