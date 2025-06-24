@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:HPGM/AddApiaryForm.dart';
+import 'editApiaryForm.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:HPGM/apiary_overview_cards/build_overview_card.dart';
-import 'package:HPGM/dashboard_screen.dart'; // Add this import
+import 'package:HPGM/dashboard_screen.dart';
 import 'farm_model.dart';
 import 'farm_card.dart';
 
@@ -20,6 +22,7 @@ class _ApiariesState extends State<Apiaries> {
   List<Farm> farms = [];
   Map<int, ApiaryStats> apiaryStats = {};
   bool isLoading = true;
+  bool isTabularView = true; // Default view is Tabular
 
   @override
   void initState() {
@@ -48,15 +51,12 @@ class _ApiariesState extends State<Apiaries> {
           farms = data.map((farm) => Farm.fromJson(farm)).toList();
         });
 
-        // After getting farms, fetch stats for each farm
         for (var farm in farms) {
           await getApiaryStats(farm.id);
         }
-      } else {
-        //  print('Failed to load farms: ${response.reasonPhrase}');
       }
     } catch (error) {
-      //  print('Error fetching Apiary data: $error');
+      // Handle error
     } finally {
       setState(() {
         isLoading = false;
@@ -95,7 +95,6 @@ class _ApiariesState extends State<Apiaries> {
             colonizedHives++;
           }
 
-          // For example: not connected, high temperature, or high honey level ready for harvest
           if (!isConnected ||
               (temperature != null && temperature > 32) ||
               (honeyLevel != null && honeyLevel > 80)) {
@@ -112,7 +111,32 @@ class _ApiariesState extends State<Apiaries> {
         });
       }
     } catch (error) {
-      // print('Error fetching hive stats: $error');
+      // Handle error
+    }
+  }
+
+  Future<bool> updateApiary(
+    int farmId,
+    Map<String, dynamic> updatedData,
+  ) async {
+    try {
+      String sendToken = "Bearer ${widget.token}";
+
+      var headers = {
+        'Accept': 'application/json',
+        'Authorization': sendToken,
+        'Content-Type': 'application/json',
+      };
+      var response = await http.put(
+        Uri.parse('http://196.43.168.57/api/v1/farms/$farmId'),
+        headers: headers,
+        body: jsonEncode(updatedData),
+      );
+
+      return response.statusCode == 200;
+    } catch (error) {
+      print('Error updating apiary: $error');
+      return false;
     }
   }
 
@@ -127,7 +151,7 @@ class _ApiariesState extends State<Apiaries> {
       MaterialPageRoute(
         builder: (context) => DashboardScreen(token: widget.token),
       ),
-      (route) => false, // This removes all previous routes
+      (route) => false,
     );
   }
 
@@ -172,7 +196,6 @@ class _ApiariesState extends State<Apiaries> {
                             padding: const EdgeInsets.only(top: 15.0),
                             child: Row(
                               children: [
-                                // Back button
                                 IconButton(
                                   icon: const Icon(
                                     Icons.arrow_back,
@@ -199,22 +222,20 @@ class _ApiariesState extends State<Apiaries> {
                                   ),
                                 ),
                                 const Spacer(),
-
-                                // Dashboard icon
+                                // Toggle Button for View Mode
                                 IconButton(
-                                  icon: const Icon(
-                                    Icons.dashboard,
-                                    color: Color.fromARGB(255, 206, 109, 40),
-                                    size: 25,
+                                  icon: Icon(
+                                    isTabularView
+                                        ? Icons.view_module
+                                        : Icons.table_chart,
+                                    color: Colors.brown,
+                                    size: 30,
                                   ),
-                                  onPressed: _navigateToDashboard,
-                                ),
-
-                                // Profile icon
-                                const Icon(
-                                  Icons.person,
-                                  color: Color.fromARGB(255, 206, 109, 40),
-                                  size: 50,
+                                  onPressed: () {
+                                    setState(() {
+                                      isTabularView = !isTabularView;
+                                    });
+                                  },
                                 ),
                               ],
                             ),
@@ -223,7 +244,7 @@ class _ApiariesState extends State<Apiaries> {
                       ),
                     ),
 
-                    // Overall Stats Summary
+                    // Apiary Overview Section
                     if (farms.isNotEmpty && !isLoading)
                       Padding(
                         padding: const EdgeInsets.symmetric(
@@ -241,43 +262,13 @@ class _ApiariesState extends State<Apiaries> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    const Text(
-                                      'Apiary Overview',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.brown,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    // Small dashboard shortcut button
-                                    TextButton.icon(
-                                      onPressed: _navigateToDashboard,
-                                      icon: const Icon(
-                                        Icons.dashboard,
-                                        size: 16,
-                                        color: Colors.brown,
-                                      ),
-                                      label: const Text(
-                                        'Dashboard',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.brown,
-                                        ),
-                                      ),
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8.0,
-                                          vertical: 4.0,
-                                        ),
-                                        minimumSize: Size.zero,
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                    ),
-                                  ],
+                                const Text(
+                                  'Apiary Overview',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.brown,
+                                  ),
                                 ),
                                 const SizedBox(height: 16),
                                 Row(
@@ -318,57 +309,83 @@ class _ApiariesState extends State<Apiaries> {
                         ),
                       ),
 
-                    // Farm Cards List (without individual stats cards)
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: farms.length,
-                      itemBuilder: (context, index) {
-                        final farm = farms[index];
-                        return buildFarmCard(farm, context, widget.token);
-                      },
-                    ),
+                    // Farm Cards Section
+                    if (!isLoading)
+                      isTabularView
+                          ? DataTable(
+                            columns: const [
+                              DataColumn(label: Text("Farm Name")),
+                              DataColumn(label: Text("District")),
+                              DataColumn(label: Text("Address")),
+                              DataColumn(label: Text("Actions")),
+                            ],
+                            rows:
+                                farms.map((farm) {
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(Text(farm.name)),
+                                      DataCell(Text(farm.district)),
+                                      DataCell(Text(farm.address)),
+                                      DataCell(
+                                        Row(
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.settings,
+                                                color: Colors.orange,
+                                              ),
+                                              onPressed: () {
+                                                // Navigate to Manage screen
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.edit,
+                                                color: Colors.blue,
+                                              ),
+                                              onPressed: () async {
+                                                final result =
+                                                    await Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => EditApiaryForm(
+                                                          token: widget.token,
+                                                          farmId: farm.id,
+                                                          initialData: farm.toJson(),
+                                                        ),
+                                                      ),
+                                                    );
 
-                    // Bottom padding and additional dashboard navigation
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Card(
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: InkWell(
-                          onTap: _navigateToDashboard,
-                          borderRadius: BorderRadius.circular(15),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 16.0,
-                              horizontal: 24.0,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.dashboard,
-                                  color: Colors.amber[800],
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Go to Dashboard',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.amber[800],
-                                    fontFamily: "Sans",
-                                  ),
-                                ),
-                              ],
-                            ),
+                                                if (result == true) {
+                                                  await getApiaries();
+                                                }
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.delete,
+                                                color: Colors.red,
+                                              ),
+                                              onPressed: () {
+                                                // Handle delete action
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }).toList(),
+                          )
+                          : ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: farms.length,
+                            itemBuilder: (context, index) {
+                              final farm = farms[index];
+                              return buildFarmCard(farm, context, widget.token);
+                            },
                           ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -377,15 +394,27 @@ class _ApiariesState extends State<Apiaries> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToDashboard,
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) =>
+                      AddApiaryForm(token: widget.token, onApiaryAdded: () {}),
+            ),
+          );
+
+          if (result == true) {
+            await getApiaries();
+          }
+        },
         backgroundColor: Colors.amber[800],
-        child: const Icon(Icons.dashboard),
-        tooltip: 'Go to Dashboard',
+        child: const Icon(Icons.add),
+        tooltip: 'Add New Apiary',
       ),
     );
   }
 
-  // Helper methods to calculate totals
   int _getTotalHives() {
     int total = 0;
     apiaryStats.forEach((_, stats) {
@@ -411,7 +440,6 @@ class _ApiariesState extends State<Apiaries> {
   }
 }
 
-// Class to store apiary statistics
 class ApiaryStats {
   final int totalHives;
   final int activeHives;

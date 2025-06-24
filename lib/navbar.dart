@@ -39,13 +39,9 @@ class _navbarState extends State<navbar> {
   void initState() {
     super.initState();
     _widgetOptions = <Widget>[
-      Home(
-        token: widget.token,
-        notify: false,
-      ),
-      Apiaries(
-        token: widget.token,
-      ),
+      Apiaries(token: widget.token),
+      Home(token: widget.token, notify: false),
+
       const Notifications(),
       const Records(),
       //MyScreen(), //to use in debugging the toggler.
@@ -59,20 +55,14 @@ class _navbarState extends State<navbar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
-      ),
+      body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
 
       //bottom navbar starts from here.
-
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
-            BoxShadow(
-              blurRadius: 20,
-              color: Colors.black.withOpacity(.1),
-            )
+            BoxShadow(blurRadius: 20, color: Colors.black.withOpacity(.1)),
           ],
         ),
         child: SafeArea(
@@ -89,22 +79,10 @@ class _navbarState extends State<navbar> {
               tabBackgroundColor: Colors.grey[100]!,
               color: Colors.black, // Set default icon color
               tabs: const [
-                GButton(
-                  icon: LineIcons.home,
-                  text: 'Home',
-                ),
-                GButton(
-                  icon: LineIcons.archive,
-                  text: 'Apiaries',
-                ),
-                GButton(
-                  icon: LineIcons.bell,
-                  text: 'Updates',
-                ),
-                GButton(
-                  icon: LineIcons.folder,
-                  text: 'Records',
-                ),
+                GButton(icon: LineIcons.home, text: 'Home'),
+                GButton(icon: LineIcons.archive, text: 'Apiaries'),
+                GButton(icon: LineIcons.bell, text: 'Updates'),
+                GButton(icon: LineIcons.folder, text: 'Records'),
               ],
               selectedIndex: _selectedIndex,
               onTabChange: (index) {
