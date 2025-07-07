@@ -24,6 +24,9 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
   late final TextEditingController _nameController;
   late final TextEditingController _addressController;
   late final TextEditingController _districtController;
+  late final TextEditingController _latitudeController;
+  late final TextEditingController _longitudeController;
+  late final TextEditingController _descriptionController;
   
   bool _isLoading = false;
   String? _errorMessage;
@@ -35,6 +38,9 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
     _nameController = TextEditingController(text: widget.initialData['name']);
     _addressController = TextEditingController(text: widget.initialData['address']);
     _districtController = TextEditingController(text: widget.initialData['district']);
+    _latitudeController = TextEditingController(text: widget.initialData['latitude']);
+    _longitudeController = TextEditingController(text: widget.initialData['longitude']);
+    _descriptionController = TextEditingController(text: widget.initialData['description']);
    
   }
 
@@ -48,7 +54,7 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
 
   try {
     final response = await http.put(
-      Uri.parse('http://196.43.168.57/api/v1/farms/'),
+      Uri.parse('http://196.43.168.57/api/v1/farms/{id}'),
       headers: {
         'Authorization': 'Bearer ${widget.token}',
         'Content-Type': 'application/json',
@@ -58,6 +64,9 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
         'name': _nameController.text,
         'address': _addressController.text,
         'district': _districtController.text,
+        'latitude':_latitudeController.text,
+        'longitude':_longitudeController.text,
+        'decription':_descriptionController.text,
       }),
     );
 
@@ -147,6 +156,27 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
                     TextFormField(
                       controller: _districtController,
                       decoration: const InputDecoration(labelText: 'District*'),
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Required field' : null,
+                    ),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _latitudeController,
+                      decoration: const InputDecoration(labelText: 'latitude*'),
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Required field' : null,
+                    ),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _longitudeController,
+                      decoration: const InputDecoration(labelText: 'longitude*'),
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Required field' : null,
+                    ),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _descriptionController,
+                      decoration: const InputDecoration(labelText: 'Description*'),
                       validator: (value) =>
                           value?.isEmpty ?? true ? 'Required field' : null,
                     ),

@@ -7,9 +7,9 @@ class Farm {
   final double? average_temperature;
   final double? average_weight;
   final double? honeypercent;
-  // final double? latitude;
-  // final double? longitude;
-  // final String? description;
+  final double? latitude;
+  final double? longitude;
+  final String? description;
   final String? createdAt;
   final String? updatedAt;
 
@@ -22,9 +22,9 @@ class Farm {
     required this.average_weight,
     required this.honeypercent,
     required this.address,
-    // required this.latitude,
-    // required this.longitude,
-    // required this.description,
+    required this.latitude,
+    required this.longitude,
+    required this.description,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -39,9 +39,9 @@ class Farm {
       average_temperature: json['average_temperature']?.toDouble(),
       average_weight: json['average_weight']?.toDouble(),
       honeypercent: json['average_honey_percentage']?.toDouble(),
-      // latitude: json['latitude']?.toDouble(),
-      // longitude: json['longitude']?.toDouble(),
-      // description: json['description'],
+      latitude: json['latitude']?.toDouble(),
+      longitude: json['longitude']?.toDouble(),
+      description: json['description'],
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
     );
@@ -57,7 +57,9 @@ class Farm {
       'average_temperature': average_temperature,
       'average_weight': average_weight,
       'average_honey_percentage': honeypercent,
-
+      'latitude': latitude,
+      'longtitude': longitude,
+      'description': description,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };

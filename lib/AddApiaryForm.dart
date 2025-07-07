@@ -23,12 +23,18 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _districtController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _latitudeController =TextEditingController();
+  final TextEditingController _longitudeController =TextEditingController();
+  final TextEditingController _descriptionController =TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
     _districtController.dispose();
     _addressController.dispose();
+    _latitudeController.dispose();
+    _longitudeController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -59,6 +65,9 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
               _buildTextField('Name', _nameController, hint: 'Apiary name'),
               _buildTextField('District', _districtController, hint: 'District'),
               _buildTextField('Address', _addressController, hint: 'Detailed address'),
+              _buildTextField('Address', _latitudeController, hint: 'latitude'),
+              _buildTextField('Address', _longitudeController, hint: 'longitude'),
+              _buildTextField('Address', _descriptionController, hint: 'Description'),
               const SizedBox(height: 30),
               Center(
                 child: SizedBox(
@@ -159,6 +168,9 @@ Future<void> _submitForm() async {
         'name': _nameController.text.trim(),
         'district': _districtController.text.trim(),
         'address': _addressController.text.trim(),
+        'latitude': _latitudeController.text.trim(),
+        'longitude':_longitudeController.text.trim(),
+        'description':_descriptionController.text.trim(),
       };
 
       // Add debug prints
