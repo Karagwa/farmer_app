@@ -234,6 +234,7 @@ class HiveCard extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (context) => RecordsForm(
                           apiaryLocation: apiaryLocation,
+                          token: token, // Add the missing token parameter
                           hiveId: 'Hive ${hive.id}',
                           farmName: farmName,
                         ),

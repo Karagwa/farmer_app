@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:HPGM/Services/auth_services.dart';
 
 class AddApiaryForm extends StatefulWidget {
   final String token;
@@ -26,9 +27,12 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
   final TextEditingController _latitudeController =TextEditingController();
   final TextEditingController _longitudeController =TextEditingController();
   final TextEditingController _descriptionController =TextEditingController();
+  
+  bool _isLoading = false;
 
   @override
   void dispose() {
+    _ownerIdController.dispose();
     _nameController.dispose();
     _districtController.dispose();
     _addressController.dispose();
@@ -60,14 +64,20 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader('Apiary Information'),
-              _buildTextField('Owner ID', _ownerIdController, hint: 'Enter owner ID'),
+              _buildSectionHeader('Basic Information'),
+              
               _buildTextField('Name', _nameController, hint: 'Apiary name'),
+              const SizedBox(height: 20),
+              
+              _buildSectionHeader('Location Details'),
               _buildTextField('District', _districtController, hint: 'District'),
               _buildTextField('Address', _addressController, hint: 'Detailed address'),
-              _buildTextField('Address', _latitudeController, hint: 'latitude'),
-              _buildTextField('Address', _longitudeController, hint: 'longitude'),
-              _buildTextField('Address', _descriptionController, hint: 'Description'),
+              _buildTextField('Latitude', _latitudeController, hint: 'Latitude coordinates', isNumeric: true),
+              _buildTextField('Longitude', _longitudeController, hint: 'Longitude coordinates', isNumeric: true),
+              const SizedBox(height: 20),
+              
+              _buildSectionHeader('Additional Information'),
+              _buildTextField('Description', _descriptionController, hint: 'Description (optional)', isRequired: false),
               const SizedBox(height: 30),
               Center(
                 child: SizedBox(
@@ -81,16 +91,25 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
                       ),
                       elevation: 4,
                     ),
-                    onPressed: _submitForm,
-                    child: const Text(
-                      'ADD APIARY',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontFamily: "Sans",
-                      ),
-                    ),
+                    onPressed: _isLoading ? null : _submitForm,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'ADD APIARY',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontFamily: "Sans",
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -124,11 +143,12 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
   }
 
   Widget _buildTextField(String label, TextEditingController controller,
-      {String? hint}) {
+      {String? hint, bool isNumeric = false, bool isRequired = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: TextFormField(
         controller: controller,
+        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
         style: const TextStyle(fontFamily: "Sans"),
         decoration: InputDecoration(
           labelText: label,
@@ -143,14 +163,23 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.brown[300]!),
           ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.orange[700]!, width: 2),
+          ),
           labelStyle: TextStyle(
             color: Colors.brown[600],
             fontFamily: "Sans",
           ),
         ),
         validator: (value) {
-          if (value == null || value.isEmpty) {
+          if (isRequired && (value == null || value.isEmpty)) {
             return 'Please enter $label';
+          }
+          if (isNumeric && value != null && value.isNotEmpty) {
+            if (double.tryParse(value) == null) {
+              return 'Please enter a valid number';
+            }
           }
           return null;
         },
@@ -161,10 +190,29 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
  
 
 Future<void> _submitForm() async {
-  if (_formKey.currentState!.validate()) {
-    try {
+  if (!_formKey.currentState!.validate()) return;
+
+  setState(() {
+    _isLoading = true;
+  });
+  
+  try {
+      final currentUserId = AuthService.getUserId();
+    
+    if (currentUserId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Error: User not properly authenticated',
+            style: TextStyle(fontFamily: "Sans"),
+          ),
+          backgroundColor: Colors.red[700],
+        ),
+      );
+      return;
+    }
       final apiaryData = {
-        'ownerId': int.tryParse(_ownerIdController.text.trim()) ?? 0,
+        'ownerId': currentUserId,
         'name': _nameController.text.trim(),
         'district': _districtController.text.trim(),
         'address': _addressController.text.trim(),
@@ -175,7 +223,8 @@ Future<void> _submitForm() async {
 
       // Add debug prints
       print('Sending data: $apiaryData');
-      print('Endpoint: http://196.43.168.57/api/v1/farms');
+      
+      //print('Endpoint: https://ce6faf404c9b.ngrok-free.app/api/v1/farms');
 
       final response = await http.post(
         Uri.parse('http://196.43.168.57/api/v1/farms'),
@@ -191,20 +240,64 @@ Future<void> _submitForm() async {
       print('Response body: ${response.body}');
 
       if (response.statusCode == 201) {
-        // Success handling
+        // Success - show confirmation and navigate back
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Apiary added successfully!',
+              style: TextStyle(fontFamily: "Sans"),
+            ),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        widget.onApiaryAdded();
+        print('Apiary added successfully with owner id ' );
+        Navigator.pop(context);
+
       } else {
         // Better error handling
-        final errorBody = jsonDecode(response.body);
-        final errorMsg = errorBody['message'] ?? 'Failed with status ${response.statusCode}';
+        String errorMsg;
+        try {
+          final errorBody = jsonDecode(response.body);
+          errorMsg = errorBody['message'] ?? 'Failed with status ${response.statusCode}';
+        } catch (_) {
+          errorMsg = 'Failed with status ${response.statusCode}';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $errorMsg')),
+          SnackBar(
+            content: Text(
+              'Error: $errorMsg',
+              style: const TextStyle(fontFamily: "Sans"),
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
         );
       }
     } catch (e) {
       print('Error: $e');
-      // Error handling
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error: $e',
+            style: const TextStyle(fontFamily: "Sans"),
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
-}
-
 }

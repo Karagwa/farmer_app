@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart'; // Add this import 
 
 class AuthService {
   static String _token = '';
+  static int _userId = 0;
 
   static Future<void> logmein(
     BuildContext context,
@@ -28,7 +29,9 @@ class AuthService {
       String responseBody = await response.stream.bytesToString();
       Map<String, dynamic> responseData = jsonDecode(responseBody);
       _token = responseData['token'];
-
+      _userId = responseData['user']['id'] ?? responseData['id'] ?? 0;
+      
+      print('Login successful - User ID: $_userId, Token: $_token');
       // Save token to shared preferences for persistence
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', _token);
@@ -113,6 +116,9 @@ class AuthService {
 
   static String getToken() {
     return _token;
+  }
+  static int getUserId() {
+    return _userId;
   }
 
   // Add this method to check if user is logged in

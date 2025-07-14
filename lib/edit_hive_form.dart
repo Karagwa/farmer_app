@@ -1,56 +1,59 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 
-class EditApiaryForm extends StatefulWidget {
-  final String token;
+class EditHiveForm extends StatefulWidget {
+  final int hiveId;
   final int farmId;
-  final Map<String, dynamic> initialData;
+  final String token;
+  final String apiaryLocation;
+  final String farmName;
+  final String initialLatitude;
+  final String initialLongitude;
+  final bool initialConnected;
+  final bool initialColonized;
+  final VoidCallback onHiveUpdated;
 
-  const EditApiaryForm({
-    Key? key,
-    required this.token,
+  const EditHiveForm({
+    super.key,
+    required this.hiveId,
     required this.farmId,
-    required this.initialData,
-  }) : super(key: key);
+    required this.token,
+    required this.apiaryLocation,
+    required this.farmName,
+    required this.initialLatitude,
+    required this.initialLongitude,
+    required this.initialConnected,
+    required this.initialColonized,
+    required this.onHiveUpdated,
+  });
 
   @override
-  State<EditApiaryForm> createState() => _EditApiaryFormState();
+  _EditHiveFormState createState() => _EditHiveFormState();
 }
 
-class _EditApiaryFormState extends State<EditApiaryForm> {
+class _EditHiveFormState extends State<EditHiveForm> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _ownerIdController;
-  late final TextEditingController _nameController;
-  late final TextEditingController _addressController;
-  late final TextEditingController _districtController;
-  late final TextEditingController _latitudeController;
   late final TextEditingController _longitudeController;
-  late final TextEditingController _descriptionController;
-  
+  late final TextEditingController _latitudeController;
+  late bool _isConnected;
+  late bool _isColonized;
   bool _isLoading = false;
+
 
   @override
   void initState() {
     super.initState();
-    _ownerIdController = TextEditingController(text: widget.initialData['OwnerId']?.toString() ?? '');
-    _nameController = TextEditingController(text: widget.initialData['name'] ?? '');
-    _addressController = TextEditingController(text: widget.initialData['address'] ?? '');
-    _districtController = TextEditingController(text: widget.initialData['district'] ?? '');
-    _latitudeController = TextEditingController(text: widget.initialData['latitude']?.toString() ?? '');
-    _longitudeController = TextEditingController(text: widget.initialData['longitude']?.toString() ?? '');
-    _descriptionController = TextEditingController(text: widget.initialData['description'] ?? '');
+    _longitudeController = TextEditingController(text: widget.initialLongitude);
+    _latitudeController = TextEditingController(text: widget.initialLatitude);
+    _isConnected = widget.initialConnected;
+    _isColonized = widget.initialColonized;
   }
 
   @override
   void dispose() {
-    _ownerIdController.dispose();
-    _nameController.dispose();
-    _addressController.dispose();
-    _districtController.dispose();
-    _latitudeController.dispose();
     _longitudeController.dispose();
-    _descriptionController.dispose();
+    _latitudeController.dispose();
     super.dispose();
   }
 
@@ -59,9 +62,9 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
     return Scaffold(
       backgroundColor: Colors.brown[100],
       appBar: AppBar(
-        title: const Text(
-          'Edit Apiary',
-          style: TextStyle(
+        title: Text(
+          'Edit Hive ${widget.hiveId}',
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontFamily: "Sans",
             color: Colors.white,
@@ -79,7 +82,7 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Apiary Info Card
+              // Farm Info Card
               Card(
                 color: Colors.brown[300],
                 shape: RoundedRectangleBorder(
@@ -90,14 +93,14 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
                   padding: const EdgeInsets.all(12.0),
                   child: Row(
                     children: [
-                      Icon(Icons.hexagon, color: Colors.orange[700], size: 24),
+                      Icon(Icons.hive, color: Colors.orange[700], size: 24),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _nameController.text,
+                              'Editing Hive ${widget.hiveId}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -105,7 +108,7 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
                               ),
                             ),
                             Text(
-                              'ID: ${widget.farmId}',
+                              '${widget.farmName} - ${widget.apiaryLocation}',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.8),
                                 fontFamily: "Sans",
@@ -120,66 +123,12 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
               ),
               const SizedBox(height: 20),
 
-              // Basic Information Section
-              _buildSectionHeader('Basic Information'),
-              
-              _buildTextField(
-                'Apiary Name',
-                _nameController,
-                hint: 'Enter apiary name',
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter apiary name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
               // Location Section
-              _buildSectionHeader('Location Details'),
-              _buildTextField(
-                'Address',
-                _addressController,
-                hint: 'Enter complete address',
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter address';
-                  }
-                  return null;
-                },
-              ),
-              _buildTextField(
-                'District',
-                _districtController,
-                hint: 'Enter district name',
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter district';
-                  }
-                  return null;
-                },
-              ),
-              _buildTextField(
-                'Latitude',
-                _latitudeController,
-                hint: 'Enter latitude coordinates',
-                isNumeric: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter latitude';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return 'Please enter a valid number';
-                  }
-                  return null;
-                },
-              ),
+              _buildSectionHeader('Hive Location'),
               _buildTextField(
                 'Longitude',
                 _longitudeController,
                 hint: 'Enter longitude coordinates',
-                isNumeric: true,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter longitude';
@@ -190,16 +139,29 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
-
-              // Description Section
-              _buildSectionHeader('Additional Information'),
               _buildTextField(
-                'Description',
-                _descriptionController,
-                hint: 'Enter apiary description (optional)',
+                'Latitude',
+                _latitudeController,
+                hint: 'Enter latitude coordinates',
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter latitude';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Please enter a valid number';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 32),
+
+              // Hive Status Section
+              _buildSectionHeader('Hive Status'),
+              
+
+              _buildSwitchField('Connected to Network', _isConnected, (val) => setState(() => _isConnected = val)),
+              _buildSwitchField('Colonized', _isColonized, (val) => setState(() => _isColonized = val)),
+              const SizedBox(height: 20),
 
               // Submit Button
               Center(
@@ -214,7 +176,7 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
                       ),
                       elevation: 4,
                     ),
-                    onPressed: _isLoading ? null : _submit,
+                    onPressed: _isLoading ? null : _submitForm,
                     child: _isLoading
                         ? const SizedBox(
                             height: 20,
@@ -225,7 +187,7 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
                             ),
                           )
                         : const Text(
-                            'SAVE CHANGES',
+                            'UPDATE HIVE',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -270,13 +232,12 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
     TextEditingController controller, {
     String? hint,
     String? Function(String?)? validator,
-    bool isNumeric = false,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: TextFormField(
         controller: controller,
-        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+        keyboardType: TextInputType.number,
         style: const TextStyle(fontFamily: "Sans"),
         decoration: InputDecoration(
           labelText: label,
@@ -304,99 +265,72 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
       ),
     );
   }
+    Widget _buildSwitchField(String label, bool value, Function(bool) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 16, color: Colors.brown, fontWeight: FontWeight.w500, fontFamily: "Sans")),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: Colors.orange[700],
+            activeTrackColor: Colors.orange[200],
+          ),
+        ],
+      ),
+    );
+  }
 
-  Future<void> _submit() async {
+  Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
-    //Uri.parse('http://196.43.168.57/api/v1/farms/${widget.farmId}'),
+    setState(() => _isLoading = true);
 
     try {
+      final updateData = {
+        'longitude': _longitudeController.text,
+        'latitude': _latitudeController.text,
+        'connected': _isConnected,
+        'colonized': _isColonized,
+      };
+
+      final url = 'http://196.43.168.57/api/v1/hives/${widget.hiveId}';
       final response = await http.put(
-      Uri.parse('http://196.43.168.57/api/v1/farms/{id}'),
+        Uri.parse(url),
         headers: {
           'Authorization': 'Bearer ${widget.token}',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          
-          'name': _nameController.text,
-          'address': _addressController.text,
-          'district': _districtController.text,
-          'latitude': _latitudeController.text,
-          'longitude': _longitudeController.text,
-          'description': _descriptionController.text,
-        }),
+        body: jsonEncode(updateData),
       );
-  
-
-    print('Status: ${response.statusCode}');
-    print('Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        // Success - show confirmation and return
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Apiary updated successfully!',
-              style: TextStyle(fontFamily: "Sans"),
-            ),
+            content: const Text('Hive updated successfully!', style: TextStyle(fontFamily: "Sans")),
             backgroundColor: Colors.green[700],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
-        Navigator.pop(context, true);
-      } else if (response.statusCode == 404) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Apiary not found (ID: ${widget.farmId})',
-              style: const TextStyle(fontFamily: "Sans"),
-            ),
-            backgroundColor: Colors.red[700],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        widget.onHiveUpdated();
+        Navigator.pop(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to update: ${response.statusCode}',
-              style: const TextStyle(fontFamily: "Sans"),
-            ),
-            backgroundColor: Colors.red[700],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        throw Exception('Status code: ${response.statusCode}');
       }
-    } catch (error) {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Error: $error',
-            style: const TextStyle(fontFamily: "Sans"),
-          ),
+          content: Text('Error: $e', style: const TextStyle(fontFamily: "Sans")),
           backgroundColor: Colors.red[700],
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     } finally {
       setState(() => _isLoading = false);
     }
-    
   }
 }

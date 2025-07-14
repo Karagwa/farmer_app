@@ -32,15 +32,15 @@ class Farm {
   factory Farm.fromJson(Map<String, dynamic> json) {
     return Farm(
       id: json['id'],
-      ownerId: json['ownerId'],
+      ownerId: json['ownerId'] ?? json['OwnerId'], // Handle both cases
       name: json['name'],
       district: json['district'],
       address: json['address'],
       average_temperature: json['average_temperature']?.toDouble(),
       average_weight: json['average_weight']?.toDouble(),
       honeypercent: json['average_honey_percentage']?.toDouble(),
-      latitude: json['latitude']?.toDouble(),
-      longitude: json['longitude']?.toDouble(),
+      latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
+      longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
       description: json['description'],
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
@@ -58,7 +58,7 @@ class Farm {
       'average_weight': average_weight,
       'average_honey_percentage': honeypercent,
       'latitude': latitude,
-      'longtitude': longitude,
+      'longitude': longitude, // Fixed typo from 'longtitude'
       'description': description,
       'created_at': createdAt,
       'updated_at': updatedAt,

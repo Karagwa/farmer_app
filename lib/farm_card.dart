@@ -118,6 +118,11 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                             token: token,
                             apiaryLocation: '${farm.district}, ${farm.address}',
                             farmName: farm.name,
+                            onHiveDeleted: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Hive deleted")),
+                              );
+                            },
                           ),
                         ),
                       );

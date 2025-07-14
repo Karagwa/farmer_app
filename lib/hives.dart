@@ -1,12 +1,10 @@
 import 'package:HPGM/add_hive_form.dart';
+import 'package:HPGM/edit_hive_form.dart';
 import 'package:HPGM/records_form.dart';
 import 'package:flutter/material.dart';
 import 'package:HPGM/hivedetails.dart';
 import 'package:http/http.dart' as http;
-import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
-import 'package:HPGM/components/custom_progress_bar.dart';
-import 'package:HPGM/components/pop_up.dart';
 import 'dart:convert';
 
 class Hives extends StatefulWidget {
@@ -14,6 +12,7 @@ class Hives extends StatefulWidget {
   final String token;
   final String apiaryLocation;
   final String farmName;
+  final VoidCallback onHiveDeleted; // Callback for hive deletion
 
   const Hives({
     Key? key,
@@ -21,6 +20,7 @@ class Hives extends StatefulWidget {
     required this.token,
     required this.apiaryLocation,
     required this.farmName,
+    required this.onHiveDeleted, // Initialize the callback
   }) : super(key: key);
 
   @override
@@ -39,6 +39,7 @@ class Hive {
   final double? temperature;
   final bool isConnected;
   final bool isColonized;
+ 
 
 
   Hive({
@@ -53,28 +54,30 @@ class Hive {
     required this.honeyLevel,
     required this.isConnected,
     required this.isColonized,
+    
   });
 
-  factory Hive.fromJson(Map<String, dynamic> json) {
-    return Hive(
-      id: json['id'],
-      longitude: json['longitude'],
-      latitude: json['latitude'],
-      farmId: json['farm_id'],
-      createdAt: json['created_at'],
-      updatedAt: json['updated_at'],
-      weight: json['state']['weight']['record']?.toDouble(),
-      temperature:
-          json['state']['temperature']['interior_temperature']?.toDouble(),
-      honeyLevel: json['state']['weight']['honey_percentage']?.toDouble(),
-      isConnected: json['state']['connection_status']['Connected'],
-      isColonized: json['state']['colonization_status']['Colonized'],
-    );
-  }
+factory Hive.fromJson(Map<String, dynamic> json) {
+  return Hive(
+    id: json['id'],
+    longitude: json['longitude'],
+    latitude: json['latitude'],
+    farmId: json['farm_id'],
+    createdAt: json['created_at'],
+    updatedAt: json['updated_at'],
+    weight: json['state']['weight']['record']?.toDouble(),
+    temperature: json['state']['temperature']['interior_temperature']?.toDouble(),
+    honeyLevel: json['state']['weight']['honey_percentage']?.toDouble(),
+    isConnected: json['state']['connection_status']['Connected'] == 1,
+    isColonized: json['state']['colonization_status']['Colonized'] == 1,
+  );
+}
+
 }
 
 class _HivesState extends State<Hives> {
   List<Hive> hives = [];
+  bool isTableView = false; // Add this state variable
 
   @override
   void initState() {
@@ -119,73 +122,327 @@ class _HivesState extends State<Hives> {
         },
         child: CustomScrollView(
           slivers: [
-SliverAppBar(
-  // Remove expandedHeight and flexibleSpace to make it a standard app bar
-  backgroundColor: Colors.orange,
-  title: Text(
-    '${widget.farmName} Hives List',
-    style: const TextStyle(
-      fontWeight: FontWeight.bold,
-      fontFamily: "Sans",
-      fontSize: 20,
-      color: Colors.white,
-    ),
-  ),
-  centerTitle: false, // Align title to the left
-  leading: IconButton(
-    icon: const Icon(
-      Icons.chevron_left_rounded,
-      color: Colors.white,
-      size: 32,
-    ),
-    onPressed: () => Navigator.pop(context),
-  ),
-  // Add actions here
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.add, color: Colors.white, size: 28),
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AddHiveForm(
-              farmId: widget.farmId,
-              token: widget.token,
-              apiaryLocation: widget.apiaryLocation,
-              farmName: widget.farmName,
-              onHiveAdded: () async {
-                await getHives(widget.farmId);
-              },
-            ),
-          ),
-        );
-      },
-    ),
-    IconButton(
-      icon: const Icon(Icons.grid_view, color: Colors.white, size: 28), // Changed icon to grid_view
-      onPressed: () {
-        // Implement change view functionality here
-        print('Change View button pressed');
-      },
-    ),
-  ],
-),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 8.0, horizontal: 16),
-                    child: buildHiveCard(hives[index]),
-                  );
-                },
-                childCount: hives.length,
+            SliverAppBar(
+              backgroundColor: Colors.orange,
+              title: Text(
+                '${widget.farmName} Hives List',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontFamily: "Sans",
+                  fontSize: 20,
+                  color: Colors.white,
+                ),
               ),
+              centerTitle: false,
+              leading: IconButton(
+                icon: const Icon(
+                  Icons.chevron_left_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.add, color: Colors.white, size: 28),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddHiveForm(
+                          farmId: widget.farmId,
+                          token: widget.token,
+                          apiaryLocation: widget.apiaryLocation,
+                          farmName: widget.farmName,
+                          onHiveAdded: () async {
+                            await getHives(widget.farmId);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: Icon(
+                    isTableView ? Icons.view_list : Icons.grid_view,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      isTableView = !isTableView;
+                    });
+                  },
+                ),
+              ],
             ),
+            // Conditional rendering based on view type
+            isTableView
+                ? SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildHivesTable(),
+                    ),
+                  )
+                : SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 8.0, horizontal: 16),
+                          child: buildHiveCard(hives[index]),
+                        );
+                      },
+                      childCount: hives.length,
+                    ),
+                  ),
           ],
         ),
       ),
     );
+  }
+
+  // Modified method to build the table view
+  Widget _buildHivesTable() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            headingRowColor: MaterialStateProperty.all(Colors.orange[700]),
+            dataRowColor: MaterialStateProperty.resolveWith<Color>(
+              (Set<MaterialState> states) {
+                if (states.contains(MaterialState.hovered)) {
+                  return Colors.orange[50]!;
+                }
+                return Colors.white;
+              },
+            ),
+            headingTextStyle: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontFamily: "Sans",
+            ),
+            dataTextStyle: const TextStyle(
+              color: Colors.black87,
+              fontFamily: "Sans",
+            ),
+            columns: const [
+              DataColumn(label: Text('Hive ID')),
+              DataColumn(label: Text('Actions')),
+            ],
+            rows: hives.map((hive) {
+              return DataRow(
+                cells: [
+                  DataCell(
+                    Text(
+                      'Hive ${hive.id}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // View button
+                        SizedBox(
+                          width: 70,
+                          height: 30,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange[700],
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            icon: const Icon(Icons.visibility, size: 14, color: Colors.white),
+                            label: const Text(
+                              'View',
+                              style: TextStyle(fontSize: 10, color: Colors.white),
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => HiveDetails(
+                                    hiveId: hive.id,
+                                    token: widget.token,
+                                    honeyLevel: hive.honeyLevel,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 4, width: 4,),
+                        // Edit button
+                        SizedBox(
+                          width: 70,
+                          height: 30,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[700],
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            icon: const Icon(Icons.edit, size: 14, color: Colors.white),
+                            label: const Text(
+                              'Edit',
+                              style: TextStyle(fontSize: 10, color: Colors.white),
+                            ),
+                            onPressed: () {
+                              _showEditHiveDialog(hive);
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 4, width: 4,),
+                        // Delete button
+                        SizedBox(
+                          width: 70,
+                          height: 30,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red[700],
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            icon: const Icon(Icons.delete, size: 14, color: Colors.white),
+                            label: const Text(
+                              'Delete',
+                              style: TextStyle(fontSize: 10, color: Colors.white),
+                            ),
+                            onPressed: () {
+                              _showDeleteConfirmation(hive);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Add method to show edit dialog
+  void _showEditHiveDialog(Hive hive) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditHiveForm(
+          hiveId: hive.id,
+          farmId: widget.farmId,
+          token: widget.token,
+          apiaryLocation: widget.apiaryLocation,
+          farmName: widget.farmName,
+          initialLatitude: hive.latitude,
+          initialLongitude: hive.longitude,
+          initialColonized: hive.isColonized,
+          initialConnected: hive.isConnected,
+          onHiveUpdated: () async {
+            await getHives(widget.farmId);
+          },
+        ),
+      ),
+    );
+  }
+
+  // Add method to show delete confirmation
+  void _showDeleteConfirmation(Hive hive) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Delete Hive ${hive.id}',
+            style: const TextStyle(fontFamily: "Sans"),
+          ),
+          content: const Text(
+            'Are you sure you want to delete this hive? This action cannot be undone.',
+            style: TextStyle(fontFamily: "Sans"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700]),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteHive(hive.id);
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Add method to delete hive
+  Future<void> _deleteHive(int hiveId) async {
+    try {
+      String sendToken = "Bearer ${widget.token}";
+      
+      var headers = {
+        'Authorization': sendToken,
+      };
+
+      var url = 'https://3de85730509a.ngrok-free.app/api/v1/hives/$hiveId';
+      var response = await http.delete(Uri.parse(url), headers: headers);
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Hive deleted successfully!'),
+            backgroundColor: Colors.green[700],
+          ),
+        );
+        await getHives(widget.farmId); // Refresh the list
+        
+        widget.onHiveDeleted();        // 💥 notify parent to update stats
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete hive: ${response.statusCode}'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $error'),
+          backgroundColor: Colors.red[700],
+        ),
+      );
+    }
   }
 
   Widget buildHiveCard(Hive hive) {
@@ -308,6 +565,7 @@ SliverAppBar(
                         MaterialPageRoute(
                           builder: (context) => RecordsForm(
                             apiaryLocation: widget.apiaryLocation,
+                            token: widget.token,
                             hiveId: 'Hive ${hive.id}',
                             farmName: widget.farmName,
                           ),
@@ -374,82 +632,6 @@ SliverAppBar(
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildStatusIndicator({
-    required IconData icon,
-    required String label,
-    required double value,
-    required double maxValue,
-    required String unit,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.brown[400]?.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.brown[500]!),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  icon,
-                  color: Colors.orange[700],
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
-                    fontFamily: "Sans",
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${value.toStringAsFixed(1)}$unit',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontFamily: "Sans",
-                  ),
-                ),
-                SizedBox(
-                  width: 50,
-                  height: 12,
-                  child: LiquidLinearProgressIndicator(
-                    value: value / maxValue,
-                    valueColor: AlwaysStoppedAnimation(
-                      label == 'Honey Level' ? Colors.amber : Colors.orange,
-                    ),
-                    backgroundColor: Colors.amber[100]!,
-                    borderColor: Colors.transparent,
-                    borderWidth: 0,
-                    borderRadius: 6,
-                    direction: Axis.horizontal,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class RecordsForm extends StatefulWidget {
   final String apiaryLocation;
+  final String token;
   final String hiveId;
   final String farmName;
 
   const RecordsForm({
     super.key,
     required this.apiaryLocation,
+    required this.token,
     required this.hiveId,
     required this.farmName,
   });
@@ -18,43 +22,32 @@ class RecordsForm extends StatefulWidget {
 
 class _RecordsFormState extends State<RecordsForm> {
   final _formKey = GlobalKey<FormState>();
-  int _currentStep = 0; // Added to manage current step
+  int _currentStep = 0;
   final DateTime _inspectionDate = DateTime.now();
+  bool _isLoading = false;
 
-  // Controllers (same as before)
-  final TextEditingController _beekeeperNameController =
-      TextEditingController();
-  final TextEditingController _weatherConditionsController =
-      TextEditingController();
-  final TextEditingController _apiaryLocationController =
-      TextEditingController();
+  // Controllers for inspection data
+  final TextEditingController _beekeeperNameController = TextEditingController();
+  final TextEditingController _weatherConditionsController = TextEditingController();
+  final TextEditingController _apiaryLocationController = TextEditingController();
   final TextEditingController _hiveIdController = TextEditingController();
   final TextEditingController _hiveTypeController = TextEditingController();
-  final TextEditingController _hiveConditionController =
-      TextEditingController();
-  final TextEditingController _queenPresenceController =
-      TextEditingController();
+  final TextEditingController _hiveConditionController = TextEditingController();
+  final TextEditingController _queenPresenceController = TextEditingController();
   final TextEditingController _queenCellsController = TextEditingController();
   final TextEditingController _broodPatternController = TextEditingController();
   final TextEditingController _eggsLarvaeController = TextEditingController();
   final TextEditingController _honeyStoresController = TextEditingController();
   final TextEditingController _pollenStoresController = TextEditingController();
-  final TextEditingController _beePopulationController =
-      TextEditingController();
-  final TextEditingController _aggressivenessController =
-      TextEditingController();
-  final TextEditingController _diseasesObservedController =
-      TextEditingController();
-  final TextEditingController _diseasesSpecifyController =
-      TextEditingController();
+  final TextEditingController _beePopulationController = TextEditingController();
+  final TextEditingController _aggressivenessController = TextEditingController();
+  final TextEditingController _diseasesObservedController = TextEditingController();
+  final TextEditingController _diseasesSpecifyController = TextEditingController();
   final TextEditingController _pestsPresentController = TextEditingController();
-  final TextEditingController _framesCheckedController =
-      TextEditingController();
-  final TextEditingController _framesReplacedController =
-      TextEditingController();
+  final TextEditingController _framesCheckedController = TextEditingController();
+  final TextEditingController _framesReplacedController = TextEditingController();
   final TextEditingController _hiveCleanedController = TextEditingController();
-  final TextEditingController _supersChangedController =
-      TextEditingController();
+  final TextEditingController _supersChangedController = TextEditingController();
   final TextEditingController _otherActionsController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
 
@@ -67,7 +60,6 @@ class _RecordsFormState extends State<RecordsForm> {
 
   @override
   void dispose() {
-    // Dispose all controllers (same as before)
     _beekeeperNameController.dispose();
     _weatherConditionsController.dispose();
     _apiaryLocationController.dispose();
@@ -287,7 +279,7 @@ class _RecordsFormState extends State<RecordsForm> {
             _buildSectionHeader('1. General Information'),
             _buildReadOnlyField(
                 'Inspection Date', _formatDate(_inspectionDate)),
-            _buildTextField('Beekeeper Name', _beekeeperNameController),
+            _buildTextField('Inspector Name', _beekeeperNameController),
             _buildTextField(
                 'Weather Conditions', _weatherConditionsController),
             _buildReadOnlyField(
@@ -398,16 +390,25 @@ class _RecordsFormState extends State<RecordsForm> {
               ),
               elevation: 4,
             ),
-            onPressed: _nextStep,
-            child: Text(
-              _currentStep < _sectionTitles.length - 1 ? 'NEXT' : 'SUBMIT INSPECTION',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontFamily: "Sans",
-              ),
-            ),
+            onPressed: _isLoading ? null : _nextStep,
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : Text(
+                    _currentStep < _sectionTitles.length - 1 ? 'NEXT' : 'SUBMIT INSPECTION',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontFamily: "Sans",
+                    ),
+                  ),
           ),
         ),
       ],
@@ -663,23 +664,7 @@ class _RecordsFormState extends State<RecordsForm> {
             ),
             onPressed: () {
               Navigator.pop(context); // Close the dialog
-              _saveInspectionData();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text(
-                    'Inspection submitted successfully!',
-                    style: TextStyle(fontFamily: "Sans"),
-                  ),
-                  backgroundColor: Colors.green[700],
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-              // You might want to navigate back or clear the form here
-              // For now, let's just pop the current screen
-              // Navigator.pop(context);
+              _submitRecord();
             },
             child: const Text(
               'SUBMIT',
@@ -694,34 +679,109 @@ class _RecordsFormState extends State<RecordsForm> {
     );
   }
 
-  void _saveInspectionData() {
-    final inspectionData = {
-      'date': _formatDate(_inspectionDate),
-      'beekeeper': _beekeeperNameController.text,
-      'location': _apiaryLocationController.text,
-      'hiveId': _hiveIdController.text,
-      'weatherConditions': _weatherConditionsController.text,
-      'hiveType': _hiveTypeController.text,
-      'hiveCondition': _hiveConditionController.text,
-      'queenPresence': _queenPresenceController.text,
-      'queenCells': _queenCellsController.text,
-      'broodPattern': _broodPatternController.text,
-      'eggsLarvae': _eggsLarvaeController.text,
-      'honeyStores': _honeyStoresController.text,
-      'pollenStores': _pollenStoresController.text,
-      'beePopulation': _beePopulationController.text,
-      'aggressiveness': _aggressivenessController.text,
-      'diseasesObserved': _diseasesObservedController.text,
-      'diseasesSpecify': _diseasesSpecifyController.text,
-      'pestsPresent': _pestsPresentController.text,
-      'framesChecked': _framesCheckedController.text,
-      'framesReplaced': _framesReplacedController.text,
-      'hiveCleaned': _hiveCleanedController.text,
-      'supersChanged': _supersChangedController.text,
-      'otherActions': _otherActionsController.text,
-      'comments': _commentsController.text,
-    };
-    print('Inspection Data: $inspectionData');
-    // In a real application, you would send this data to a backend or save it locally.
+  Future<void> _submitRecord() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final inspectionData = {
+        'hiveId': widget.hiveId.replaceAll('Hive ', ''),
+        'inspection_date': DateTime.now().toIso8601String(),
+        'inspector_name': _beekeeperNameController.text.trim(),
+        'weather_conditions': _weatherConditionsController.text.trim(),
+        'hive_type': _hiveTypeController.text.trim(),
+        'hive_condition': _hiveConditionController.text.trim(),
+        'queen_presence': _queenPresenceController.text.trim(),
+        'queen_cells': _queenCellsController.text.trim(),
+        'brood_pattern': _broodPatternController.text.trim(),
+        'eggs_larvae': _eggsLarvaeController.text.trim(),
+        'honey_stores': _honeyStoresController.text.trim(),
+        'pollen_stores': _pollenStoresController.text.trim(),
+        'bee_population': _beePopulationController.text.trim(),
+        'aggressiveness': _aggressivenessController.text.trim(),
+        'diseases_observed': _diseasesObservedController.text.trim(),
+        'diseases_specify': _diseasesSpecifyController.text.trim(),
+        'pests_present': _pestsPresentController.text.trim(),
+        'frames_checked': _framesCheckedController.text.trim(),
+        'frames_replaced': _framesReplacedController.text.trim(),
+        'hive_cleaned': _hiveCleanedController.text.trim(),
+        'supers_changed': _supersChangedController.text.trim(),
+        'other_actions': _otherActionsController.text.trim(),
+        'comments': _commentsController.text.trim(),
+      };
+
+      print('Sending inspection data: $inspectionData');
+
+      final response = await http.post(
+        Uri.parse('http://196.43.168.57/api/v1/hives/inspections'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(inspectionData),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Inspection record saved successfully!',
+              style: TextStyle(fontFamily: "Sans"),
+            ),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        String errorMsg;
+        try {
+          final errorBody = jsonDecode(response.body);
+          errorMsg = errorBody['message'] ?? 'Failed with status ${response.statusCode}';
+        } catch (_) {
+          errorMsg = 'Failed with status ${response.statusCode}';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error: $errorMsg',
+              style: const TextStyle(fontFamily: "Sans"),
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error: $e',
+            style: const TextStyle(fontFamily: "Sans"),
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 }

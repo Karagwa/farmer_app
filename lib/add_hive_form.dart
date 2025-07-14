@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'hives.dart';
 import 'package:http/http.dart' as http;
 
 class AddHiveForm extends StatefulWidget {
@@ -270,81 +269,69 @@ class _AddHiveFormState extends State<AddHiveForm> {
   }
 
   Future<void> _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        // Prepare the hive data
-        final hiveData = {
-          'longitude': _longitudeController.text,
-          'latitude': _latitudeController.text,
-          'farm_id': widget.farmId,
-          'state': {
-            'connection_status': {'Connected': _isConnected},
-            'colonization_status': {'Colonized': _isColonized},
-            'weight': {
-              'record': 0.0,
-              'honey_percentage': 0.0,
-            },
-            'temperature': {
-              'interior_temperature': 0.0,
-            },
-          },
-        };
+  if (_formKey.currentState!.validate()) {
+    try {
+      // 🔥 Clean + simplified hive data to match Laravel backend expectations
+      final hiveData = {
+        'longitude': _longitudeController.text,
+        'latitude': _latitudeController.text,
+        'connected': _isConnected,
+        'colonized': _isColonized,
+      };
 
-        // Send the request to your API
-        String sendToken = "Bearer ${widget.token}";
-        
-        var headers = {
-          'Authorization': sendToken,
-          'Content-Type': 'application/json',
-        };
+      final String sendToken = "Bearer ${widget.token}";
+
+      final headers = {
+        'Authorization': sendToken,
+        'Content-Type': 'application/json',
+      };
 
         var url = 'http://196.43.168.57/api/v1/farms/${widget.farmId}/hives';
         var response = await http.post(
-          Uri.parse(url),
-          headers: headers,
-          body: jsonEncode(hiveData),
-        );
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(hiveData),
+      );
 
-        if (response.statusCode == 201) {
-          // Success - show confirmation and return
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Hive added successfully!',
-                style: TextStyle(fontFamily: "Sans"),
-              ),
-              backgroundColor: Colors.green[700],
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Hive added successfully!',
+              style: TextStyle(fontFamily: "Sans"),
             ),
-          );
-          widget.onHiveAdded();
-          Navigator.pop(context);
-        } else {
-          // Handle API error
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Failed to add hive: ${response.statusCode}',
-                style: const TextStyle(fontFamily: "Sans"),
-              ),
-              backgroundColor: Colors.red[700],
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
             ),
-          );
-        }
-      } catch (error) {
+          ),
+        );
+        widget.onHiveAdded();
+        Navigator.pop(context);
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Error: $error',
+              'Failed to add hive: ${response.statusCode}',
               style: const TextStyle(fontFamily: "Sans"),
             ),
             backgroundColor: Colors.red[700],
           ),
         );
       }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error: $error',
+            style: const TextStyle(fontFamily: "Sans"),
+          ),
+          backgroundColor: Colors.red[700],
+        ),
+      );
     }
   }
+}
+
 }
