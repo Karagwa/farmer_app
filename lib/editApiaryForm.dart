@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geocoding/geocoding.dart';
+
 
 class EditApiaryForm extends StatefulWidget {
   final String token;
@@ -29,6 +33,9 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
   late final TextEditingController _descriptionController;
   
   bool _isLoading = false;
+  String? _errorMessage;
+
+  LatLng _mapCenter = LatLng(0, 0);
 
   @override
   void initState() {
@@ -40,6 +47,40 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
     _latitudeController = TextEditingController(text: widget.initialData['latitude']?.toString() ?? '');
     _longitudeController = TextEditingController(text: widget.initialData['longitude']?.toString() ?? '');
     _descriptionController = TextEditingController(text: widget.initialData['description'] ?? '');
+    _addressController.addListener(_autoGeocode);
+_districtController.addListener(_autoGeocode);
+
+  }
+
+ void _autoGeocode() async {
+    String query =
+        _addressController.text.isNotEmpty
+            ? _addressController.text
+            : _districtController.text;
+    if (query.isNotEmpty) {
+      try {
+        List<Location> locations = await locationFromAddress(query);
+        if (locations.isNotEmpty) {
+          setState(() {
+            _latitudeController.text = locations.first.latitude.toString();
+            _longitudeController.text = locations.first.longitude.toString();
+          });
+        } else {
+          // Show a snackbar or error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Location not found. Please refine your address or district.',
+              ),
+            ),
+          );
+        }
+      } catch (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error finding location.')),
+        );
+      }
+    }
   }
 
   @override
@@ -53,6 +94,106 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
     _descriptionController.dispose();
     super.dispose();
   }
+
+Future<void> _openMapPicker() async {
+  if (_latitudeController.text.isEmpty || _longitudeController.text.isEmpty) {
+    String query = _addressController.text.isNotEmpty
+        ? _addressController.text
+        : _districtController.text;
+    if (query.isNotEmpty) {
+      try {
+        List<Location> locations = await locationFromAddress(query);
+        if (locations.isNotEmpty) {
+          _mapCenter = LatLng(
+            locations.first.latitude,
+            locations.first.longitude,
+          );
+        }
+      } catch (_) {}
+    }
+  } else {
+    _mapCenter = LatLng(
+      double.tryParse(_latitudeController.text) ?? 0,
+      double.tryParse(_longitudeController.text) ?? 0,
+    );
+  }
+
+  LatLng? picked = await showDialog<LatLng>(
+    context: context,
+    builder: (context) {
+      LatLng selected = _mapCenter;
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Pick Location'),
+            content: SizedBox(
+              width: 300,
+              height: 300,
+              child: FlutterMap(
+               options: MapOptions(
+                  center: selected,
+                  zoom: 13.0,
+                  minZoom: 5,
+                  maxZoom: 18,
+                  interactiveFlags: InteractiveFlag.all,
+                  onTap: (tapPosition, point) {
+                    setState(() {
+                      selected = point;
+                    });
+                  },
+                ),
+                children: [
+                 TileLayer(
+                  urlTemplate: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+                  subdomains: ['a', 'b', 'c'],
+                  tileProvider: NetworkTileProvider(
+                    headers: {
+                      'User-Agent': 'farmerApp/1.0 (ayanhilwa@gmail.com)',
+                    },
+                  ),
+                ),
+
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: selected,
+                        width: 40,
+                        height: 40,
+                        child: const Icon(
+                          Icons.location_on,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, null),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, selected),
+                child: const Text('Select'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  if (picked != null) {
+    setState(() {
+      _latitudeController.text = picked.latitude.toString();
+      _longitudeController.text = picked.longitude.toString();
+    });
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +331,23 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
+              
+
+              SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.map),
+                label: const Text('Pick on Map'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange[700],
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: _openMapPicker,
+              ),
+            ),
+            const SizedBox(height: 20),
+
 
               // Description Section
               _buildSectionHeader('Additional Information'),
@@ -400,3 +557,4 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
     
   }
 }
+
