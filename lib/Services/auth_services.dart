@@ -4,7 +4,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:HPGM/dashboard_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Add this import if not already there
+import '../services/token_storage.dart';
 
 class AuthService {
   static String _token = '';
@@ -30,11 +30,15 @@ class AuthService {
       Map<String, dynamic> responseData = jsonDecode(responseBody);
       _token = responseData['token'];
       _userId = responseData['user']['id'] ?? responseData['id'] ?? 0;
-      
+
       print('Login successful - User ID: $_userId, Token: $_token');
-      // Save token to shared preferences for persistence
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auth_token', _token);
+
+      // Use TokenStorage instead of direct SharedPreferences
+      await TokenStorage.saveLoginData(
+        token: _token,
+        userId: _userId.toString(),
+        username: email, // or get username from response if available
+      );
 
       Fluttertoast.showToast(
         msg: "Successful!",
@@ -46,7 +50,7 @@ class AuthService {
         fontSize: 16.0,
       );
 
-      // Navigate to Dashboard instead of navbar
+      // Navigate to Dashboard (remove token parameter if possible)
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => DashboardScreen(token: _token)),
@@ -64,24 +68,16 @@ class AuthService {
     }
   }
 
-  // Add this new logout method
+  // Update logout method to use TokenStorage
   static Future<bool> logout() async {
     try {
       // Clear the token in memory
       _token = '';
+      _userId = 0;
 
-      // Clear the token from shared preferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('auth_token');
+      // Use TokenStorage to clear all login data
+      await TokenStorage.clearLoginData();
 
-      // If you have a server-side logout endpoint, call it here
-      // Example:
-      // final response = await http.post(
-      //   Uri.parse('http://196.43.168.57/api/v1/logout'),
-      //   headers: {'Authorization': 'Bearer $_token'},
-      // );
-
-      // Show success message
       Fluttertoast.showToast(
         msg: "Logged out successfully",
         toastLength: Toast.LENGTH_SHORT,
@@ -94,7 +90,6 @@ class AuthService {
     } catch (e) {
       print('Logout error: $e');
 
-      // Show error message
       Fluttertoast.showToast(
         msg: "Logout failed: $e",
         toastLength: Toast.LENGTH_SHORT,
@@ -114,28 +109,33 @@ class AuthService {
     }
   }
 
-  static String getToken() {
-    return _token;
+  // Update getToken to use TokenStorage
+  static Future<String> getToken() async {
+    if (_token.isNotEmpty) {
+      return _token;
+    }
+
+    // Get from TokenStorage if not in memory
+    final token = await TokenStorage.getToken();
+    if (token != null) {
+      _token = token;
+      return token;
+    }
+
+    return '';
   }
+
   static int getUserId() {
     return _userId;
   }
 
-  // Add this method to check if user is logged in
+  // Update isLoggedIn to use TokenStorage
   static Future<bool> isLoggedIn() async {
     if (_token.isNotEmpty) {
       return true;
     }
 
-    // Check if token exists in shared preferences
-    final prefs = await SharedPreferences.getInstance();
-    final savedToken = prefs.getString('auth_token');
-
-    if (savedToken != null && savedToken.isNotEmpty) {
-      _token = savedToken; // Restore token
-      return true;
-    }
-
-    return false;
+    // Use TokenStorage instead of direct SharedPreferences
+    return await TokenStorage.isLoggedIn();
   }
 }

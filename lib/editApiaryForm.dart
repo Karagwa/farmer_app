@@ -5,15 +5,14 @@ import 'dart:convert';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
+import 'services/token_storage.dart';
 
 class EditApiaryForm extends StatefulWidget {
-  final String token;
   final int farmId;
   final Map<String, dynamic> initialData;
 
   const EditApiaryForm({
     Key? key,
-    required this.token,
     required this.farmId,
     required this.initialData,
   }) : super(key: key);
@@ -496,10 +495,31 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
     //Uri.parse('http://196.43.168.57/api/v1/farms/${widget.farmId}'),
 
     try {
+      // Get token from storage instead of widget parameter
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        // User not logged in, show error and return
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Please log in to continue',
+              style: TextStyle(fontFamily: "Sans"),
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        return;
+      }
+
       final response = await http.put(
-        Uri.parse('http://196.43.168.57/api/v1/farms/{id}'),
+        Uri.parse('http://196.43.168.57/api/v1/farms/${widget.farmId}'),
         headers: {
-          'Authorization': 'Bearer ${widget.token}',
+          'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({

@@ -43,7 +43,6 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                           fontWeight: FontWeight.bold,
                           fontFamily: "Sans",
                           color: Colors.white,
-                          
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -71,13 +70,15 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                       value: farm.average_temperature ?? 0,
                       maxValue: 50,
                       unit: '°C',
-                      onTap: () => showModalBottomSheet(
-                        context: context,
-                        builder: (context) => buildTempSheet(
-                          "Temperature Details",
-                          farm.average_temperature ?? 0,
-                        ),
-                      ),
+                      onTap:
+                          () => showModalBottomSheet(
+                            context: context,
+                            builder:
+                                (context) => buildTempSheet(
+                                  "Temperature Details",
+                                  farm.average_temperature ?? 0,
+                                ),
+                          ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -88,13 +89,15 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                       value: farm.honeypercent ?? 0,
                       maxValue: 100,
                       unit: '%',
-                      onTap: () => showModalBottomSheet(
-                        context: context,
-                        builder: (context) => buildHoneySheet(
-                          "Honey Levels",
-                          farm.honeypercent ?? 0,
-                        ),
-                      ),
+                      onTap:
+                          () => showModalBottomSheet(
+                            context: context,
+                            builder:
+                                (context) => buildHoneySheet(
+                                  "Honey Levels",
+                                  farm.honeypercent ?? 0,
+                                ),
+                          ),
                     ),
                   ),
                 ],
@@ -113,44 +116,47 @@ Widget buildFarmCard(Farm farm, BuildContext context, String token) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => Hives(
-                            farmId: farm.id,
-                            token: token,
-                            apiaryLocation: '${farm.district}, ${farm.address}',
-                            farmName: farm.name,
-                            onHiveDeleted: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Hive deleted")),
-                              );
-                            },
-                          ),
+                          builder:
+                              (context) => Hives(
+                                farmId: farm.id,
+                                token: token,
+                                apiaryLocation:
+                                    '${farm.district}, ${farm.address}',
+                                farmName: farm.name,
+                                onHiveDeleted: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Hive deleted"),
+                                    ),
+                                  );
+                                },
+                              ),
                         ),
                       );
                     },
                   ),
-        _buildActionButton(
-          icon: Icons.edit,
-          label: 'Edit',
-          color: Colors.blue[700]!,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => EditApiaryForm(
-                  token: token,
-                  farmId: farm.id,
-                  initialData: {
-                    'OwnerId':farm.ownerId.toString(),
-                    'name': farm.name,
-                    'address': farm.address,
-                    'district': farm.district,
-                    
-                  },
-                ),
-              ),
-            );
-          },
-        ),
+                  _buildActionButton(
+                    icon: Icons.edit,
+                    label: 'Edit',
+                    color: Colors.blue[700]!,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => EditApiaryForm(
+                                farmId: farm.id,
+                                initialData: {
+                                  'OwnerId': farm.ownerId.toString(),
+                                  'name': farm.name,
+                                  'address': farm.address,
+                                  'district': farm.district,
+                                },
+                              ),
+                        ),
+                      );
+                    },
+                  ),
                   _buildActionButton(
                     icon: Icons.delete,
                     label: 'Delete',

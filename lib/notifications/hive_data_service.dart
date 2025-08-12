@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:HPGM/Services/auth_services.dart';
+import 'package:HPGM/services/token_storage.dart';
 import 'package:HPGM/hive_model.dart';
 
 class HiveDataService {
@@ -17,8 +17,9 @@ class HiveDataService {
   final _hiveController = StreamController<Hive>.broadcast();
   Stream<Hive> get hiveStream => _hiveController.stream;
 
-  void startMonitoring(
-      {Duration refreshInterval = const Duration(minutes: 5)}) {
+  void startMonitoring({
+    Duration refreshInterval = const Duration(minutes: 5),
+  }) {
     // Cancel existing timer if any
     _timer?.cancel();
 
@@ -30,28 +31,39 @@ class HiveDataService {
 
   Future<Hive?> fetchHiveData(int hiveId) async {
     try {
-      // Get token from AuthService
-      final token = AuthService.getToken();
+      // Get token from TokenStorage
+      final token = await TokenStorage.getToken();
 
-      if (token.isEmpty) {
+      if (token == null || token.isEmpty) {
         // Check if we can restore token from storage
-        final isLoggedIn = await AuthService.isLoggedIn();
+        final isLoggedIn = await TokenStorage.isLoggedIn();
         if (!isLoggedIn) {
           throw Exception('User not authenticated');
         }
+        // Try to get token again after checking login status
+        final retryToken = await TokenStorage.getToken();
+        if (retryToken == null || retryToken.isEmpty) {
+          throw Exception('Authentication failed. Please log in again.');
+        }
       }
 
-      // Now get the token again (it may have been restored by isLoggedIn)
-      final authToken = AuthService.getToken();
+      // Get the final token to use
+      final authToken = await TokenStorage.getToken();
+
+      if (authToken == null || authToken.isEmpty) {
+        throw Exception('Authentication failed. Please log in again.');
+      }
 
       // Use a short timeout to ensure quick loading or failure
-      final response = await http.get(
-        Uri.parse('$_baseUrl/farms/1/hives'),
-        headers: {
-          'Authorization': 'Bearer $authToken',
-          'Accept': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/farms/1/hives'),
+            headers: {
+              'Authorization': 'Bearer $authToken',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final List<dynamic> hives = json.decode(response.body);

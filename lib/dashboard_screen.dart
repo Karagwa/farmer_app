@@ -7,6 +7,7 @@ import 'package:HPGM/notifications/notification_screen.dart';
 import 'package:HPGM/analytics/navigation_helper.dart';
 import 'package:HPGM/navbar.dart';
 import 'package:HPGM/profile.dart';
+import 'package:HPGM/services/token_storage.dart';
 import 'package:flutter/material.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -25,10 +26,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize notification count
     _notificationCount = NotificationService().unreadCount;
-    
+
     // Listen to notification updates
     _notificationSubscription = NotificationService().notificationStream.listen(
       (notifications) {
@@ -39,7 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       },
     );
-    
+
     // Load initial notifications from advisory system
     _loadInitialNotifications();
   }
@@ -53,12 +54,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadInitialNotifications() async {
     try {
       final advisoryService = EnhancedForagingAdvisoryService();
-      final analysis = await advisoryService.getDailyForagingAnalysis('1', DateTime.now());
-      
+      final analysis = await advisoryService.getDailyForagingAnalysis(
+        '1',
+        DateTime.now(),
+      );
+
       if (analysis != null) {
         // Add recommendations as notifications
         for (final recommendation in analysis.recommendations) {
-          NotificationService().addAdvisoryRecommendation(recommendation, analysis.hiveId);
+          NotificationService().addAdvisoryRecommendation(
+            recommendation,
+            analysis.hiveId,
+          );
         }
       }
     } catch (e) {
@@ -85,7 +92,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => NotificationsScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => NotificationsScreen(),
+                  ),
                 );
               },
             ),
@@ -94,13 +103,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProfileScreen(token: widget.token),
-                  ),
-                );
+              onTap: () async {
+                final token = await TokenStorage.getToken();
+                if (token != null && mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProfileScreen(token: token),
+                    ),
+                  );
+                }
               },
               child: CircleAvatar(
                 radius: 18,
@@ -137,8 +149,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                            '',
-                              style: TextStyle(fontSize: 14, color: Colors.brown[600]),
+                              '',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.brown[600],
+                              ),
                             ),
                           ],
                         ),
@@ -146,29 +161,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // Quick notification summary
                       if (_notificationCount > 0)
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
-                            color: NotificationService().criticalCount > 0 
-                                ? Colors.red.shade100 
-                                : Colors.orange.shade100,
+                            color:
+                                NotificationService().criticalCount > 0
+                                    ? Colors.red.shade100
+                                    : Colors.orange.shade100,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: NotificationService().criticalCount > 0 
-                                  ? Colors.red.shade300 
-                                  : Colors.orange.shade300,
+                              color:
+                                  NotificationService().criticalCount > 0
+                                      ? Colors.red.shade300
+                                      : Colors.orange.shade300,
                             ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                NotificationService().criticalCount > 0 
-                                    ? Icons.error 
+                                NotificationService().criticalCount > 0
+                                    ? Icons.error
                                     : Icons.notifications_active,
                                 size: 16,
-                                color: NotificationService().criticalCount > 0 
-                                    ? Colors.red.shade600 
-                                    : Colors.orange.shade600,
+                                color:
+                                    NotificationService().criticalCount > 0
+                                        ? Colors.red.shade600
+                                        : Colors.orange.shade600,
                               ),
                               SizedBox(width: 4),
                               Text(
@@ -176,9 +197,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: NotificationService().criticalCount > 0 
-                                      ? Colors.red.shade600 
-                                      : Colors.orange.shade600,
+                                  color:
+                                      NotificationService().criticalCount > 0
+                                          ? Colors.red.shade600
+                                          : Colors.orange.shade600,
                                 ),
                               ),
                             ],
@@ -206,13 +228,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             icon: Icons.grid_view,
                             color: const Color(0xFFD4A657),
                             notifications: 2,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => navbar(token: widget.token),
-                                ),
-                              );
+                            onTap: () async {
+                              final token = await TokenStorage.getToken();
+                              if (token != null && mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => navbar(token: token),
+                                  ),
+                                );
+                              }
                             },
                           ),
                         ),
@@ -227,7 +252,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => BeeMonitoringScreen(hiveId: '1'),
+                                  builder:
+                                      (context) =>
+                                          BeeMonitoringScreen(hiveId: '1'),
                                 ),
                               );
                             },
@@ -250,7 +277,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               NavigationHelper.navigateToRecommendations(
                                 context,
                                 hiveId: '1',
-                              ); 
+                              );
                             },
                           ),
                         ),
@@ -265,7 +292,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => EnhancedForagingDashboard(hiveId: '1'),
+                                  builder:
+                                      (context) => EnhancedForagingDashboard(
+                                        hiveId: '1',
+                                      ),
                                 ),
                               );
                             },
@@ -306,7 +336,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => BeeDashboardScreen(hiveId: '1'),
+                                  builder:
+                                      (context) =>
+                                          BeeDashboardScreen(hiveId: '1'),
                                 ),
                               );
                             },
@@ -323,7 +355,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) {
+        onTap: (index) async {
           setState(() {
             _selectedIndex = index;
           });
@@ -333,12 +365,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Already on Dashboard
               break;
             case 1:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => navbar(token: widget.token),
-                ),
-              );
+              final token = await TokenStorage.getToken();
+              if (token != null && mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => navbar(token: token)),
+                );
+              }
               break;
             case 2:
               // Navigate to Notifications screen
@@ -348,12 +381,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
               break;
             case 3:
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProfileScreen(token: widget.token),
-                ),
-              );
+              final profileToken = await TokenStorage.getToken();
+              if (profileToken != null && mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileScreen(token: profileToken),
+                  ),
+                );
+              }
               break;
           }
         },
@@ -366,10 +402,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.hive), 
-            label: 'Hives'
-          ),
+          const BottomNavigationBarItem(icon: Icon(Icons.hive), label: 'Hives'),
           BottomNavigationBarItem(
             icon: NotificationBadge(
               count: _notificationCount,
@@ -378,8 +411,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label: 'Alerts',
           ),
           const BottomNavigationBarItem(
-            icon: Icon(Icons.person), 
-            label: 'Profile'
+            icon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
       ),
@@ -444,7 +477,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Text(
                 notifications > 99 ? '99+' : notifications.toString(),
                 style: TextStyle(
-                  color: color, 
+                  color: color,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -484,10 +517,7 @@ class NotificationBadge extends StatelessWidget {
                 color: badgeColor ?? Colors.red,
                 borderRadius: BorderRadius.circular(10),
               ),
-              constraints: const BoxConstraints(
-                minWidth: 16,
-                minHeight: 16,
-              ),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
               child: Text(
                 count > 99 ? '99+' : count.toString(),
                 style: const TextStyle(

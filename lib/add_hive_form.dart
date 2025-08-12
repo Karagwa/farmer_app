@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'Services/connectivity_service.dart';
+import 'services/token_storage.dart';
 
 class AddHiveForm extends StatefulWidget {
   final int farmId;
-  final String token;
   final String apiaryLocation;
   final String farmName;
   final VoidCallback onHiveAdded;
@@ -14,7 +14,6 @@ class AddHiveForm extends StatefulWidget {
   const AddHiveForm({
     super.key,
     required this.farmId,
-    required this.token,
     required this.apiaryLocation,
     required this.farmName,
     required this.onHiveAdded,
@@ -229,21 +228,14 @@ class _AddHiveFormState extends State<AddHiveForm> {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.brown[300]!),
           ),
-          labelStyle: TextStyle(
-            color: Colors.brown[600],
-            fontFamily: "Sans",
-          ),
+          labelStyle: TextStyle(color: Colors.brown[600], fontFamily: "Sans"),
         ),
         validator: validator,
       ),
     );
   }
 
-  Widget _buildSwitchField(
-    String label,
-    bool value,
-    Function(bool) onChanged,
-  ) {
+  Widget _buildSwitchField(String label, bool value, Function(bool) onChanged) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -270,88 +262,99 @@ class _AddHiveFormState extends State<AddHiveForm> {
   }
 
   Future<void> _submitForm() async {
-  if (_formKey.currentState!.validate()) {
-    // Check connectivity before submitting
-    final isConnected = await ConnectivityService().hasInternetConnection();
-    if (!isConnected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'No internet connection. Please check your network and try again.',
-            style: TextStyle(fontFamily: "Sans"),
-          ),
-          backgroundColor: Colors.red[700],
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
-      return;
-    }
-
-    try {
-      // 🔥 Clean + simplified hive data to match Laravel backend expectations
-      final hiveData = {
-        'longitude': _longitudeController.text,
-        'latitude': _latitudeController.text,
-        'connected': _isConnected,
-        'colonized': _isColonized,
-      };
-
-      final String sendToken = "Bearer ${widget.token}";
-
-      final headers = {
-        'Authorization': sendToken,
-        'Content-Type': 'application/json',
-      };
-
-        var url = 'http://196.43.168.57/api/v1/farms/${widget.farmId}/hives';
-        var response = await http.post(
-        Uri.parse(url),
-        headers: headers,
-        body: jsonEncode(hiveData),
-      );
-
-      if (response.statusCode == 201) {
+    if (_formKey.currentState!.validate()) {
+      // Check connectivity before submitting
+      final isConnected = await ConnectivityService().hasInternetConnection();
+      if (!isConnected) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              'Hive added successfully!',
+              'No internet connection. Please check your network and try again.',
               style: TextStyle(fontFamily: "Sans"),
             ),
-            backgroundColor: Colors.green[700],
+            backgroundColor: Colors.red[700],
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
           ),
         );
-        widget.onHiveAdded();
-        Navigator.pop(context);
-      } else {
+        return;
+      }
+
+      try {
+        // 🔥 Clean + simplified hive data to match Laravel backend expectations
+        final hiveData = {
+          'longitude': _longitudeController.text,
+          'latitude': _latitudeController.text,
+          'connected': _isConnected,
+          'colonized': _isColonized,
+        };
+
+        final token = await TokenStorage.getToken();
+
+        if (token == null || token.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Authentication error. Please log in again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        final String sendToken = "Bearer $token";
+
+        final headers = {
+          'Authorization': sendToken,
+          'Content-Type': 'application/json',
+        };
+
+        var url = 'http://196.43.168.57/api/v1/farms/${widget.farmId}/hives';
+        var response = await http.post(
+          Uri.parse(url),
+          headers: headers,
+          body: jsonEncode(hiveData),
+        );
+
+        if (response.statusCode == 201) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Hive added successfully!',
+                style: TextStyle(fontFamily: "Sans"),
+              ),
+              backgroundColor: Colors.green[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+          widget.onHiveAdded();
+          Navigator.pop(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to add hive: ${response.statusCode}',
+                style: const TextStyle(fontFamily: "Sans"),
+              ),
+              backgroundColor: Colors.red[700],
+            ),
+          );
+        }
+      } catch (error) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Failed to add hive: ${response.statusCode}',
+              'Error: $error',
               style: const TextStyle(fontFamily: "Sans"),
             ),
             backgroundColor: Colors.red[700],
           ),
         );
       }
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error: $error',
-            style: const TextStyle(fontFamily: "Sans"),
-          ),
-          backgroundColor: Colors.red[700],
-        ),
-      );
     }
   }
-}
-
 }

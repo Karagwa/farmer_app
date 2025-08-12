@@ -10,7 +10,7 @@ class TabView extends StatefulWidget {
   final String token;
 
   const TabView({Key? key, required this.hiveId, required this.token})
-      : super(key: key);
+    : super(key: key);
 
   @override
   _TabViewState createState() => _TabViewState();
@@ -135,29 +135,11 @@ class _TabViewState extends State<TabView> {
                             child: TabBarView(
                               children: [
                                 Center(
-                                  child: Temperature(
-                                    hiveId: widget.hiveId,
-                                    token: widget.token,
-                                  ),
+                                  child: Temperature(hiveId: widget.hiveId),
                                 ),
-                                Center(
-                                  child: Humidity(
-                                    hiveId: widget.hiveId,
-                                    token: widget.token,
-                                  ),
-                                ),
-                                Center(
-                                  child: Weight(
-                                    hiveId: widget.hiveId,
-                                    token: widget.token,
-                                  ),
-                                ),
-                                Center(
-                                  child: Mediamenu(
-                                    hiveId: widget.hiveId,
-                                    token: widget.token,
-                                  ),
-                                ),
+                                Center(child: Humidity(hiveId: widget.hiveId)),
+                                Center(child: Weight(hiveId: widget.hiveId)),
+                                Center(child: Mediamenu(hiveId: widget.hiveId)),
                               ],
                             ),
                           ),

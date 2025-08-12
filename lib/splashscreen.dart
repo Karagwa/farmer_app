@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:HPGM/getstarted.dart';
 import 'package:HPGM/login.dart';
-import 'package:HPGM/navbar.dart';
+import 'package:HPGM/dashboard_screen.dart';
+import 'package:HPGM/services/token_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,25 +25,39 @@ class _SplashscreenState extends State<Splashscreen> {
   Future<void> _checkSession() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool isFirstTime = prefs.getBool('isFirstTime') ?? true;
-    String? token = prefs.getString('authToken');
+
+    print('Debug: isFirstTime = $isFirstTime');
 
     if (isFirstTime) {
-      // First-time user flow
+      // First-time user flow - clear any existing data
+      await TokenStorage.clearLoginData();
       await prefs.setBool('isFirstTime', false);
+      print('Debug: Navigating to GetStarted (first time)');
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => GetStarted()),
       );
     } else {
-      // Check session status
-      if (token != null && token.isNotEmpty) {
-        // Valid session exists
+      // Check session status using TokenStorage
+      final isLoggedIn = await TokenStorage.isLoggedIn();
+      final token = await TokenStorage.getToken();
+
+      print(
+        'Debug: isLoggedIn = $isLoggedIn, token = ${token?.substring(0, 10) ?? 'null'}...',
+      );
+
+      if (isLoggedIn && token != null) {
+        // Valid session exists - navigate to Dashboard
+        print('Debug: Navigating to Dashboard (logged in)');
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => navbar(token: token)),
+          MaterialPageRoute(
+            builder: (context) => DashboardScreen(token: token),
+          ),
         );
       } else {
         // No valid session
+        print('Debug: Navigating to Login (not logged in)');
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => LoginScreen()),

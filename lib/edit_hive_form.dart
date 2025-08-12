@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'Services/connectivity_service.dart';
+import 'services/token_storage.dart';
 
 class EditHiveForm extends StatefulWidget {
   final int hiveId;
   final int farmId;
-  final String token;
   final String apiaryLocation;
   final String farmName;
   final String initialLatitude;
@@ -19,7 +19,6 @@ class EditHiveForm extends StatefulWidget {
     super.key,
     required this.hiveId,
     required this.farmId,
-    required this.token,
     required this.apiaryLocation,
     required this.farmName,
     required this.initialLatitude,
@@ -40,7 +39,6 @@ class _EditHiveFormState extends State<EditHiveForm> {
   late bool _isConnected;
   late bool _isColonized;
   bool _isLoading = false;
-
 
   @override
   void initState() {
@@ -158,10 +156,17 @@ class _EditHiveFormState extends State<EditHiveForm> {
 
               // Hive Status Section
               _buildSectionHeader('Hive Status'),
-              
 
-              _buildSwitchField('Connected to Network', _isConnected, (val) => setState(() => _isConnected = val)),
-              _buildSwitchField('Colonized', _isColonized, (val) => setState(() => _isColonized = val)),
+              _buildSwitchField(
+                'Connected to Network',
+                _isConnected,
+                (val) => setState(() => _isConnected = val),
+              ),
+              _buildSwitchField(
+                'Colonized',
+                _isColonized,
+                (val) => setState(() => _isColonized = val),
+              ),
               const SizedBox(height: 20),
 
               // Submit Button
@@ -178,24 +183,25 @@ class _EditHiveFormState extends State<EditHiveForm> {
                       elevation: 4,
                     ),
                     onPressed: _isLoading ? null : _submitForm,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                            : const Text(
+                              'UPDATE HIVE',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                fontFamily: "Sans",
+                              ),
                             ),
-                          )
-                        : const Text(
-                            'UPDATE HIVE',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontFamily: "Sans",
-                            ),
-                          ),
                   ),
                 ),
               ),
@@ -257,22 +263,28 @@ class _EditHiveFormState extends State<EditHiveForm> {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.orange[700]!, width: 2),
           ),
-          labelStyle: TextStyle(
-            color: Colors.brown[600],
-            fontFamily: "Sans",
-          ),
+          labelStyle: TextStyle(color: Colors.brown[600], fontFamily: "Sans"),
         ),
         validator: validator,
       ),
     );
   }
-    Widget _buildSwitchField(String label, bool value, Function(bool) onChanged) {
+
+  Widget _buildSwitchField(String label, bool value, Function(bool) onChanged) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 16, color: Colors.brown, fontWeight: FontWeight.w500, fontFamily: "Sans")),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.brown,
+              fontWeight: FontWeight.w500,
+              fontFamily: "Sans",
+            ),
+          ),
           Switch(
             value: value,
             onChanged: onChanged,
@@ -316,11 +328,23 @@ class _EditHiveFormState extends State<EditHiveForm> {
         'colonized': _isColonized,
       };
 
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication error. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       final url = 'http://196.43.168.57/api/v1/hives/${widget.hiveId}';
       final response = await http.put(
         Uri.parse(url),
         headers: {
-          'Authorization': 'Bearer ${widget.token}',
+          'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
         body: jsonEncode(updateData),
@@ -329,10 +353,15 @@ class _EditHiveFormState extends State<EditHiveForm> {
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Hive updated successfully!', style: TextStyle(fontFamily: "Sans")),
+            content: const Text(
+              'Hive updated successfully!',
+              style: TextStyle(fontFamily: "Sans"),
+            ),
             backgroundColor: Colors.green[700],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
         widget.onHiveUpdated();
@@ -343,10 +372,15 @@ class _EditHiveFormState extends State<EditHiveForm> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e', style: const TextStyle(fontFamily: "Sans")),
+          content: Text(
+            'Error: $e',
+            style: const TextStyle(fontFamily: "Sans"),
+          ),
           backgroundColor: Colors.red[700],
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } finally {

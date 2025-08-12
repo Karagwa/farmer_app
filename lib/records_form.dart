@@ -2,17 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'Services/connectivity_service.dart';
+import 'services/token_storage.dart';
 
 class RecordsForm extends StatefulWidget {
   final String apiaryLocation;
-  final String token;
   final String hiveId;
   final String farmName;
 
   const RecordsForm({
     super.key,
     required this.apiaryLocation,
-    required this.token,
     required this.hiveId,
     required this.farmName,
   });
@@ -28,27 +27,39 @@ class _RecordsFormState extends State<RecordsForm> {
   bool _isLoading = false;
 
   // Controllers for inspection data
-  final TextEditingController _beekeeperNameController = TextEditingController();
-  final TextEditingController _weatherConditionsController = TextEditingController();
-  final TextEditingController _apiaryLocationController = TextEditingController();
+  final TextEditingController _beekeeperNameController =
+      TextEditingController();
+  final TextEditingController _weatherConditionsController =
+      TextEditingController();
+  final TextEditingController _apiaryLocationController =
+      TextEditingController();
   final TextEditingController _hiveIdController = TextEditingController();
   final TextEditingController _hiveTypeController = TextEditingController();
-  final TextEditingController _hiveConditionController = TextEditingController();
-  final TextEditingController _queenPresenceController = TextEditingController();
+  final TextEditingController _hiveConditionController =
+      TextEditingController();
+  final TextEditingController _queenPresenceController =
+      TextEditingController();
   final TextEditingController _queenCellsController = TextEditingController();
   final TextEditingController _broodPatternController = TextEditingController();
   final TextEditingController _eggsLarvaeController = TextEditingController();
   final TextEditingController _honeyStoresController = TextEditingController();
   final TextEditingController _pollenStoresController = TextEditingController();
-  final TextEditingController _beePopulationController = TextEditingController();
-  final TextEditingController _aggressivenessController = TextEditingController();
-  final TextEditingController _diseasesObservedController = TextEditingController();
-  final TextEditingController _diseasesSpecifyController = TextEditingController();
+  final TextEditingController _beePopulationController =
+      TextEditingController();
+  final TextEditingController _aggressivenessController =
+      TextEditingController();
+  final TextEditingController _diseasesObservedController =
+      TextEditingController();
+  final TextEditingController _diseasesSpecifyController =
+      TextEditingController();
   final TextEditingController _pestsPresentController = TextEditingController();
-  final TextEditingController _framesCheckedController = TextEditingController();
-  final TextEditingController _framesReplacedController = TextEditingController();
+  final TextEditingController _framesCheckedController =
+      TextEditingController();
+  final TextEditingController _framesReplacedController =
+      TextEditingController();
   final TextEditingController _hiveCleanedController = TextEditingController();
-  final TextEditingController _supersChangedController = TextEditingController();
+  final TextEditingController _supersChangedController =
+      TextEditingController();
   final TextEditingController _otherActionsController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
 
@@ -139,10 +150,7 @@ class _RecordsFormState extends State<RecordsForm> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.orange[100]!.withOpacity(0.2),
-              Colors.brown[50]!,
-            ],
+            colors: [Colors.orange[100]!.withOpacity(0.2), Colors.brown[50]!],
           ),
         ),
         child: Form(
@@ -229,7 +237,8 @@ class _RecordsFormState extends State<RecordsForm> {
                       color: isActive ? Colors.orange[700] : Colors.brown[200],
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isActive ? Colors.orange[900]! : Colors.brown[300]!,
+                        color:
+                            isActive ? Colors.orange[900]! : Colors.brown[300]!,
                         width: 2,
                       ),
                     ),
@@ -246,12 +255,15 @@ class _RecordsFormState extends State<RecordsForm> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _sectionTitles[index].split(' ').first, // Show only first word
+                    _sectionTitles[index]
+                        .split(' ')
+                        .first, // Show only first word
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
                       color: isActive ? Colors.orange[700] : Colors.brown[600],
-                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                      fontWeight:
+                          isActive ? FontWeight.bold : FontWeight.normal,
                       fontFamily: "Sans",
                     ),
                   ),
@@ -270,7 +282,6 @@ class _RecordsFormState extends State<RecordsForm> {
     );
   }
 
-
   Widget _buildCurrentFormSection() {
     switch (_currentStep) {
       case 0:
@@ -279,12 +290,15 @@ class _RecordsFormState extends State<RecordsForm> {
           children: [
             _buildSectionHeader('1. General Information'),
             _buildReadOnlyField(
-                'Inspection Date', _formatDate(_inspectionDate)),
+              'Inspection Date',
+              _formatDate(_inspectionDate),
+            ),
             _buildTextField('Inspector Name', _beekeeperNameController),
-            _buildTextField(
-                'Weather Conditions', _weatherConditionsController),
+            _buildTextField('Weather Conditions', _weatherConditionsController),
             _buildReadOnlyField(
-                'Apiary Location', _apiaryLocationController.text),
+              'Apiary Location',
+              _apiaryLocationController.text,
+            ),
             _buildReadOnlyField('Hive ID', _hiveIdController.text),
           ],
         );
@@ -293,21 +307,35 @@ class _RecordsFormState extends State<RecordsForm> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionHeader('2. Hive Information'),
-            _buildTextField('Type of Hive', _hiveTypeController,
-                hint: 'e.g., Langstroth, Top Bar'),
-            _buildDropdownField('Hive Condition', _hiveConditionController,
-                ['Good', 'Fair', 'Poor']),
-            _buildYesNoField(
-                'Presence of Queen?', _queenPresenceController),
+            _buildTextField(
+              'Type of Hive',
+              _hiveTypeController,
+              hint: 'e.g., Langstroth, Top Bar',
+            ),
+            _buildDropdownField('Hive Condition', _hiveConditionController, [
+              'Good',
+              'Fair',
+              'Poor',
+            ]),
+            _buildYesNoField('Presence of Queen?', _queenPresenceController),
             _buildYesNoField('Queen Cells Present?', _queenCellsController),
-            _buildDropdownField('Brood Pattern', _broodPatternController,
-                ['Good', 'Irregular', 'Spotty', 'None']),
-            _buildYesNoField(
-                'Eggs & Larvae Present?', _eggsLarvaeController),
-            _buildDropdownField('Honey Stores', _honeyStoresController,
-                ['Low', 'Medium', 'Full']),
-            _buildDropdownField('Pollen Stores', _pollenStoresController,
-                ['Low', 'Medium', 'Full']),
+            _buildDropdownField('Brood Pattern', _broodPatternController, [
+              'Good',
+              'Irregular',
+              'Spotty',
+              'None',
+            ]),
+            _buildYesNoField('Eggs & Larvae Present?', _eggsLarvaeController),
+            _buildDropdownField('Honey Stores', _honeyStoresController, [
+              'Low',
+              'Medium',
+              'Full',
+            ]),
+            _buildDropdownField('Pollen Stores', _pollenStoresController, [
+              'Low',
+              'Medium',
+              'Full',
+            ]),
           ],
         );
       case 2:
@@ -315,17 +343,30 @@ class _RecordsFormState extends State<RecordsForm> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionHeader('3. Colony Health'),
-            _buildDropdownField('Bee Population', _beePopulationController,
-                ['Strong', 'Moderate', 'Weak']),
-            _buildDropdownField('Aggressiveness', _aggressivenessController,
-                ['Calm', 'Moderate', 'Aggressive']),
+            _buildDropdownField('Bee Population', _beePopulationController, [
+              'Strong',
+              'Moderate',
+              'Weak',
+            ]),
+            _buildDropdownField('Aggressiveness', _aggressivenessController, [
+              'Calm',
+              'Moderate',
+              'Aggressive',
+            ]),
             _buildYesNoField(
-                'Diseases or Pests Observed?', _diseasesObservedController),
+              'Diseases or Pests Observed?',
+              _diseasesObservedController,
+            ),
             if (_diseasesObservedController.text == 'Yes')
               _buildTextField(
-                  'Specify Diseases/Pests', _diseasesSpecifyController),
-            _buildTextField('Other Pests Present', _pestsPresentController,
-                hint: 'e.g., Varroa mites, Small Hive Beetles'),
+                'Specify Diseases/Pests',
+                _diseasesSpecifyController,
+              ),
+            _buildTextField(
+              'Other Pests Present',
+              _pestsPresentController,
+              hint: 'e.g., Varroa mites, Small Hive Beetles',
+            ),
           ],
         );
       case 3:
@@ -336,8 +377,7 @@ class _RecordsFormState extends State<RecordsForm> {
             _buildNumberField('Frames Checked', _framesCheckedController),
             _buildYesNoField('Frames Replaced?', _framesReplacedController),
             _buildYesNoField('Hive Cleaned?', _hiveCleanedController),
-            _buildYesNoField(
-                'Supers Added/Removed?', _supersChangedController),
+            _buildYesNoField('Supers Added/Removed?', _supersChangedController),
             _buildTextField('Other Actions Taken', _otherActionsController),
           ],
         );
@@ -392,24 +432,27 @@ class _RecordsFormState extends State<RecordsForm> {
               elevation: 4,
             ),
             onPressed: _isLoading ? null : _nextStep,
-            child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+            child:
+                _isLoading
+                    ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : Text(
+                      _currentStep < _sectionTitles.length - 1
+                          ? 'NEXT'
+                          : 'SUBMIT INSPECTION',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontFamily: "Sans",
+                      ),
                     ),
-                  )
-                : Text(
-                    _currentStep < _sectionTitles.length - 1 ? 'NEXT' : 'SUBMIT INSPECTION',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontFamily: "Sans",
-                    ),
-                  ),
           ),
         ),
       ],
@@ -437,8 +480,11 @@ class _RecordsFormState extends State<RecordsForm> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller,
-      {String? hint}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    String? hint,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: TextFormField(
@@ -457,10 +503,7 @@ class _RecordsFormState extends State<RecordsForm> {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.brown[300]!),
           ),
-          labelStyle: TextStyle(
-            color: Colors.brown[600],
-            fontFamily: "Sans",
-          ),
+          labelStyle: TextStyle(color: Colors.brown[600], fontFamily: "Sans"),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
@@ -491,21 +534,24 @@ class _RecordsFormState extends State<RecordsForm> {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.brown[300]!),
           ),
-          labelStyle: TextStyle(
-            color: Colors.brown[600],
-            fontFamily: "Sans",
-          ),
+          labelStyle: TextStyle(color: Colors.brown[600], fontFamily: "Sans"),
         ),
       ),
     );
   }
 
   Widget _buildDropdownField(
-      String label, TextEditingController controller, List<String> items) {
+    String label,
+    TextEditingController controller,
+    List<String> items,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: DropdownButtonFormField<String>(
-        value: controller.text.isNotEmpty ? controller.text : null, // Set initial value if present
+        value:
+            controller.text.isNotEmpty
+                ? controller.text
+                : null, // Set initial value if present
         style: TextStyle(
           fontFamily: "Sans",
           color: Colors.brown[800], // Set dropdown item text color
@@ -522,18 +568,16 @@ class _RecordsFormState extends State<RecordsForm> {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.brown[300]!),
           ),
-          labelStyle: TextStyle(
-            color: Colors.brown[600],
-            fontFamily: "Sans",
-          ),
+          labelStyle: TextStyle(color: Colors.brown[600], fontFamily: "Sans"),
         ),
         dropdownColor: Colors.white,
-        items: items.map((String value) {
-          return DropdownMenuItem<String>(
-            value: value,
-            child: Text(value, style: const TextStyle(fontFamily: "Sans")),
-          );
-        }).toList(),
+        items:
+            items.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value, style: const TextStyle(fontFamily: "Sans")),
+              );
+            }).toList(),
         onChanged: (value) {
           setState(() {
             controller.text = value ?? '';
@@ -572,10 +616,7 @@ class _RecordsFormState extends State<RecordsForm> {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.brown[300]!),
           ),
-          labelStyle: TextStyle(
-            color: Colors.brown[600],
-            fontFamily: "Sans",
-          ),
+          labelStyle: TextStyle(color: Colors.brown[600], fontFamily: "Sans"),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
@@ -610,10 +651,7 @@ class _RecordsFormState extends State<RecordsForm> {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.brown[300]!),
           ),
-          labelStyle: TextStyle(
-            color: Colors.brown[600],
-            fontFamily: "Sans",
-          ),
+          labelStyle: TextStyle(color: Colors.brown[600], fontFamily: "Sans"),
         ),
       ),
     );
@@ -632,51 +670,52 @@ class _RecordsFormState extends State<RecordsForm> {
   void _showSubmissionDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text(
-          'Submit Inspection?',
-          style: TextStyle(fontFamily: "Sans", fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          'Are you sure you want to submit this hive inspection record?',
-          style: TextStyle(fontFamily: "Sans"),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'CANCEL',
-              style: TextStyle(
-                color: Colors.brown,
-                fontFamily: "Sans",
-                fontWeight: FontWeight.bold,
-              ),
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
+            title: const Text(
+              'Submit Inspection?',
+              style: TextStyle(fontFamily: "Sans", fontWeight: FontWeight.bold),
+            ),
+            content: const Text(
+              'Are you sure you want to submit this hive inspection record?',
+              style: TextStyle(fontFamily: "Sans"),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'CANCEL',
+                  style: TextStyle(
+                    color: Colors.brown,
+                    fontFamily: "Sans",
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange[700],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  _submitRecord();
+                },
+                child: const Text(
+                  'SUBMIT',
+                  style: TextStyle(
+                    fontFamily: "Sans",
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange[700],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              Navigator.pop(context); // Close the dialog
-              _submitRecord();
-            },
-            child: const Text(
-              'SUBMIT',
-              style: TextStyle(
-                fontFamily: "Sans",
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -735,10 +774,22 @@ class _RecordsFormState extends State<RecordsForm> {
 
       print('Sending inspection data: $inspectionData');
 
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication error. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       final response = await http.post(
         Uri.parse('http://196.43.168.57/api/v1/hives/inspections'),
         headers: {
-          'Authorization': 'Bearer ${widget.token}',
+          'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
@@ -767,7 +818,9 @@ class _RecordsFormState extends State<RecordsForm> {
         String errorMsg;
         try {
           final errorBody = jsonDecode(response.body);
-          errorMsg = errorBody['message'] ?? 'Failed with status ${response.statusCode}';
+          errorMsg =
+              errorBody['message'] ??
+              'Failed with status ${response.statusCode}';
         } catch (_) {
           errorMsg = 'Failed with status ${response.statusCode}';
         }

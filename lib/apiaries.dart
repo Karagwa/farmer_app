@@ -9,6 +9,7 @@ import 'package:HPGM/apiary_overview_cards/build_overview_card.dart';
 import 'package:HPGM/dashboard_screen.dart';
 import 'farm_model.dart';
 import 'farm_card.dart';
+import 'services/token_storage.dart';
 
 class Apiaries extends StatefulWidget {
   final String token;
@@ -37,17 +38,28 @@ class _ApiariesState extends State<Apiaries> {
     });
 
     try {
-      String sendToken = "Bearer ${widget.token}";
+      // Get token from storage instead of widget parameter
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        // User not logged in, handle appropriately
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      String sendToken = "Bearer $token";
       print('Using token: $sendToken');
 
       var headers = {
-        'Accept': 'application/json', 
+        'Accept': 'application/json',
         'Authorization': sendToken,
         'Content-Type': 'application/json',
       };
-      
+
       print('Request headers: $headers');
-      print('Request URL: https://3de85730509a.ngrok-free.app/api/v1/farms');
+      print('Request URL: http://196.43.168.57/api/v1/farms');
 
       var response = await http.get(
         Uri.parse('http://196.43.168.57/api/v1/farms'),
@@ -63,10 +75,11 @@ class _ApiariesState extends State<Apiaries> {
         print('Parsed data: $data');
 
         setState(() {
-          farms = data.map((farm) {
-            print('Processing farm: $farm');
-            return Farm.fromJson(farm);
-          }).toList();
+          farms =
+              data.map((farm) {
+                print('Processing farm: $farm');
+                return Farm.fromJson(farm);
+              }).toList();
         });
 
         print('Farms loaded: ${farms.length}');
@@ -86,24 +99,29 @@ class _ApiariesState extends State<Apiaries> {
       }
     } catch (error) {
       print('Error loading farms: $error');
-      
+
       // Provide user-friendly error messages based on error type
       String userMessage;
-      if (error.toString().contains('SocketException') || 
+      if (error.toString().contains('SocketException') ||
           error.toString().contains('Network is unreachable') ||
           error.toString().contains('Connection failed')) {
-        userMessage = '🔌 No internet connection. Please check your network and try again.';
-      } else if (error.toString().contains('TimeoutException') || 
-                 error.toString().contains('timeout')) {
-        userMessage = '⏱️ Connection timeout. The server is taking too long to respond.';
+        userMessage =
+            '🔌 No internet connection. Please check your network and try again.';
+      } else if (error.toString().contains('TimeoutException') ||
+          error.toString().contains('timeout')) {
+        userMessage =
+            '⏱️ Connection timeout. The server is taking too long to respond.';
       } else if (error.toString().contains('404')) {
         userMessage = '📍 Server endpoint not found. Please contact support.';
-      } else if (error.toString().contains('500') || error.toString().contains('502') || error.toString().contains('503')) {
-        userMessage = '🔧 Server is temporarily unavailable. Please try again later.';
+      } else if (error.toString().contains('500') ||
+          error.toString().contains('502') ||
+          error.toString().contains('503')) {
+        userMessage =
+            '🔧 Server is temporarily unavailable. Please try again later.';
       } else {
         userMessage = '❌ Unable to load farms. Please try again later.';
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -125,60 +143,74 @@ class _ApiariesState extends State<Apiaries> {
     }
   }
 
-Future<void> getApiaryStats(int farmId) async {
-  try {
-    String sendToken = "Bearer ${widget.token}";
+  Future<void> getApiaryStats(int farmId) async {
+    try {
+      // Get token from storage instead of widget parameter
+      final token = await TokenStorage.getToken();
 
-    var headers = {'Accept': 'application/json', 'Authorization': sendToken};
-    var response = await http.get(
-        Uri.parse('http://196.43.168.57/api/v1/farms/$farmId/hives'),
-      headers: headers,
-    );
-
-    if (response.statusCode == 200) {
-      List<dynamic> hives = jsonDecode(response.body);
-
-      int totalHives = hives.length;
-      int colonizedHives = 0;
-      int needsAttentionHives = 0;
-
-      for (var hive in hives) {
-        // Safe parsing with fallback values
-        dynamic colonizedRaw = hive['state']?['colonization_status']?['Colonized'];
-        dynamic connectedRaw = hive['state']?['connection_status']?['Connected'];
-        dynamic honeyRaw = hive['state']?['weight']?['honey_percentage'];
-        dynamic tempRaw = hive['state']?['temperature']?['interior_temperature'];
-
-        bool isColonized = colonizedRaw == true || colonizedRaw == 1;
-        bool isConnected = connectedRaw == true || connectedRaw == 1;
-
-        double? honeyLevel = _parseDouble(honeyRaw);
-        double? temperature = _parseDouble(tempRaw);
-
-        if (isColonized) colonizedHives++;
-
-        if (!isConnected ||
-            (temperature != null && temperature > 32) ||
-            (honeyLevel != null && honeyLevel > 80)) {
-          needsAttentionHives++;
-        }
+      if (token == null || token.isEmpty) {
+        // User not logged in, handle appropriately
+        return;
       }
 
-      setState(() {
-        apiaryStats[farmId] = ApiaryStats(
-          totalHives: totalHives,
-          activeHives: colonizedHives,
-          needsAttentionHives: needsAttentionHives,
+      String sendToken = "Bearer $token";
+
+      var headers = {'Accept': 'application/json', 'Authorization': sendToken};
+      var response = await http.get(
+        Uri.parse('http://196.43.168.57/api/v1/farms/$farmId/hives'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> hives = jsonDecode(response.body);
+
+        int totalHives = hives.length;
+        int colonizedHives = 0;
+        int needsAttentionHives = 0;
+
+        for (var hive in hives) {
+          // Safe parsing with fallback values
+          dynamic colonizedRaw =
+              hive['state']?['colonization_status']?['Colonized'];
+          dynamic connectedRaw =
+              hive['state']?['connection_status']?['Connected'];
+          dynamic honeyRaw = hive['state']?['weight']?['honey_percentage'];
+          dynamic tempRaw =
+              hive['state']?['temperature']?['interior_temperature'];
+
+          bool isColonized = colonizedRaw == true || colonizedRaw == 1;
+          bool isConnected = connectedRaw == true || connectedRaw == 1;
+
+          double? honeyLevel = _parseDouble(honeyRaw);
+          double? temperature = _parseDouble(tempRaw);
+
+          if (isColonized) colonizedHives++;
+
+          if (!isConnected ||
+              (temperature != null && temperature > 32) ||
+              (honeyLevel != null && honeyLevel > 80)) {
+            needsAttentionHives++;
+          }
+        }
+
+        setState(() {
+          apiaryStats[farmId] = ApiaryStats(
+            totalHives: totalHives,
+            activeHives: colonizedHives,
+            needsAttentionHives: needsAttentionHives,
+          );
+        });
+      } else {
+        print(
+          'Failed to fetch hives for stats. Status: ${response.statusCode}',
         );
-      });
-    } else {
-      print('Failed to fetch hives for stats. Status: ${response.statusCode}');
-      print('Body: ${response.body}');
+        print('Body: ${response.body}');
+      }
+    } catch (error) {
+      print('Error loading stats for farm $farmId: $error');
     }
-  } catch (error) {
-    print('Error loading stats for farm $farmId: $error');
   }
-}
+
   double? _parseDouble(dynamic value) {
     if (value is double) return value;
     if (value is int) return value.toDouble();
@@ -191,7 +223,13 @@ Future<void> getApiaryStats(int farmId) async {
     Map<String, dynamic> updatedData,
   ) async {
     try {
-      String sendToken = "Bearer ${widget.token}";
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        return false;
+      }
+
+      String sendToken = "Bearer $token";
 
       var headers = {
         'Accept': 'application/json',
@@ -216,14 +254,15 @@ Future<void> getApiaryStats(int farmId) async {
     return;
   }
 
-  void _navigateToDashboard() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DashboardScreen(token: widget.token),
-      ),
-      (route) => false,
-    );
+  void _navigateToDashboard() async {
+    final token = await TokenStorage.getToken();
+    if (token != null && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => DashboardScreen(token: token)),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -384,18 +423,31 @@ Future<void> getApiaryStats(int farmId) async {
                     if (!isLoading)
                       isTabularView
                           ? Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: _buildApiariesTable(),
-                            )
+                            padding: const EdgeInsets.all(16.0),
+                            child: _buildApiariesTable(),
+                          )
                           : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: farms.length,
-                              itemBuilder: (context, index) {
-                                final farm = farms[index];
-                                return buildFarmCard(farm, context, widget.token);
-                              },
-                            ),
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: farms.length,
+                            itemBuilder: (context, index) {
+                              final farm = farms[index];
+                              return FutureBuilder<String?>(
+                                future: TokenStorage.getToken(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasData &&
+                                      snapshot.data != null) {
+                                    return buildFarmCard(
+                                      farm,
+                                      context,
+                                      snapshot.data!,
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              );
+                            },
+                          ),
                   ],
                 ),
               ),
@@ -403,30 +455,30 @@ Future<void> getApiaryStats(int farmId) async {
           ],
         ),
       ),
-floatingActionButton: FloatingActionButton(
-  onPressed: () async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddApiaryForm(
-          token: widget.token, 
-          onApiaryAdded: () async {
-            // Refresh the apiaries list
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => AddApiaryForm(
+                    onApiaryAdded: () async {
+                      // Refresh the apiaries list
+                      await getApiaries();
+                    },
+                  ),
+            ),
+          );
+
+          // Also refresh when returning from the form
+          if (result == true) {
             await getApiaries();
           }
-        ),
+        },
+        backgroundColor: Colors.amber[800],
+        child: const Icon(Icons.add),
+        tooltip: 'Add New Apiary',
       ),
-    );
-
-    // Also refresh when returning from the form
-    if (result == true) {
-      await getApiaries();
-    }
-  },
-  backgroundColor: Colors.amber[800],
-  child: const Icon(Icons.add),
-  tooltip: 'Add New Apiary',
-),
     );
   }
 
@@ -475,14 +527,14 @@ floatingActionButton: FloatingActionButton(
             headingRowColor: MaterialStateProperty.all(Colors.orange[700]),
             dataRowHeight: 80, // Main row height
             headingRowHeight: 60, // Header height
-            dataRowColor: MaterialStateProperty.resolveWith<Color>(
-              (Set<MaterialState> states) {
-                if (states.contains(MaterialState.hovered)) {
-                  return Colors.orange[50]!;
-                }
-                return Colors.white;
-              },
-            ),
+            dataRowColor: MaterialStateProperty.resolveWith<Color>((
+              Set<MaterialState> states,
+            ) {
+              if (states.contains(MaterialState.hovered)) {
+                return Colors.orange[50]!;
+              }
+              return Colors.white;
+            }),
             headingTextStyle: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -496,143 +548,173 @@ floatingActionButton: FloatingActionButton(
               DataColumn(label: Text('Farm Name')),
               DataColumn(label: Text('Actions')),
             ],
-            rows: farms.map((farm) {
-              return DataRow(
-                cells: [
-                  DataCell(
-                    
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          farm.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          '${farm.district} - ${farm.address}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  DataCell(
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // View/Manage button
-                        SizedBox(
-                          width: 70,
-                          height: 30,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange[700],
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+            rows:
+                farms.map((farm) {
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              farm.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
                               ),
                             ),
-                            icon: const Icon(Icons.visibility,
-                                size: 14, color: Colors.white),
-                            label: const Text(
-                              'View',
-                              style: TextStyle(fontSize: 10, color: Colors.white),
-                            ),
-                            onPressed: () {
-                              // Navigate to farm details/hives
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => Hives(
-                                    farmId: farm.id,
-                                    token: widget.token,
-                                    apiaryLocation: farm.address,
-                                    farmName: farm.name,
-                                    onHiveDeleted: () async {
-                                        await getApiaryStats(farm.id); // refresh stats!
-                                  },
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 4, width: 4,),
-                        // Settings button
-                        SizedBox(
-                          width: 70,
-                          height: 30,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[700],
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                            Text(
+                              '${farm.district} - ${farm.address}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
                               ),
                             ),
-                            icon: const Icon(Icons.settings,
-                                size: 14, color: Colors.white),
-                            label: const Text(
-                              'Edit',
-                              style: TextStyle(fontSize: 10, color: Colors.white),
-                            ),
-                            onPressed: () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => EditApiaryForm(
-                                    token: widget.token,
-                                    farmId: farm.id,
-                                    initialData: farm.toJson(),
+                          ],
+                        ),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // View/Manage button
+                            SizedBox(
+                              width: 70,
+                              height: 30,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange[700],
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
                                 ),
-                              );
+                                icon: const Icon(
+                                  Icons.visibility,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  'View',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  // Navigate to farm details/hives
+                                  final token = await TokenStorage.getToken();
+                                  if (token != null && mounted) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) => Hives(
+                                              farmId: farm.id,
+                                              token: token,
+                                              apiaryLocation: farm.address,
+                                              farmName: farm.name,
+                                              onHiveDeleted: () async {
+                                                await getApiaryStats(
+                                                  farm.id,
+                                                ); // refresh stats!
+                                              },
+                                            ),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 4, width: 4),
+                            // Settings button
+                            SizedBox(
+                              width: 70,
+                              height: 30,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue[700],
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.settings,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  'Edit',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => EditApiaryForm(
+                                            farmId: farm.id,
+                                            initialData: farm.toJson(),
+                                          ),
+                                    ),
+                                  );
 
-                              if (result == true) {
-                                await getApiaries();
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 4, width: 4,),
-                        // Delete button
-                        SizedBox(
-                          width: 70,
-                          height: 30,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red[700],
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                                  if (result == true) {
+                                    await getApiaries();
+                                  }
+                                },
                               ),
                             ),
-                            icon: const Icon(Icons.delete,
-                                size: 14, color: Colors.white),
-                            label: const Text(
-                              'Delete',
-                              style: TextStyle(fontSize: 10, color: Colors.white),
+                            const SizedBox(height: 4, width: 4),
+                            // Delete button
+                            SizedBox(
+                              width: 70,
+                              height: 30,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red[700],
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  _showDeleteConfirmation(farm);
+                                },
+                              ),
                             ),
-                            onPressed: () {
-                              _showDeleteConfirmation(farm);
-                            },
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
+                      ),
+                    ],
+                  );
+                }).toList(),
           ),
         ),
       ),
@@ -663,7 +745,10 @@ floatingActionButton: FloatingActionButton(
                 Navigator.of(context).pop();
                 _deleteFarm(farm.id);
               },
-              child: const Text('Delete', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -673,11 +758,21 @@ floatingActionButton: FloatingActionButton(
 
   Future<void> _deleteFarm(int farmId) async {
     try {
-      String sendToken = "Bearer ${widget.token}";
+      final token = await TokenStorage.getToken();
 
-      var headers = {
-        'Authorization': sendToken,
-      };
+      if (token == null || token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication error. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      String sendToken = "Bearer $token";
+
+      var headers = {'Authorization': sendToken};
 
       var url = 'https://3de85730509a.ngrok-free.app/api/v1/farms/$farmId';
       var response = await http.delete(Uri.parse(url), headers: headers);

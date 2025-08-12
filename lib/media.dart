@@ -5,13 +5,12 @@ import 'package:line_icons/line_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart'; // for date formatting
 import 'package:HPGM/photo_view_page.dart';
+import 'services/token_storage.dart';
 
 class Media extends StatefulWidget {
   final int hiveId;
-  final String token;
 
-  const Media({Key? key, required this.hiveId, required this.token})
-      : super(key: key);
+  const Media({Key? key, required this.hiveId}) : super(key: key);
 
   @override
   State<Media> createState() => _MediaState();
@@ -71,7 +70,11 @@ class _MediaState extends State<Media> {
   }
 
   Future<void> fetchPhotos(
-      int hiveId, DateTime startDate, DateTime endDate, int page) async {
+    int hiveId,
+    DateTime startDate,
+    DateTime endDate,
+    int page,
+  ) async {
     if (_isFetching || !_hasMore) return;
 
     setState(() {
@@ -79,18 +82,31 @@ class _MediaState extends State<Media> {
     });
 
     try {
-      String sendToken = "Bearer ${widget.token}";
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication error. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          _isFetching = false;
+        });
+        return;
+      }
+
+      String sendToken = "Bearer $token";
       String formattedStartDate =
           "${DateFormat('yyyy-MM-dd').format(startDate)}";
       String formattedEndDate = "${DateFormat('yyyy-MM-dd').format(endDate)}";
 
-      var headers = {
-        'Accept': 'application/json',
-        'Authorization': sendToken,
-      };
+      var headers = {'Accept': 'application/json', 'Authorization': sendToken};
       var response = await http.get(
         Uri.parse(
-            'http://196.43.168.57/api/v1/hives/$hiveId/images/$formattedStartDate/$formattedEndDate?page=$page'),
+          'http://196.43.168.57/api/v1/hives/$hiveId/images/$formattedStartDate/$formattedEndDate?page=$page',
+        ),
         headers: headers,
       );
 
@@ -100,13 +116,17 @@ class _MediaState extends State<Media> {
         bool hasMore = jsonData['pagination']['next_page_url'] != null;
 
         setState(() {
-          photos.addAll(data
-              .map<Map<String, String>>((item) => {
+          photos.addAll(
+            data
+                .map<Map<String, String>>(
+                  (item) => {
                     'date': item['date'],
                     'path':
-                        'http://196.43.168.57/${item['path'].replaceAll('public/', '')}' // Remove 'public/' from path
-                  })
-              .toList());
+                        'http://196.43.168.57/${item['path'].replaceAll('public/', '')}', // Remove 'public/' from path
+                  },
+                )
+                .toList(),
+          );
           _isFetching = false;
           _hasMore = hasMore;
           _currentPage++;
@@ -170,13 +190,13 @@ class _MediaState extends State<Media> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(
-                                width: 55,
-                              ),
+                              const SizedBox(width: 55),
                               Text(
                                 'Hive ${widget.hiveId} images',
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 20),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                ),
                               ),
                               const Spacer(),
                               const Icon(
@@ -246,24 +266,30 @@ class _MediaState extends State<Media> {
                                 itemCount: photos.length + (_hasMore ? 1 : 0),
                                 gridDelegate:
                                     const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  crossAxisSpacing: 1.0,
-                                  mainAxisSpacing: 1.0,
-                                ),
+                                      crossAxisCount: 3,
+                                      crossAxisSpacing: 1.0,
+                                      mainAxisSpacing: 1.0,
+                                    ),
                                 itemBuilder: (context, index) {
                                   if (index < photos.length) {
                                     return InkWell(
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => PhotoViewPage(
-                                            photos: photos
-                                                .map((photo) => photo['path']!)
-                                                .toList(),
-                                            index: index,
+                                      onTap:
+                                          () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (_) => PhotoViewPage(
+                                                    photos:
+                                                        photos
+                                                            .map(
+                                                              (photo) =>
+                                                                  photo['path']!,
+                                                            )
+                                                            .toList(),
+                                                    index: index,
+                                                  ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
                                       child: Column(
                                         children: [
                                           Hero(
@@ -271,20 +297,27 @@ class _MediaState extends State<Media> {
                                             child: CachedNetworkImage(
                                               imageUrl: photos[index]['path']!,
                                               fit: BoxFit.cover,
-                                              placeholder: (context, url) =>
-                                                  Container(color: Colors.grey),
+                                              placeholder:
+                                                  (context, url) => Container(
+                                                    color: Colors.grey,
+                                                  ),
                                               errorWidget:
                                                   (context, url, error) =>
                                                       Container(
-                                                color: Colors.red.shade400,
-                                              ),
+                                                        color:
+                                                            Colors.red.shade400,
+                                                      ),
                                             ),
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            DateFormat('yyyy-MM-dd hh:mm:ss')
-                                                .format(DateTime.parse(
-                                                    photos[index]['date']!)),
+                                            DateFormat(
+                                              'yyyy-MM-dd hh:mm:ss',
+                                            ).format(
+                                              DateTime.parse(
+                                                photos[index]['date']!,
+                                              ),
+                                            ),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 12,

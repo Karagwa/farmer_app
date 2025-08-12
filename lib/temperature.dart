@@ -4,13 +4,12 @@ import 'package:flutter_echarts/flutter_echarts.dart';
 import 'package:http/http.dart' as http;
 import 'package:line_icons/line_icons.dart';
 import 'package:intl/intl.dart';
+import 'services/token_storage.dart';
 
 class Temperature extends StatefulWidget {
   final int hiveId;
-  final String token;
 
-  const Temperature({Key? key, required this.hiveId, required this.token})
-      : super(key: key);
+  const Temperature({Key? key, required this.hiveId}) : super(key: key);
 
   @override
   State<Temperature> createState() => _TemperatureState();
@@ -75,6 +74,21 @@ class _TemperatureState extends State<Temperature> {
         _isLoading = true;
       });
 
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication error. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
       final response = await http.get(
         Uri.parse(
           'http://196.43.168.57/api/v1/hives/${widget.hiveId}/temperature/'
@@ -83,7 +97,7 @@ class _TemperatureState extends State<Temperature> {
         ),
         headers: {
           'Accept': 'application/json',
-          'Authorization': 'Bearer ${widget.token}',
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -96,12 +110,14 @@ class _TemperatureState extends State<Temperature> {
         for (final dataPoint in jsonData['data']) {
           newDates.add(DateTime.parse(dataPoint['date']));
 
-          final interiorTemp = dataPoint['interiorTemperature'] != null
-              ? double.tryParse(dataPoint['interiorTemperature'].toString())
-              : null;
-          final exteriorTemp = dataPoint['exteriorTemperature'] != null
-              ? double.tryParse(dataPoint['exteriorTemperature'].toString())
-              : null;
+          final interiorTemp =
+              dataPoint['interiorTemperature'] != null
+                  ? double.tryParse(dataPoint['interiorTemperature'].toString())
+                  : null;
+          final exteriorTemp =
+              dataPoint['exteriorTemperature'] != null
+                  ? double.tryParse(dataPoint['exteriorTemperature'].toString())
+                  : null;
 
           newInteriorTemps.add(interiorTemp == 0 ? null : interiorTemp);
           newExteriorTemps.add(exteriorTemp == 0 ? null : exteriorTemp);
@@ -361,9 +377,10 @@ class _TemperatureState extends State<Temperature> {
                             child: Text(
                               'No temperature data available',
                               style: TextStyle(
-                                color: isDarkMode
-                                    ? Colors.grey[400]
-                                    : Colors.grey[600],
+                                color:
+                                    isDarkMode
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
                               ),
                             ),
                           ),
@@ -677,11 +694,12 @@ class _TemperatureState extends State<Temperature> {
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: temperature != null
-                ? (temperature > 36 || temperature < 15
-                    ? Colors.red
-                    : (temperature >= 32 ? Colors.green : color))
-                : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+            color:
+                temperature != null
+                    ? (temperature > 36 || temperature < 15
+                        ? Colors.red
+                        : (temperature >= 32 ? Colors.green : color))
+                    : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
           ),
         ),
       ],
@@ -752,9 +770,10 @@ class _TemperatureState extends State<Temperature> {
                 value: current,
                 unit: '°C',
                 icon: Icons.thermostat,
-                color: current > 36 || current < 15
-                    ? Colors.red
-                    : (current >= 32 ? Colors.green : color),
+                color:
+                    current > 36 || current < 15
+                        ? Colors.red
+                        : (current >= 32 ? Colors.green : color),
               ),
             _buildStatItem(
               context,

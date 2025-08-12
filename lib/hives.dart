@@ -1,6 +1,7 @@
 import 'package:HPGM/add_hive_form.dart';
 import 'package:HPGM/edit_hive_form.dart';
 import 'package:HPGM/records_form.dart';
+import 'package:HPGM/services/token_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:HPGM/hivedetails.dart';
 import 'package:http/http.dart' as http;
@@ -39,8 +40,6 @@ class Hive {
   final double? temperature;
   final bool isConnected;
   final bool isColonized;
- 
-
 
   Hive({
     required this.id,
@@ -54,25 +53,24 @@ class Hive {
     required this.honeyLevel,
     required this.isConnected,
     required this.isColonized,
-    
   });
 
-factory Hive.fromJson(Map<String, dynamic> json) {
-  return Hive(
-    id: json['id'],
-    longitude: json['longitude'],
-    latitude: json['latitude'],
-    farmId: json['farm_id'],
-    createdAt: json['created_at'],
-    updatedAt: json['updated_at'],
-    weight: json['state']['weight']['record']?.toDouble(),
-    temperature: json['state']['temperature']['interior_temperature']?.toDouble(),
-    honeyLevel: json['state']['weight']['honey_percentage']?.toDouble(),
-    isConnected: json['state']['connection_status']['Connected'] == 1,
-    isColonized: json['state']['colonization_status']['Colonized'] == 1,
-  );
-}
-
+  factory Hive.fromJson(Map<String, dynamic> json) {
+    return Hive(
+      id: json['id'],
+      longitude: json['longitude'],
+      latitude: json['latitude'],
+      farmId: json['farm_id'],
+      createdAt: json['created_at'],
+      updatedAt: json['updated_at'],
+      weight: json['state']['weight']['record']?.toDouble(),
+      temperature:
+          json['state']['temperature']['interior_temperature']?.toDouble(),
+      honeyLevel: json['state']['weight']['honey_percentage']?.toDouble(),
+      isConnected: json['state']['connection_status']['Connected'] == 1,
+      isColonized: json['state']['colonization_status']['Colonized'] == 1,
+    );
+  }
 }
 
 class _HivesState extends State<Hives> {
@@ -87,11 +85,21 @@ class _HivesState extends State<Hives> {
 
   Future<void> getHives(int farmId) async {
     try {
-      String sendToken = "Bearer ${widget.token}";
+      final token = await TokenStorage.getToken();
 
-      var headers = {
-        'Authorization': sendToken,
-      };
+      if (token == null || token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication error. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      String sendToken = "Bearer $token";
+
+      var headers = {'Authorization': sendToken};
 
       var url = 'http://196.43.168.57/api/v1/farms/$farmId/hives';
       var response = await http.get(Uri.parse(url), headers: headers);
@@ -149,15 +157,15 @@ class _HivesState extends State<Hives> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => AddHiveForm(
-                          farmId: widget.farmId,
-                          token: widget.token,
-                          apiaryLocation: widget.apiaryLocation,
-                          farmName: widget.farmName,
-                          onHiveAdded: () async {
-                            await getHives(widget.farmId);
-                          },
-                        ),
+                        builder:
+                            (context) => AddHiveForm(
+                              farmId: widget.farmId,
+                              apiaryLocation: widget.apiaryLocation,
+                              farmName: widget.farmName,
+                              onHiveAdded: () async {
+                                await getHives(widget.farmId);
+                              },
+                            ),
                       ),
                     );
                   },
@@ -179,23 +187,22 @@ class _HivesState extends State<Hives> {
             // Conditional rendering based on view type
             isTableView
                 ? SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: _buildHivesTable(),
-                    ),
-                  )
-                : SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 8.0, horizontal: 16),
-                          child: buildHiveCard(hives[index]),
-                        );
-                      },
-                      childCount: hives.length,
-                    ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: _buildHivesTable(),
                   ),
+                )
+                : SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8.0,
+                        horizontal: 16,
+                      ),
+                      child: buildHiveCard(hives[index]),
+                    );
+                  }, childCount: hives.length),
+                ),
           ],
         ),
       ),
@@ -222,14 +229,14 @@ class _HivesState extends State<Hives> {
           scrollDirection: Axis.horizontal,
           child: DataTable(
             headingRowColor: MaterialStateProperty.all(Colors.orange[700]),
-            dataRowColor: MaterialStateProperty.resolveWith<Color>(
-              (Set<MaterialState> states) {
-                if (states.contains(MaterialState.hovered)) {
-                  return Colors.orange[50]!;
-                }
-                return Colors.white;
-              },
-            ),
+            dataRowColor: MaterialStateProperty.resolveWith<Color>((
+              Set<MaterialState> states,
+            ) {
+              if (states.contains(MaterialState.hovered)) {
+                return Colors.orange[50]!;
+              }
+              return Colors.white;
+            }),
             headingTextStyle: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -243,105 +250,140 @@ class _HivesState extends State<Hives> {
               DataColumn(label: Text('Hive ID')),
               DataColumn(label: Text('Actions')),
             ],
-            rows: hives.map((hive) {
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Text(
-                      'Hive ${hive.id}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
+            rows:
+                hives.map((hive) {
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Text(
+                          'Hive ${hive.id}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  DataCell(
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // View button
-                        SizedBox(
-                          width: 70,
-                          height: 30,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange[700],
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                            icon: const Icon(Icons.visibility, size: 14, color: Colors.white),
-                            label: const Text(
-                              'View',
-                              style: TextStyle(fontSize: 10, color: Colors.white),
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => HiveDetails(
-                                    hiveId: hive.id,
-                                    token: widget.token,
-                                    honeyLevel: hive.honeyLevel,
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // View button
+                            SizedBox(
+                              width: 70,
+                              height: 30,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange[700],
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
                                 ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 4, width: 4,),
-                        // Edit button
-                        SizedBox(
-                          width: 70,
-                          height: 30,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[700],
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                                icon: const Icon(
+                                  Icons.visibility,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  'View',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  final token = await TokenStorage.getToken();
+                                  if (token != null && mounted) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) => HiveDetails(
+                                              hiveId: hive.id,
+                                              token: token,
+                                              honeyLevel: hive.honeyLevel,
+                                            ),
+                                      ),
+                                    );
+                                  }
+                                },
                               ),
                             ),
-                            icon: const Icon(Icons.edit, size: 14, color: Colors.white),
-                            label: const Text(
-                              'Edit',
-                              style: TextStyle(fontSize: 10, color: Colors.white),
-                            ),
-                            onPressed: () {
-                              _showEditHiveDialog(hive);
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 4, width: 4,),
-                        // Delete button
-                        SizedBox(
-                          width: 70,
-                          height: 30,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red[700],
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                            const SizedBox(height: 4, width: 4),
+                            // Edit button
+                            SizedBox(
+                              width: 70,
+                              height: 30,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue[700],
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.edit,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  'Edit',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  _showEditHiveDialog(hive);
+                                },
                               ),
                             ),
-                            icon: const Icon(Icons.delete, size: 14, color: Colors.white),
-                            label: const Text(
-                              'Delete',
-                              style: TextStyle(fontSize: 10, color: Colors.white),
+                            const SizedBox(height: 4, width: 4),
+                            // Delete button
+                            SizedBox(
+                              width: 70,
+                              height: 30,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red[700],
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  _showDeleteConfirmation(hive);
+                                },
+                              ),
                             ),
-                            onPressed: () {
-                              _showDeleteConfirmation(hive);
-                            },
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
+                      ),
+                    ],
+                  );
+                }).toList(),
           ),
         ),
       ),
@@ -353,20 +395,20 @@ class _HivesState extends State<Hives> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => EditHiveForm(
-          hiveId: hive.id,
-          farmId: widget.farmId,
-          token: widget.token,
-          apiaryLocation: widget.apiaryLocation,
-          farmName: widget.farmName,
-          initialLatitude: hive.latitude,
-          initialLongitude: hive.longitude,
-          initialColonized: hive.isColonized,
-          initialConnected: hive.isConnected,
-          onHiveUpdated: () async {
-            await getHives(widget.farmId);
-          },
-        ),
+        builder:
+            (context) => EditHiveForm(
+              hiveId: hive.id,
+              farmId: widget.farmId,
+              apiaryLocation: widget.apiaryLocation,
+              farmName: widget.farmName,
+              initialLatitude: hive.latitude,
+              initialLongitude: hive.longitude,
+              initialColonized: hive.isColonized,
+              initialConnected: hive.isConnected,
+              onHiveUpdated: () async {
+                await getHives(widget.farmId);
+              },
+            ),
       ),
     );
   }
@@ -396,7 +438,10 @@ class _HivesState extends State<Hives> {
                 Navigator.of(context).pop();
                 _deleteHive(hive.id);
               },
-              child: const Text('Delete', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -407,11 +452,21 @@ class _HivesState extends State<Hives> {
   // Add method to delete hive
   Future<void> _deleteHive(int hiveId) async {
     try {
-      String sendToken = "Bearer ${widget.token}";
-      
-      var headers = {
-        'Authorization': sendToken,
-      };
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication error. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      String sendToken = "Bearer $token";
+
+      var headers = {'Authorization': sendToken};
 
       var url = 'https://3de85730509a.ngrok-free.app/api/v1/hives/$hiveId';
       var response = await http.delete(Uri.parse(url), headers: headers);
@@ -424,9 +479,8 @@ class _HivesState extends State<Hives> {
           ),
         );
         await getHives(widget.farmId); // Refresh the list
-        
-        widget.onHiveDeleted();        // 💥 notify parent to update stats
 
+        widget.onHiveDeleted(); // 💥 notify parent to update stats
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -448,9 +502,7 @@ class _HivesState extends State<Hives> {
   Widget buildHiveCard(Hive hive) {
     return Card(
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 4,
       color: Colors.brown[300],
       child: Padding(
@@ -461,11 +513,7 @@ class _HivesState extends State<Hives> {
             // Header Row
             Row(
               children: [
-                Icon(
-                  Icons.hexagon,
-                  color: Colors.orange[700],
-                  size: 28,
-                ),
+                Icon(Icons.hexagon, color: Colors.orange[700], size: 28),
                 const SizedBox(width: 11),
                 Expanded(
                   child: Text(
@@ -487,11 +535,9 @@ class _HivesState extends State<Hives> {
             ),
             const SizedBox(height: 12),
 
-            
-
             _buildInfoRow(
               icon: Icons.link,
-              label: 'Status' ,
+              label: 'Status',
               value: hive.isConnected ? 'ON' : 'OFF',
               valueColor: hive.isConnected ? Colors.green : Colors.red,
             ),
@@ -500,7 +546,7 @@ class _HivesState extends State<Hives> {
             _buildInfoRow(
               icon: Icons.star,
               label: 'Performance',
-              value: 'Good',//Enum value for performance{Good, Average, Poor}
+              value: 'Good', //Enum value for performance{Good, Average, Poor}
               valueColor: Colors.green,
             ),
 
@@ -527,17 +573,21 @@ class _HivesState extends State<Hives> {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => HiveDetails(
-                            hiveId: hive.id,
-                            token: widget.token,
-                            honeyLevel: hive.honeyLevel,
+                    onPressed: () async {
+                      final token = await TokenStorage.getToken();
+                      if (token != null && mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) => HiveDetails(
+                                  hiveId: hive.id,
+                                  token: token,
+                                  honeyLevel: hive.honeyLevel,
+                                ),
                           ),
-                        ),
-                      );
+                        );
+                      }
                     },
                     child: const Text(
                       'View Details',
@@ -559,18 +609,21 @@ class _HivesState extends State<Hives> {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RecordsForm(
-                            apiaryLocation: widget.apiaryLocation,
-                            token: widget.token,
-                            hiveId: 'Hive ${hive.id}',
-                            farmName: widget.farmName,
+                    onPressed: () async {
+                      final token = await TokenStorage.getToken();
+                      if (token != null && mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) => RecordsForm(
+                                  apiaryLocation: widget.apiaryLocation,
+                                  hiveId: 'Hive ${hive.id}',
+                                  farmName: widget.farmName,
+                                ),
                           ),
-                        ),
-                      );
+                        );
+                      }
                     },
                     child: const Text(
                       'Inspect',
@@ -599,11 +652,7 @@ class _HivesState extends State<Hives> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: Colors.orange[700],
-          size: 25,
-        ),
+        Icon(icon, color: Colors.orange[700], size: 25),
         const SizedBox(width: 12),
         Expanded(
           child: Column(

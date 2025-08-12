@@ -5,13 +5,12 @@ import 'package:line_icons/line_icons.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:intl/intl.dart';
+import 'services/token_storage.dart';
 
 class HiveVideos extends StatefulWidget {
   final int hiveId;
-  final String token;
 
-  const HiveVideos({Key? key, required this.hiveId, required this.token})
-      : super(key: key);
+  const HiveVideos({Key? key, required this.hiveId}) : super(key: key);
 
   @override
   State<HiveVideos> createState() => _HiveVideosState();
@@ -53,7 +52,11 @@ class _HiveVideosState extends State<HiveVideos> {
   }
 
   Future<void> fetchVideos(
-      int hiveId, DateTime startDate, DateTime endDate, int page) async {
+    int hiveId,
+    DateTime startDate,
+    DateTime endDate,
+    int page,
+  ) async {
     //if (_isFetching || !_hasMore) return;
 
     setState(() {
@@ -61,19 +64,33 @@ class _HiveVideosState extends State<HiveVideos> {
     });
 
     try {
-      String sendToken = "Bearer ${widget.token}";
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication error. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          _isFetching = false;
+        });
+        return;
+      }
+
+      String sendToken = "Bearer $token";
       String formattedStartDate =
           "${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}";
       String formattedEndDate =
           "${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}";
-      var headers = {
-        'Accept': 'application/json',
-        'Authorization': sendToken,
-      };
+      var headers = {'Accept': 'application/json', 'Authorization': sendToken};
       var request = http.Request(
-          'GET',
-          Uri.parse(
-              'http://196.43.168.57/api/v1/hives/$hiveId/videos/$formattedStartDate/$formattedEndDate?page=$page'));
+        'GET',
+        Uri.parse(
+          'http://196.43.168.57/api/v1/hives/$hiveId/videos/$formattedStartDate/$formattedEndDate?page=$page',
+        ),
+      );
       request.headers.addAll(headers);
       http.StreamedResponse response = await request.send();
 
@@ -84,13 +101,15 @@ class _HiveVideosState extends State<HiveVideos> {
         List<dynamic> videoData = jsonData['data'];
 
         setState(() {
-          videos.addAll(videoData.map((video) {
-            return {
-              'path':
-                  'http://196.43.168.57/${video['path'].replaceFirst("public/", "")}',
-              'date': video['date']
-            };
-          }).toList());
+          videos.addAll(
+            videoData.map((video) {
+              return {
+                'path':
+                    'http://196.43.168.57/${video['path'].replaceFirst("public/", "")}',
+                'date': video['date'],
+              };
+            }).toList(),
+          );
           _isFetching = false;
           _hasMore = videoData.length == 10;
         });
@@ -152,9 +171,7 @@ class _HiveVideosState extends State<HiveVideos> {
                           size: 65,
                         ),
                       ),
-                      const SizedBox(
-                        width: 55,
-                      ),
+                      const SizedBox(width: 55),
                       Text(
                         'Hive ${widget.hiveId} videos',
                         style: const TextStyle(
@@ -256,8 +273,9 @@ class _VideoItemState extends State<VideoItem> {
   void _initializeVideoPlayer() {
     try {
       _chewieController = ChewieController(
-        videoPlayerController:
-            VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl)),
+        videoPlayerController: VideoPlayerController.networkUrl(
+          Uri.parse(widget.videoUrl),
+        ),
         autoInitialize: true,
         looping: true,
         aspectRatio: 16 / 9,
@@ -282,8 +300,9 @@ class _VideoItemState extends State<VideoItem> {
 
   @override
   Widget build(BuildContext context) {
-    String formattedDate =
-        DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.parse(widget.date));
+    String formattedDate = DateFormat(
+      'dd MMM yyyy, hh:mm a',
+    ).format(DateTime.parse(widget.date));
     if (_errorOccurred) {
       return Container(
         width: double.infinity,
@@ -306,9 +325,7 @@ class _VideoItemState extends State<VideoItem> {
           SizedBox(
             width: double.infinity,
             height: 180,
-            child: Chewie(
-              controller: _chewieController,
-            ),
+            child: Chewie(controller: _chewieController),
           ),
           SizedBox(height: 8),
           Text(

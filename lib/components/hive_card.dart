@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:HPGM/hivedetails.dart';
 import 'package:HPGM/components/custom_progress_bar.dart';
 import 'package:HPGM/components/pop_up.dart';
+import 'package:HPGM/services/token_storage.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
 import 'package:HPGM/records_form.dart';
 
@@ -86,17 +87,21 @@ class HiveCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => HiveDetails(
-                              hiveId: hive.id,
-                              token: token,
-                              honeyLevel: hive.honeyLevel,
+                      onPressed: () async {
+                        final token = await TokenStorage.getToken();
+                        if (token != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => HiveDetails(
+                                    hiveId: hive.id,
+                                    token: token,
+                                    honeyLevel: hive.honeyLevel,
+                                  ),
                             ),
-                          ),
-                        );
+                          );
+                        }
                       },
                       child: const Text(
                         'Hive Data',
@@ -115,8 +120,10 @@ class HiveCard extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 22, bottom: 10),
                 child: Row(
                   children: [
-                    Icon(Icons.developer_board_rounded,
-                        color: Colors.orange[700]),
+                    Icon(
+                      Icons.developer_board_rounded,
+                      color: Colors.orange[700],
+                    ),
                     const Text(
                       'Device:',
                       style: TextStyle(
@@ -139,13 +146,15 @@ class HiveCard extends StatelessWidget {
                 ),
               ),
               InkWell(
-                onTap: () => showModalBottomSheet(
-                  context: context,
-                  builder: (context) => buildTempSheet(
-                    "Temperature Details",
-                    hive.temperature ?? 0,
-                  ),
-                ),
+                onTap:
+                    () => showModalBottomSheet(
+                      context: context,
+                      builder:
+                          (context) => buildTempSheet(
+                            "Temperature Details",
+                            hive.temperature ?? 0,
+                          ),
+                    ),
                 child: Padding(
                   padding: const EdgeInsets.only(left: 22, bottom: 10),
                   child: Row(
@@ -160,21 +169,21 @@ class HiveCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      CustomProgressBar(
-                        value: hive.temperature ?? 0,
-                      ),
+                      CustomProgressBar(value: hive.temperature ?? 0),
                     ],
                   ),
                 ),
               ),
               InkWell(
-                onTap: () => showModalBottomSheet(
-                  context: context,
-                  builder: (context) => buildHoneySheet(
-                    "Honey Levels",
-                    hive.honeyLevel ?? 0,
-                  ),
-                ),
+                onTap:
+                    () => showModalBottomSheet(
+                      context: context,
+                      builder:
+                          (context) => buildHoneySheet(
+                            "Honey Levels",
+                            hive.honeyLevel ?? 0,
+                          ),
+                    ),
                 child: Padding(
                   padding: const EdgeInsets.only(left: 22, bottom: 8),
                   child: Row(
@@ -194,8 +203,9 @@ class HiveCard extends StatelessWidget {
                         width: 100,
                         child: LiquidLinearProgressIndicator(
                           value: (hive.honeyLevel ?? 0) / 100,
-                          valueColor:
-                              const AlwaysStoppedAnimation(Colors.amber),
+                          valueColor: const AlwaysStoppedAnimation(
+                            Colors.amber,
+                          ),
                           backgroundColor: Colors.amber[100]!,
                           borderColor: Colors.brown,
                           borderWidth: 1.0,
@@ -232,12 +242,12 @@ class HiveCard extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => RecordsForm(
-                          apiaryLocation: apiaryLocation,
-                          token: token, // Add the missing token parameter
-                          hiveId: 'Hive ${hive.id}',
-                          farmName: farmName,
-                        ),
+                        builder:
+                            (context) => RecordsForm(
+                              apiaryLocation: apiaryLocation,
+                              hiveId: 'Hive ${hive.id}',
+                              farmName: farmName,
+                            ),
                       ),
                     );
                   },

@@ -2,6 +2,7 @@ import 'package:HPGM/Notifications.dart';
 import 'package:HPGM/apiaries.dart';
 import 'package:HPGM/login.dart';
 import 'package:HPGM/records.dart';
+import 'package:HPGM/services/token_storage.dart';
 import 'package:HPGM/widgets/connectivity_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:line_icons/line_icons.dart';
@@ -39,25 +40,37 @@ class _navbarState extends State<navbar> {
   @override
   void initState() {
     super.initState();
-    _widgetOptions = <Widget>[
-      Apiaries(token: widget.token),
-      Home(token: widget.token, notify: false),
+    _initializeWidgets();
+  }
 
-      const Notifications(),
-      const Records(),
-      //MyScreen(), //to use in debugging the toggler.
-    ];
+  void _initializeWidgets() async {
+    final token = await TokenStorage.getToken();
+    if (token != null && mounted) {
+      setState(() {
+        _widgetOptions = <Widget>[
+          Apiaries(token: token),
+          Home(token: token, notify: false),
+          const Notifications(),
+          const Records(),
+        ];
+      });
+    }
   }
 
   int _selectedIndex = 0;
 
-  static List<Widget> _widgetOptions = <Widget>[];
+  List<Widget> _widgetOptions = <Widget>[];
 
   @override
   Widget build(BuildContext context) {
     return ConnectivityWrapper(
       child: Scaffold(
-        body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
+        body: Center(
+          child:
+              _widgetOptions.isEmpty
+                  ? const CircularProgressIndicator()
+                  : _widgetOptions.elementAt(_selectedIndex),
+        ),
 
         //bottom navbar starts from here.
         bottomNavigationBar: Container(
@@ -69,14 +82,20 @@ class _navbarState extends State<navbar> {
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 15.0,
+                vertical: 8,
+              ),
               child: GNav(
                 rippleColor: Colors.grey[300]!,
                 hoverColor: Colors.grey[100]!,
                 gap: 8,
                 activeColor: Colors.orange, // Set active icon color
                 iconSize: 24,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 duration: const Duration(milliseconds: 600),
                 tabBackgroundColor: Colors.grey[100]!,
                 color: Colors.black, // Set default icon color

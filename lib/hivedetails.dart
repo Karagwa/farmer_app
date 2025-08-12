@@ -3,6 +3,7 @@ import 'package:HPGM/components/imageslider.dart';
 import 'package:HPGM/components/temperature_sheet.dart';
 import 'package:HPGM/parameter_tab_view.dart';
 import 'package:HPGM/components/notificationbar.dart';
+import 'package:HPGM/services/token_storage.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
@@ -89,7 +90,22 @@ class _HiveDetailsState extends State<HiveDetails> {
 
   Future<void> fetchHiveDetails() async {
     try {
-      String sendToken = "Bearer ${widget.token}";
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication error. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      String sendToken = "Bearer $token";
       var headers = {'Accept': 'application/json', 'Authorization': sendToken};
       var response = await http.get(
         Uri.parse('http://196.43.168.57/api/v1/hives/${widget.hiveId}'),
@@ -118,7 +134,19 @@ class _HiveDetailsState extends State<HiveDetails> {
     DateTime endDate,
   ) async {
     try {
-      String sendToken = "Bearer ${widget.token}";
+      final token = await TokenStorage.getToken();
+
+      if (token == null || token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication error. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      String sendToken = "Bearer $token";
       String formattedStartDate = DateFormat('yyyy-MM-dd').format(startDate);
       String formattedEndDate = DateFormat('yyyy-MM-dd').format(endDate);
 
@@ -138,12 +166,13 @@ class _HiveDetailsState extends State<HiveDetails> {
         List<dynamic> imagePaths = jsonData['data'];
 
         setState(() {
-          photos = imagePaths
-              .map<String>(
-                (item) =>
-                    'http://196.43.168.57/${item['path'].replaceFirst("public/", "")}',
-              )
-              .toList();
+          photos =
+              imagePaths
+                  .map<String>(
+                    (item) =>
+                        'http://196.43.168.57/${item['path'].replaceFirst("public/", "")}',
+                  )
+                  .toList();
         });
       } else {
         throw Exception('Failed to load photos');
@@ -270,7 +299,8 @@ class _HiveDetailsState extends State<HiveDetails> {
                   // Device Status Section - IMPROVED
                   Padding(
                     padding: const EdgeInsets.all(15),
-                    child: Column( // Changed to Column to stack the rows
+                    child: Column(
+                      // Changed to Column to stack the rows
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -283,13 +313,15 @@ class _HiveDetailsState extends State<HiveDetails> {
                                 value: hive?.temperature ?? 0,
                                 maxValue: 50,
                                 unit: '°C',
-                                onTap: () => showModalBottomSheet(
-                                  context: context,
-                                  builder: (context) => buildTempSheet(
-                                    "Temperature Details",
-                                    hive?.temperature ?? 0,
-                                  ),
-                                ),
+                                onTap:
+                                    () => showModalBottomSheet(
+                                      context: context,
+                                      builder:
+                                          (context) => buildTempSheet(
+                                            "Temperature Details",
+                                            hive?.temperature ?? 0,
+                                          ),
+                                    ),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -300,20 +332,22 @@ class _HiveDetailsState extends State<HiveDetails> {
                                 value: hive?.honeyLevel ?? 0,
                                 maxValue: 100,
                                 unit: '%',
-                                onTap: () => showModalBottomSheet(
-                                  context: context,
-                                  builder: (context) => buildHoneySheet(
-                                    "Honey Levels",
-                                    hive?.honeyLevel ?? 0,
-                                  ),
-                                ),
+                                onTap:
+                                    () => showModalBottomSheet(
+                                      context: context,
+                                      builder:
+                                          (context) => buildHoneySheet(
+                                            "Honey Levels",
+                                            hive?.honeyLevel ?? 0,
+                                          ),
+                                    ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 15), // Added space between rows
-                   
-                  const SizedBox(height: 15),
+
+                        const SizedBox(height: 15),
                         Row(
                           children: [
                             Icon(
@@ -336,33 +370,47 @@ class _HiveDetailsState extends State<HiveDetails> {
                                 vertical: 5,
                               ),
                               decoration: BoxDecoration(
-                                color: (hive?.isConnected ?? false) ? Colors.green[100] : Colors.red[100],
+                                color:
+                                    (hive?.isConnected ?? false)
+                                        ? Colors.green[100]
+                                        : Colors.red[100],
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                (hive?.isConnected ?? false) ? 'Connected' : 'Disconnected',
+                                (hive?.isConnected ?? false)
+                                    ? 'Connected'
+                                    : 'Disconnected',
                                 style: TextStyle(
-                                  color: (hive?.isConnected ?? false) ? Colors.green : Colors.red,
+                                  color:
+                                      (hive?.isConnected ?? false)
+                                          ? Colors.green
+                                          : Colors.red,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 15), // Added space for the Monitor button
+                        const SizedBox(
+                          height: 15,
+                        ), // Added space for the Monitor button
                         Align(
                           alignment: Alignment.centerLeft,
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => TabView(
-                                    hiveId: widget.hiveId,
-                                    token: widget.token,
+                            onPressed: () async {
+                              final token = await TokenStorage.getToken();
+                              if (token != null && mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => TabView(
+                                          hiveId: widget.hiveId,
+                                          token: token,
+                                        ),
                                   ),
-                                ),
-                              );
+                                );
+                              }
                             },
                             icon: const Icon(Icons.monitor, size: 18),
                             label: const Text('Monitor'),
@@ -449,12 +497,12 @@ class _HiveDetailsState extends State<HiveDetails> {
                             widget.honeyLevel != null && widget.honeyLevel! > 75
                                 ? "Hive is almost full!"
                                 : widget.honeyLevel != null &&
-                                        widget.honeyLevel! > 50
-                                    ? "Good honey production"
-                                    : widget.honeyLevel != null &&
-                                            widget.honeyLevel! > 25
-                                        ? "Moderate honey levels"
-                                        : "Low honey levels",
+                                    widget.honeyLevel! > 50
+                                ? "Good honey production"
+                                : widget.honeyLevel != null &&
+                                    widget.honeyLevel! > 25
+                                ? "Moderate honey levels"
+                                : "Low honey levels",
                             style: TextStyle(
                               color: Colors.amber[800],
                               fontStyle: FontStyle.italic,
@@ -545,11 +593,7 @@ Widget _buildStatusIndicator({
         children: [
           Row(
             children: [
-              Icon(
-                icon,
-                color: Colors.orange[700],
-                size: 20,
-              ),
+              Icon(icon, color: Colors.orange[700], size: 20),
               const SizedBox(width: 8),
               Text(
                 label,
