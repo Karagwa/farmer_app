@@ -1,6 +1,7 @@
 import 'package:HPGM/Services/auth_services.dart';
 import 'package:HPGM/components/custom_text_field.dart';
 import 'package:HPGM/forgot_password.dart';
+import 'package:HPGM/widgets/connectivity_wrapper.dart';
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,8 +18,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
+    return ConnectivityWrapper(
+      child: Scaffold(
+        body: Container(
         decoration: const BoxDecoration(color: Colors.white),
         child: SingleChildScrollView(
           child: Center(
@@ -150,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
-      ),
-    );
+      ), // End of Scaffold
+    )); // End of ConnectivityWrapper
   }
 }

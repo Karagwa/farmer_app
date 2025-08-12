@@ -6,6 +6,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:HPGM/Services/bee_analysis_service.dart';
+import 'package:HPGM/Services/connectivity_service.dart';
 import 'package:HPGM/bee_counter/server_video_service.dart';
 import 'package:HPGM/bee_counter/bee_count_database.dart';
 import 'package:HPGM/bee_counter/bee_counter_model.dart';
@@ -311,11 +312,22 @@ class AutomaticBeeMonitoringService {
       final latestVideo = await serverVideoService.fetchLatestVideoFromServer('1');
 
       if (latestVideo == null) {
-        print('No videos found on server');
+        // Check if it's a connectivity issue or genuinely no videos
+        final isConnected = await ConnectivityService().hasInternetConnection();
+        
+        String message;
+        if (!isConnected) {
+          message = 'Offline - checking will resume when connected';
+          print('No internet connection for video checking');
+        } else {
+          message = 'No new videos found on server';
+          print('No videos found on server');
+        }
+        
         if (service is AndroidServiceInstance) {
           service.setForegroundNotificationInfo(
             title: 'Bee Monitor Active',
-            content: 'No new videos found',
+            content: message,
           );
         }
         return;

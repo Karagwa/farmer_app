@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'Services/connectivity_service.dart';
 
 class AddHiveForm extends StatefulWidget {
   final int farmId;
@@ -270,6 +271,25 @@ class _AddHiveFormState extends State<AddHiveForm> {
 
   Future<void> _submitForm() async {
   if (_formKey.currentState!.validate()) {
+    // Check connectivity before submitting
+    final isConnected = await ConnectivityService().hasInternetConnection();
+    if (!isConnected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'No internet connection. Please check your network and try again.',
+            style: TextStyle(fontFamily: "Sans"),
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
+    }
+
     try {
       // 🔥 Clean + simplified hive data to match Laravel backend expectations
       final hiveData = {

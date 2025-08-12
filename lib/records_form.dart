@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'Services/connectivity_service.dart';
 
 class RecordsForm extends StatefulWidget {
   final String apiaryLocation;
@@ -681,6 +682,25 @@ class _RecordsFormState extends State<RecordsForm> {
 
   Future<void> _submitRecord() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Check connectivity before submitting
+    final isConnected = await ConnectivityService().hasInternetConnection();
+    if (!isConnected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'No internet connection. Please check your network and try again.',
+            style: TextStyle(fontFamily: "Sans"),
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;

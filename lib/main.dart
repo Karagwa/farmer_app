@@ -1,6 +1,7 @@
 import 'package:HPGM/splashscreen.dart';
 import 'package:flutter/material.dart';
 import 'package:HPGM/Services/notifi_service.dart';
+import 'package:HPGM/Services/connectivity_service.dart';
 import 'package:HPGM/bee_counter/main_app_service_bridge.dart';
 
 Future<void> main() async {
@@ -13,6 +14,14 @@ Future<void> main() async {
     print("✓ Notification service initialized");
   } catch (e) {
     print("Warning: Could not initialize notifications: $e");
+  }
+  
+  // Initialize connectivity service
+  try {
+    await ConnectivityService().initialize();
+    print("✓ Connectivity service initialized");
+  } catch (e) {
+    print("Warning: Could not initialize connectivity service: $e");
   }
   
   // Initialize the service bridge (this will handle the background service)
@@ -62,7 +71,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     
     switch (state) {
       case AppLifecycleState.resumed:
-        print(' App resumed - enabling full video processing');
+        print('✓ App resumed - enabling full video processing');
         _serviceBridge.onAppResumed();
         break;
       case AppLifecycleState.paused:
@@ -70,13 +79,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         _serviceBridge.onAppPaused();
         break;
       case AppLifecycleState.detached:
-        print(' App detached');
+        print('✓ App detached');
         break;
       case AppLifecycleState.inactive:
         print('App inactive');
         break;
       case AppLifecycleState.hidden:
-        print(' App hidden');
+        print('✓ App hidden');
         break;
     }
   }
@@ -92,7 +101,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-     
       home: const Splashscreen(),
     );
   }

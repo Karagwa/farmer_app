@@ -214,7 +214,21 @@ class ServerVideoService {
       
       return null;
     } catch (e, stack) {
-      print('ERROR fetching latest video from server: $e');
+      // Provide user-friendly error messages based on error type
+      String errorMsg;
+      if (e.toString().contains('SocketException') || 
+          e.toString().contains('Network is unreachable') ||
+          e.toString().contains('Connection failed')) {
+        errorMsg = 'No internet connection available for video checking';
+      } else if (e.toString().contains('TimeoutException') || 
+                 e.toString().contains('timeout')) {
+        errorMsg = 'Video server connection timeout';
+      } else {
+        errorMsg = 'Unable to connect to video server';
+      }
+      
+      print('ERROR fetching latest video from server: $errorMsg');
+      print('Technical details: $e');
       print('Stack trace: $stack');
       return null;
     }

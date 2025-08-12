@@ -96,6 +96,7 @@ dev_dependencies:
   permission_handler: ^11.0.0
   cross_file: ^0.3.3+4
   args: ^2.4.0 
+  connectivity_plus: ^5.0.2
   # ffmpeg_kit_flutter_min: ^6.0.0
   # workmanager: ^0.5.2
   # path_provider: ^2.1.0

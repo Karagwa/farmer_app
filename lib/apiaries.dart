@@ -86,10 +86,36 @@ class _ApiariesState extends State<Apiaries> {
       }
     } catch (error) {
       print('Error loading farms: $error');
+      
+      // Provide user-friendly error messages based on error type
+      String userMessage;
+      if (error.toString().contains('SocketException') || 
+          error.toString().contains('Network is unreachable') ||
+          error.toString().contains('Connection failed')) {
+        userMessage = '🔌 No internet connection. Please check your network and try again.';
+      } else if (error.toString().contains('TimeoutException') || 
+                 error.toString().contains('timeout')) {
+        userMessage = '⏱️ Connection timeout. The server is taking too long to respond.';
+      } else if (error.toString().contains('404')) {
+        userMessage = '📍 Server endpoint not found. Please contact support.';
+      } else if (error.toString().contains('500') || error.toString().contains('502') || error.toString().contains('503')) {
+        userMessage = '🔧 Server is temporarily unavailable. Please try again later.';
+      } else {
+        userMessage = '❌ Unable to load farms. Please try again later.';
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $error'),
+          content: Text(
+            userMessage,
+            style: const TextStyle(fontFamily: "Sans"),
+          ),
           backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 5),
         ),
       );
     } finally {
