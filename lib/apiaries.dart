@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:HPGM/apiary_overview_cards/build_overview_card.dart';
-import 'package:HPGM/dashboard_screen.dart';
+
 import 'farm_model.dart';
 import 'farm_card.dart';
-import 'services/token_storage.dart';
+import 'Services/token_storage.dart';
+import 'services/cache_service.dart';
+import 'Services/auth_manager.dart';
 
 class Apiaries extends StatefulWidget {
   final String token;
@@ -38,49 +40,102 @@ class _ApiariesState extends State<Apiaries> {
     });
 
     try {
-      // Get token from storage instead of widget parameter
-      final token = await TokenStorage.getToken();
+      // Check if device is online
+      final isOnline = await CacheService.isOnline();
 
-      if (token == null || token.isEmpty) {
-        // User not logged in, handle appropriately
-        setState(() {
-          isLoading = false;
-        });
-        return;
+      // If offline, try to load from cache first
+      if (!isOnline) {
+        print('📱 Device is offline, trying to load from cache...');
+        final cachedFarms = await CacheService.loadFarms();
+        if (cachedFarms != null) {
+          if (mounted) {
+            setState(() {
+              farms = cachedFarms.map((farm) => Farm.fromJson(farm)).toList();
+              isLoading = false;
+            });
+          }
+
+          print('✓ Loaded ${farms.length} farms from cache');
+
+          // Load stats for each farm from cache
+          for (var farm in farms) {
+            await getApiaryStats(farm.id);
+          }
+
+          // Show user-friendly offline message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  '📱 Offline mode - Showing saved data',
+                  style: TextStyle(fontFamily: "Sans"),
+                ),
+                backgroundColor: Colors.orange[700],
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        } else {
+          // No cached data available
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  '📱 No internet connection and no saved data available',
+                  style: TextStyle(fontFamily: "Sans"),
+                ),
+                backgroundColor: Colors.red[700],
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+          if (mounted) {
+            setState(() {
+              isLoading = false;
+            });
+          }
+          return;
+        }
       }
 
-      String sendToken = "Bearer $token";
-      print('Using token: $sendToken');
+      // Device is online - proceed with API call
+      print('🌐 Device is online, fetching from API...');
 
-      var headers = {
-        'Accept': 'application/json',
-        'Authorization': sendToken,
-        'Content-Type': 'application/json',
-      };
-
-      print('Request headers: $headers');
-      print('Request URL: http://196.43.168.57/api/v1/farms');
-
-      var response = await http.get(
-        Uri.parse('http://196.43.168.57/api/v1/farms'),
-        headers: headers,
+      // Use AuthManager for authenticated API call
+      final response = await AuthManager.get(
+        'http://196.43.168.57/api/v1/farms',
+        context: context,
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response headers: ${response.headers}');
-      print('Response body: ${response.body}');
+      print('Response status: ${response?.statusCode}');
+      print('Response headers: ${response?.headers}');
+      print('Response body: ${response?.body}');
 
-      if (response.statusCode == 200) {
+      if (response != null && response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         print('Parsed data: $data');
 
-        setState(() {
-          farms =
-              data.map((farm) {
-                print('Processing farm: $farm');
-                return Farm.fromJson(farm);
-              }).toList();
-        });
+        // Save to cache for offline use
+        await CacheService.saveFarms(data);
+
+        if (mounted) {
+          setState(() {
+            farms =
+                data.map((farm) {
+                  print('Processing farm: $farm');
+                  return Farm.fromJson(farm);
+                }).toList();
+          });
+        }
 
         print('Farms loaded: ${farms.length}');
 
@@ -88,126 +143,210 @@ class _ApiariesState extends State<Apiaries> {
           await getApiaryStats(farm.id);
         }
       } else {
-        print('Failed to load farms: ${response.statusCode}');
-        print('Error response: ${response.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load farms: ${response.statusCode}'),
-            backgroundColor: Colors.red[700],
-          ),
-        );
+        print('Failed to load farms: ${response?.statusCode}');
+        print('Error response: ${response?.body}');
+
+        // Try loading from cache as fallback
+        final cachedFarms = await CacheService.loadFarms();
+        if (cachedFarms != null) {
+          if (mounted) {
+            setState(() {
+              farms = cachedFarms.map((farm) => Farm.fromJson(farm)).toList();
+            });
+          }
+
+          for (var farm in farms) {
+            await getApiaryStats(farm.id);
+          }
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '⚠️ Server error (${response?.statusCode}) - Showing saved data',
+                ),
+                backgroundColor: Colors.orange[700],
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to load farms: ${response?.statusCode}'),
+                backgroundColor: Colors.red[700],
+              ),
+            );
+          }
+        }
       }
     } catch (error) {
       print('Error loading farms: $error');
 
-      // Provide user-friendly error messages based on error type
-      String userMessage;
-      if (error.toString().contains('SocketException') ||
-          error.toString().contains('Network is unreachable') ||
-          error.toString().contains('Connection failed')) {
-        userMessage =
-            '🔌 No internet connection. Please check your network and try again.';
-      } else if (error.toString().contains('TimeoutException') ||
-          error.toString().contains('timeout')) {
-        userMessage =
-            '⏱️ Connection timeout. The server is taking too long to respond.';
-      } else if (error.toString().contains('404')) {
-        userMessage = '📍 Server endpoint not found. Please contact support.';
-      } else if (error.toString().contains('500') ||
-          error.toString().contains('502') ||
-          error.toString().contains('503')) {
-        userMessage =
-            '🔧 Server is temporarily unavailable. Please try again later.';
-      } else {
-        userMessage = '❌ Unable to load farms. Please try again later.';
-      }
+      // Try loading from cache as fallback
+      final cachedFarms = await CacheService.loadFarms();
+      if (cachedFarms != null) {
+        if (mounted) {
+          setState(() {
+            farms = cachedFarms.map((farm) => Farm.fromJson(farm)).toList();
+          });
+        }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            userMessage,
-            style: const TextStyle(fontFamily: "Sans"),
-          ),
-          backgroundColor: Colors.red[700],
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          duration: const Duration(seconds: 5),
-        ),
-      );
+        for (var farm in farms) {
+          await getApiaryStats(farm.id);
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                '⚠️ Connection error - Showing saved data',
+                style: TextStyle(fontFamily: "Sans"),
+              ),
+              backgroundColor: Colors.orange[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        // Provide user-friendly error messages based on error type
+        String userMessage;
+        if (error.toString().contains('SocketException') ||
+            error.toString().contains('Network is unreachable') ||
+            error.toString().contains('Connection failed')) {
+          userMessage =
+              '🔌 No internet connection. Please check your network and try again.';
+        } else if (error.toString().contains('TimeoutException') ||
+            error.toString().contains('timeout')) {
+          userMessage =
+              '⏱️ Connection timeout. The server is taking too long to respond.';
+        } else if (error.toString().contains('404')) {
+          userMessage = '📍 Server endpoint not found. Please contact support.';
+        } else if (error.toString().contains('500') ||
+            error.toString().contains('502') ||
+            error.toString().contains('503')) {
+          userMessage =
+              '🔧 Server is temporarily unavailable. Please try again later.';
+        } else {
+          userMessage = '❌ Unable to load farms. Please try again later.';
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                userMessage,
+                style: const TextStyle(fontFamily: "Sans"),
+              ),
+              backgroundColor: Colors.red[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> getApiaryStats(int farmId) async {
     try {
-      // Get token from storage instead of widget parameter
-      final token = await TokenStorage.getToken();
+      // Check if online first
+      final isOnline = await CacheService.isOnline();
 
-      if (token == null || token.isEmpty) {
-        // User not logged in, handle appropriately
-        return;
+      if (!isOnline) {
+        // Try loading from cache when offline
+        final cachedHives = await CacheService.loadHives(farmId);
+        if (cachedHives != null) {
+          _calculateStatsFromHives(farmId, cachedHives);
+          return;
+        }
       }
 
-      String sendToken = "Bearer $token";
-
-      var headers = {'Accept': 'application/json', 'Authorization': sendToken};
-      var response = await http.get(
-        Uri.parse('http://196.43.168.57/api/v1/farms/$farmId/hives'),
-        headers: headers,
+      // Use AuthManager for authenticated request
+      final response = await AuthManager.get(
+        'http://196.43.168.57/api/v1/farms/$farmId/hives',
+        context: context,
       );
 
-      if (response.statusCode == 200) {
+      if (response != null && response.statusCode == 200) {
         List<dynamic> hives = jsonDecode(response.body);
 
-        int totalHives = hives.length;
-        int colonizedHives = 0;
-        int needsAttentionHives = 0;
+        // Save hives to cache for offline use
+        await CacheService.saveHives(farmId, hives);
 
-        for (var hive in hives) {
-          // Safe parsing with fallback values
-          dynamic colonizedRaw =
-              hive['state']?['colonization_status']?['Colonized'];
-          dynamic connectedRaw =
-              hive['state']?['connection_status']?['Connected'];
-          dynamic honeyRaw = hive['state']?['weight']?['honey_percentage'];
-          dynamic tempRaw =
-              hive['state']?['temperature']?['interior_temperature'];
-
-          bool isColonized = colonizedRaw == true || colonizedRaw == 1;
-          bool isConnected = connectedRaw == true || connectedRaw == 1;
-
-          double? honeyLevel = _parseDouble(honeyRaw);
-          double? temperature = _parseDouble(tempRaw);
-
-          if (isColonized) colonizedHives++;
-
-          if (!isConnected ||
-              (temperature != null && temperature > 32) ||
-              (honeyLevel != null && honeyLevel > 80)) {
-            needsAttentionHives++;
-          }
-        }
-
-        setState(() {
-          apiaryStats[farmId] = ApiaryStats(
-            totalHives: totalHives,
-            activeHives: colonizedHives,
-            needsAttentionHives: needsAttentionHives,
-          );
-        });
+        _calculateStatsFromHives(farmId, hives);
       } else {
         print(
-          'Failed to fetch hives for stats. Status: ${response.statusCode}',
+          'Failed to fetch hives for stats. Status: ${response?.statusCode}',
         );
-        print('Body: ${response.body}');
+        print('Body: ${response?.body}');
+
+        // Try loading from cache as fallback
+        final cachedHives = await CacheService.loadHives(farmId);
+        if (cachedHives != null) {
+          _calculateStatsFromHives(farmId, cachedHives);
+        }
       }
     } catch (error) {
       print('Error loading stats for farm $farmId: $error');
+
+      // Try loading from cache as fallback
+      final cachedHives = await CacheService.loadHives(farmId);
+      if (cachedHives != null) {
+        _calculateStatsFromHives(farmId, cachedHives);
+      }
+    }
+  }
+
+  void _calculateStatsFromHives(int farmId, List<dynamic> hives) {
+    int totalHives = hives.length;
+    int colonizedHives = 0;
+    int needsAttentionHives = 0;
+
+    for (var hive in hives) {
+      // Safe parsing with fallback values
+      dynamic colonizedRaw =
+          hive['state']?['colonization_status']?['Colonized'];
+      dynamic connectedRaw = hive['state']?['connection_status']?['Connected'];
+      dynamic honeyRaw = hive['state']?['weight']?['honey_percentage'];
+      dynamic tempRaw = hive['state']?['temperature']?['interior_temperature'];
+
+      bool isColonized = colonizedRaw == true || colonizedRaw == 1;
+      bool isConnected = connectedRaw == true || connectedRaw == 1;
+
+      double? honeyLevel = _parseDouble(honeyRaw);
+      double? temperature = _parseDouble(tempRaw);
+
+      if (isColonized) colonizedHives++;
+
+      if (!isConnected ||
+          (temperature != null && temperature > 32) ||
+          (honeyLevel != null && honeyLevel > 80)) {
+        needsAttentionHives++;
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        apiaryStats[farmId] = ApiaryStats(
+          totalHives: totalHives,
+          activeHives: colonizedHives,
+          needsAttentionHives: needsAttentionHives,
+        );
+      });
     }
   }
 
@@ -252,17 +391,6 @@ class _ApiariesState extends State<Apiaries> {
   Future<void> _handleRefresh() async {
     await getApiaries();
     return;
-  }
-
-  void _navigateToDashboard() async {
-    final token = await TokenStorage.getToken();
-    if (token != null && mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => DashboardScreen(token: token)),
-        (route) => false,
-      );
-    }
   }
 
   @override

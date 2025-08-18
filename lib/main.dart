@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:HPGM/Services/notifi_service.dart';
 import 'package:HPGM/Services/connectivity_service.dart';
 import 'package:HPGM/bee_counter/main_app_service_bridge.dart';
+import 'package:HPGM/Services/auth_manager.dart';
 
 Future<void> main() async {
   // Ensure Flutter is initialized before doing anything else
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize notifications
   try {
     await NotificationService().initNotification();
@@ -15,7 +16,7 @@ Future<void> main() async {
   } catch (e) {
     print("Warning: Could not initialize notifications: $e");
   }
-  
+
   // Initialize connectivity service
   try {
     await ConnectivityService().initialize();
@@ -23,7 +24,15 @@ Future<void> main() async {
   } catch (e) {
     print("Warning: Could not initialize connectivity service: $e");
   }
-  
+
+  // Validate authentication on startup
+  try {
+    await AuthManager.validateOnStartup();
+    print("✓ Authentication validation completed");
+  } catch (e) {
+    print("Warning: Authentication validation failed: $e");
+  }
+
   // Initialize the service bridge (this will handle the background service)
   try {
     print("Initializing service bridge and automatic bee monitoring...");
@@ -34,7 +43,7 @@ Future<void> main() async {
     print("Error starting service bridge: $e");
     // Continue anyway - the app should still work
   }
-  
+
   // Run the app
   runApp(const MyApp());
 }
@@ -68,7 +77,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     switch (state) {
       case AppLifecycleState.resumed:
         print('✓ App resumed - enabling full video processing');
