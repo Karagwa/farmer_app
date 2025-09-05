@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:line_icons/line_icons.dart';
 import 'package:intl/intl.dart';
 import 'services/token_storage.dart';
+import 'services/cache_service.dart';
 
 class Weight extends StatefulWidget {
   final int hiveId;

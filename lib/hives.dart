@@ -2,6 +2,7 @@ import 'package:HPGM/add_hive_form.dart';
 import 'package:HPGM/edit_hive_form.dart';
 import 'package:HPGM/records_form.dart';
 import 'package:HPGM/services/token_storage.dart';
+import 'package:HPGM/services/cache_service.dart';
 import 'package:flutter/material.dart';
 import 'package:HPGM/hivedetails.dart';
 import 'package:http/http.dart' as http;
@@ -85,15 +86,74 @@ class _HivesState extends State<Hives> {
 
   Future<void> getHives(int farmId) async {
     try {
+      // Check if device is online
+      final isOnline = await CacheService.isOnline();
+
+      // If offline, try to load from cache first
+      if (!isOnline) {
+        print('📱 Device is offline, trying to load hives from cache...');
+        final cachedHives = await CacheService.loadHives(farmId);
+        if (cachedHives != null) {
+          setState(() {
+            hives = cachedHives.map((hive) => Hive.fromJson(hive)).toList();
+          });
+
+          print('✓ Loaded ${hives.length} hives from cache');
+
+          // Show user-friendly offline message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  '📱 Offline mode - Showing saved hives',
+                  style: TextStyle(fontFamily: "Sans"),
+                ),
+                backgroundColor: Colors.orange[700],
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        } else {
+          // No cached data available
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  '📱 No internet connection and no saved hives available',
+                  style: TextStyle(fontFamily: "Sans"),
+                ),
+                backgroundColor: Colors.red[700],
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      // Device is online - proceed with API call
+      print('🌐 Device is online, fetching hives from API...');
+
       final token = await TokenStorage.getToken();
 
       if (token == null || token.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Authentication error. Please log in again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Authentication error. Please log in again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         return;
       }
 
@@ -106,14 +166,90 @@ class _HivesState extends State<Hives> {
 
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
+
+        // Save to cache for offline use
+        await CacheService.saveHives(farmId, data);
+
         setState(() {
           hives = data.map((hive) => Hive.fromJson(hive)).toList();
         });
+
+        print('✓ Loaded ${hives.length} hives from API and cached');
       } else {
         print('Failed to load hive data: ${response.statusCode}');
+
+        // Try loading from cache as fallback
+        final cachedHives = await CacheService.loadHives(farmId);
+        if (cachedHives != null) {
+          setState(() {
+            hives = cachedHives.map((hive) => Hive.fromJson(hive)).toList();
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '⚠️ Server error (${response.statusCode}) - Showing saved hives',
+                ),
+                backgroundColor: Colors.orange[700],
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to load hives: ${response.statusCode}'),
+                backgroundColor: Colors.red[700],
+              ),
+            );
+          }
+        }
       }
     } catch (error) {
       print('Error fetching hives: $error');
+
+      // Try loading from cache as fallback
+      final cachedHives = await CacheService.loadHives(farmId);
+      if (cachedHives != null) {
+        setState(() {
+          hives = cachedHives.map((hive) => Hive.fromJson(hive)).toList();
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                '⚠️ Connection error - Showing saved hives',
+                style: TextStyle(fontFamily: "Sans"),
+              ),
+              backgroundColor: Colors.orange[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                '❌ Unable to load hives. Please try again later.',
+                style: TextStyle(fontFamily: "Sans"),
+              ),
+              backgroundColor: Colors.red[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
     }
   }
 

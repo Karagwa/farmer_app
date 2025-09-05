@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:line_icons/line_icons.dart';
 import 'package:intl/intl.dart';
 import 'services/token_storage.dart';
+import 'services/cache_service.dart';
 
 class Temperature extends StatefulWidget {
   final int hiveId;
@@ -74,15 +75,63 @@ class _TemperatureState extends State<Temperature> {
         _isLoading = true;
       });
 
+      // Create cache key based on hive ID and date range
+      final cacheKey =
+          'temperature_${widget.hiveId}_${DateFormat('yyyy-MM-dd').format(_startDate)}_${DateFormat('yyyy-MM-dd').format(_endDate)}';
+
+      // Check if device is online
+      final isOnline = await CacheService.isOnline();
+
+      // If offline, try to load from cache first
+      if (!isOnline) {
+        print(
+          '📱 Device is offline, trying to load temperature data from cache...',
+        );
+        final cachedData = await CacheService.loadData(cacheKey);
+        if (cachedData != null) {
+          _processTemperatureData(cachedData);
+
+          // Show user-friendly offline message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  '📱 Offline mode - Showing saved temperature data',
+                  style: TextStyle(fontFamily: "Sans"),
+                ),
+                backgroundColor: Colors.orange[700],
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        } else {
+          // No cached data available
+          setState(() {
+            _errorMessage =
+                'No internet connection and no saved temperature data available';
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
+      // Device is online - proceed with API call
       final token = await TokenStorage.getToken();
 
       if (token == null || token.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Authentication error. Please log in again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Authentication error. Please log in again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         setState(() {
           _isLoading = false;
         });
@@ -103,44 +152,94 @@ class _TemperatureState extends State<Temperature> {
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        final newDates = <DateTime>[];
-        final newInteriorTemps = <double?>[];
-        final newExteriorTemps = <double?>[];
 
-        for (final dataPoint in jsonData['data']) {
-          newDates.add(DateTime.parse(dataPoint['date']));
+        // Save to cache for offline use
+        await CacheService.saveData(cacheKey, jsonData);
 
-          final interiorTemp =
-              dataPoint['interiorTemperature'] != null
-                  ? double.tryParse(dataPoint['interiorTemperature'].toString())
-                  : null;
-          final exteriorTemp =
-              dataPoint['exteriorTemperature'] != null
-                  ? double.tryParse(dataPoint['exteriorTemperature'].toString())
-                  : null;
+        _processTemperatureData(jsonData);
+      } else {
+        // Try loading from cache as fallback
+        final cachedData = await CacheService.loadData(cacheKey);
+        if (cachedData != null) {
+          _processTemperatureData(cachedData);
 
-          newInteriorTemps.add(interiorTemp == 0 ? null : interiorTemp);
-          newExteriorTemps.add(exteriorTemp == 0 ? null : exteriorTemp);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '⚠️ Server error (${response.statusCode}) - Showing saved data',
+                ),
+                backgroundColor: Colors.orange[700],
+              ),
+            );
+          }
+        } else {
+          setState(() {
+            _errorMessage = 'Failed to load data: ${response.reasonPhrase}';
+            _isLoading = false;
+          });
         }
+      }
+    } catch (error) {
+      // Try loading from cache as fallback
+      final cacheKey =
+          'temperature_${widget.hiveId}_${DateFormat('yyyy-MM-dd').format(_startDate)}_${DateFormat('yyyy-MM-dd').format(_endDate)}';
+      final cachedData = await CacheService.loadData(cacheKey);
+      if (cachedData != null) {
+        _processTemperatureData(cachedData);
 
-        setState(() {
-          dates = newDates;
-          interiorTemperatures = newInteriorTemps;
-          exteriorTemperatures = newExteriorTemps;
-          _isLoading = false;
-        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                '⚠️ Connection error - Showing saved temperature data',
+                style: TextStyle(fontFamily: "Sans"),
+              ),
+              backgroundColor: Colors.orange[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       } else {
         setState(() {
-          _errorMessage = 'Failed to load data: ${response.reasonPhrase}';
+          _errorMessage = 'Error fetching temperature data: $error';
           _isLoading = false;
         });
       }
-    } catch (error) {
-      setState(() {
-        _errorMessage = 'Error fetching temperature data: $error';
-        _isLoading = false;
-      });
     }
+  }
+
+  void _processTemperatureData(Map<String, dynamic> jsonData) {
+    final newDates = <DateTime>[];
+    final newInteriorTemps = <double?>[];
+    final newExteriorTemps = <double?>[];
+
+    for (final dataPoint in jsonData['data']) {
+      newDates.add(DateTime.parse(dataPoint['date']));
+
+      final interiorTemp =
+          dataPoint['interiorTemperature'] != null
+              ? double.tryParse(dataPoint['interiorTemperature'].toString())
+              : null;
+      final exteriorTemp =
+          dataPoint['exteriorTemperature'] != null
+              ? double.tryParse(dataPoint['exteriorTemperature'].toString())
+              : null;
+
+      newInteriorTemps.add(interiorTemp == 0 ? null : interiorTemp);
+      newExteriorTemps.add(exteriorTemp == 0 ? null : exteriorTemp);
+    }
+
+    setState(() {
+      dates = newDates;
+      interiorTemperatures = newInteriorTemps;
+      exteriorTemperatures = newExteriorTemps;
+      _isLoading = false;
+    });
   }
 
   // Get the latest temperature value from the data
