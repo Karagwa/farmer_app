@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'Services/connectivity_service.dart';
 import 'services/token_storage.dart';
+import 'Services/apiary_queue_service.dart';
 
 class EditHiveForm extends StatefulWidget {
   final int hiveId;
@@ -301,33 +302,43 @@ class _EditHiveFormState extends State<EditHiveForm> {
 
     // Check connectivity before submitting
     final isConnected = await ConnectivityService().hasInternetConnection();
+    final updateData = {
+      'longitude': _longitudeController.text,
+      'latitude': _latitudeController.text,
+      'connected': _isConnected,
+      'colonized': _isColonized,
+    };
     if (!isConnected) {
+      // Queue the edit hive action for later sync
+      await ApiaryQueueService.addToQueue(ApiaryQueueItem(
+        actionType: ApiaryActionType.edit,
+        data: {
+          'hive': updateData,
+          'hiveId': widget.hiveId,
+          'endpoint': 'http://196.43.168.57/api/v1/hives/${widget.hiveId}',
+        },
+        apiaryId: widget.hiveId,
+      ));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'No internet connection. Please check your network and try again.',
+            'No internet connection. Hive update will sync when online.',
             style: TextStyle(fontFamily: "Sans"),
           ),
-          backgroundColor: Colors.red[700],
+          backgroundColor: Colors.orange[700],
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
         ),
       );
+      Navigator.pop(context);
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final updateData = {
-        'longitude': _longitudeController.text,
-        'latitude': _latitudeController.text,
-        'connected': _isConnected,
-        'colonized': _isColonized,
-      };
-
       final token = await TokenStorage.getToken();
 
       if (token == null || token.isEmpty) {

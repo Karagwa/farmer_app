@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:HPGM/Services/notifi_service.dart';
 import 'package:HPGM/Services/connectivity_service.dart';
 import 'package:HPGM/bee_counter/main_app_service_bridge.dart';
+import 'package:HPGM/Services/apiary_queue_service.dart';
+import 'services/token_storage.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 Future<void> main() async {
   // Ensure Flutter is initialized before doing anything else
@@ -54,6 +58,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _ensureServiceBridge();
+    _setupApiaryQueueSync();
   }
 
   Future<void> _ensureServiceBridge() async {
@@ -63,6 +68,106 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     } catch (e) {
       print('Error ensuring service bridge: $e');
     }
+  }
+
+  void _setupApiaryQueueSync() {
+    ConnectivityService().connectionStream.listen((isOnline) async {
+      if (isOnline) {
+        final queue = await ApiaryQueueService.getQueue();
+        for (int i = 0; i < queue.length; ) {
+          final item = queue[i];
+          try {
+            final token = await TokenStorage.getToken();
+            if (token == null || token.isEmpty) break;
+            http.Response response;
+            // Detect type by endpoint or data keys
+            String? endpoint;
+            Map<String, dynamic> body = {};
+            if (item.data.containsKey('endpoint')) {
+              endpoint = item.data['endpoint'];
+            }
+            // Inspection record
+            if (endpoint != null && endpoint.contains('/hives/inspections')) {
+              body = item.data['inspection'] ?? {};
+              response = await http.post(
+                Uri.parse(endpoint),
+                headers: {
+                  'Authorization': 'Bearer $token',
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+                body: jsonEncode(body),
+              );
+            }
+            // Add Hive
+            else if (endpoint != null && endpoint.contains('/hives') && item.actionType == ApiaryActionType.add) {
+              body = item.data['hive'] ?? {};
+              response = await http.post(
+                Uri.parse(endpoint),
+                headers: {
+                  'Authorization': 'Bearer $token',
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+                body: jsonEncode(body),
+              );
+            }
+            // Edit Hive
+            else if (endpoint != null && endpoint.contains('/hives') && item.actionType == ApiaryActionType.edit) {
+              body = item.data['hive'] ?? {};
+              response = await http.put(
+                Uri.parse(endpoint),
+                headers: {
+                  'Authorization': 'Bearer $token',
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+                body: jsonEncode(body),
+              );
+            }
+            // Add Apiary
+            else if (item.actionType == ApiaryActionType.add && endpoint != null && endpoint.contains('/farms')) {
+              response = await http.post(
+                Uri.parse(endpoint),
+                headers: {
+                  'Authorization': 'Bearer $token',
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+                body: jsonEncode(item.data),
+              );
+            }
+            // Edit Apiary
+            else if (item.actionType == ApiaryActionType.edit && endpoint != null && endpoint.contains('/farms')) {
+              response = await http.put(
+                Uri.parse(endpoint),
+                headers: {
+                  'Authorization': 'Bearer $token',
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+                body: jsonEncode(item.data),
+              );
+            }
+            else {
+              print('Unknown queue item type or missing endpoint, skipping');
+              i++;
+              continue;
+            }
+            if (response.statusCode == 201 || response.statusCode == 200) {
+              await ApiaryQueueService.removeFromQueue(i);
+              print('✓ Queued action synced successfully');
+            } else {
+              print('Failed to sync queued action: ${response.statusCode}');
+              i++;
+            }
+          } catch (e) {
+            print('Error syncing queued action: $e');
+            i++;
+          }
+        }
+      }
+    });
   }
 
   @override

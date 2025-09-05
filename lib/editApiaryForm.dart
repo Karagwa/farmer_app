@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
 import 'services/token_storage.dart';
+import 'package:HPGM/Services/apiary_queue_service.dart';
 
 class EditApiaryForm extends StatefulWidget {
   final int farmId;
@@ -470,22 +471,42 @@ class _EditApiaryFormState extends State<EditApiaryForm> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Prepare apiary data
+    final apiaryData = {
+      'name': _nameController.text,
+      'address': _addressController.text,
+      'district': _districtController.text,
+      'latitude': _latitudeController.text,
+      'longitude': _longitudeController.text,
+      'description': _descriptionController.text,
+    };
+
     // Check connectivity before submitting
     final isConnected = await ConnectivityService().hasInternetConnection();
     if (!isConnected) {
+      // Queue the edit action
+      await ApiaryQueueService.addToQueue(
+        ApiaryQueueItem(
+          actionType: ApiaryActionType.edit,
+          data: apiaryData,
+          apiaryId: widget.farmId,
+        ),
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'No internet connection. Please check your network and try again.',
+            'No internet. Changes will be saved automatically when online.',
             style: TextStyle(fontFamily: "Sans"),
           ),
-          backgroundColor: Colors.red[700],
+          backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
         ),
       );
+      setState(() => _isLoading = false);
+      Navigator.pop(context, true);
       return;
     }
 

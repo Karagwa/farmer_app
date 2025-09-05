@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:HPGM/Services/auth_services.dart';
 import 'package:HPGM/Services/connectivity_service.dart';
 import 'services/token_storage.dart';
+import 'package:HPGM/Services/apiary_queue_service.dart';
 
 class AddApiaryForm extends StatefulWidget {
   final VoidCallback onApiaryAdded;
@@ -214,24 +215,46 @@ class _AddApiaryFormState extends State<AddApiaryForm> {
   }
 
   Future<void> _submitForm() async {
+
     if (!_formKey.currentState!.validate()) return;
+
+    // Prepare apiary data
+    final currentUserId = AuthService.getUserId();
+    final apiaryData = {
+      'ownerId': currentUserId,
+      'name': _nameController.text.trim(),
+      'district': _districtController.text.trim(),
+      'address': _addressController.text.trim(),
+      'latitude': _latitudeController.text.trim(),
+      'longitude': _longitudeController.text.trim(),
+      'description': _descriptionController.text.trim(),
+    };
 
     // Check connectivity before submitting
     final isConnected = await ConnectivityService().hasInternetConnection();
     if (!isConnected) {
+      // Queue the add action
+      await ApiaryQueueService.addToQueue(
+        ApiaryQueueItem(
+          actionType: ApiaryActionType.add,
+          data: apiaryData,
+        ),
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'No internet connection. Please check your network and try again.',
+            'No internet. Apiary will be added automatically when online.',
             style: TextStyle(fontFamily: "Sans"),
           ),
-          backgroundColor: Colors.red[700],
+          backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
         ),
       );
+      setState(() => _isLoading = false);
+      Navigator.pop(context);
       return;
     }
 
